@@ -323,14 +323,14 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     border-radius: 8px;
     font-size: 11px;
     font-weight: 500;
     background: var(--card-bg);
     color: var(--text);
-    padding: 1px;
-    min-height: 30px;
+    padding: 2px 1px;
+    min-height: 42px;
     position: relative;
     transition: all 0.2s;
     cursor: default;
@@ -613,46 +613,40 @@ body {
 /* ---------- несколько смен в одной ячейке дня ---------- */
 .day-cell .chip-row {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
     gap: 1px;
     margin-top: 1px;
-    max-width: 100%;
+    width: 100%;
 }
 
-.day-cell .chip {
-    width: 12px;
-    height: 12px;
-    min-width: 12px;
-    border-radius: 50%;
-    font-size: 6px;
+.day-cell .name-chip {
+    width: 100%;
+    font-size: 6.5px;
     font-weight: 800;
     color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    flex-shrink: 0;
+    border-radius: 3px;
+    padding: 1px 1px;
+    line-height: 1.2;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.day-cell .chip.mine {
+.name-chip.mine {
     box-shadow: 0 0 0 1.5px #ff6b00;
 }
 
-.day-cell .chip.chip-pending {
-    animation: pulse 1.5s infinite;
-}
-
 .day-cell .chip-free {
-    width: 12px;
-    height: 12px;
-    min-width: 12px;
+    width: 11px;
+    height: 11px;
+    min-width: 11px;
     border-radius: 50%;
     border: 1px dashed var(--text-secondary);
     background: none;
     color: var(--text-secondary);
-    font-size: 8px;
+    font-size: 7px;
     line-height: 1;
     display: flex;
     align-items: center;
@@ -660,9 +654,26 @@ body {
     cursor: pointer;
     flex-shrink: 0;
     padding: 0;
+    margin: 0 auto;
 }
 
 .day-cell .chip-free:active { transform: scale(0.85); }
+
+.day-cell .chip-pending-dot {
+    width: 11px;
+    height: 11px;
+    min-width: 11px;
+    border-radius: 50%;
+    background: #ff9500;
+    margin: 0 auto;
+    animation: pulse 1.5s infinite;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+span.chip-pending-dot { cursor: default; }
 
 .day-cell .chip-more {
     font-size: 6px;
@@ -708,13 +719,13 @@ body {
     position: relative;
     background: var(--card-secondary);
     border-radius: 14px;
-    padding: 12px 10px;
+    padding: 20px 10px 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
     text-align: center;
-    min-height: 64px;
+    min-height: 72px;
     justify-content: center;
 }
 .pvz-grid-item .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
@@ -726,6 +737,16 @@ body {
     position: absolute; top: 4px; right: 6px; border: none; background: none; color: #ff3b30;
     font-size: 12px; cursor: pointer; padding: 2px;
 }
+.pvz-grid-item .pvz-edit-rate {
+    position: absolute; top: 4px; left: 6px; border: none; background: none; color: #ff9500;
+    font-size: 11px; cursor: pointer; padding: 2px;
+}
+
+.bulk-free-btn {
+    width: 100%; padding: 10px; margin: 10px 0; border: none; border-radius: 30px;
+    background: #ff9500; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.bulk-free-btn:active { transform: scale(0.97); }
 
 /* ---------- переключатель оклад/ставка ---------- */
 .pay-type-toggle { display: flex; gap: 6px; margin-bottom: 4px; }
@@ -753,6 +774,8 @@ body {
     .day-cell .shift-free { font-size: 5px; }
     .day-cell .hours { font-size: 5px; }
     .day-cell .chip, .day-cell .chip-free { width: 9px; height: 9px; min-width: 9px; font-size: 5px; }
+    .day-cell .name-chip { font-size: 5.5px; }
+    .day-cell .chip-pending-dot { width: 9px; height: 9px; min-width: 9px; }
     .header h1 { font-size: 14px; }
     .admin-toggle span { display: none; }
     .pvz-grid { grid-template-columns: 1fr; }

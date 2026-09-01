@@ -5,7 +5,7 @@ const App = (() => {
   const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
   const WEEKDAYS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
   const AVATAR_COLORS = ["#007aff","#8e44ad","#e67e22","#e91e63","#8bc34a","#2e7d32","#ff9500","#34c759"];
-  const MAX_CHIPS_PER_DAY = 3;
+  const MAX_NAMES_PER_DAY = 2;
 
   let state = {
     demo: false,
@@ -18,6 +18,7 @@ const App = (() => {
     shifts: [],
     employees: [],
     requests: [],
+    myRequests: [],
     bonusesFines: [],
     notif: null,
   };
@@ -49,10 +50,7 @@ const App = (() => {
   }
 
   function demoEmployee() {
-    return {
-      id: "demo", tg_id: 0, full_name: "Демо-пользователь", position: "Менеджер",
-      avatar_emoji: "👤", is_admin: true, default_rate: 350, pay_type: "hourly", fixed_salary: 0,
-    };
+    return { id: "demo", tg_id: 0, full_name: "Демо-пользователь", position: "Менеджер", avatar_emoji: "👤", is_admin: true };
   }
 
   async function reloadAll() {
@@ -61,6 +59,7 @@ const App = (() => {
     await reloadShifts();
     state.employees = await Api.getEmployees();
     state.bonusesFines = await Api.getBonusesFines(state.year, state.month);
+    state.myRequests = await Api.getMyPendingRequests();
     if (state.employee.is_admin) {
       state.requests = await Api.getPendingRequests();
     }
@@ -71,6 +70,12 @@ const App = (() => {
   async function reloadShifts() {
     if (state.demo) return;
     state.shifts = await Api.getShiftsForMonth(state.year, state.month);
+  }
+
+  async function reloadRequests() {
+    if (state.demo) return;
+    state.myRequests = await Api.getMyPendingRequests();
+    if (state.employee.is_admin) state.requests = await Api.getPendingRequests();
   }
 
   function renderAll() {
@@ -114,9 +119,12 @@ const App = (() => {
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
   }
 
-  function employeeBaseAmount(e, hours) {
-    if (e.pay_type === "fixed") return Number(e.fixed_salary || 0);
-    return hours * Number(e.default_rate || 350);
+  // Сумма за смену зависит от ПВЗ и времени начала (полная / "вечерняя"), а не от сотрудника
+  function shiftAmount(shift, pvz) {
+    if (!pvz) return 0;
+    const startHour = Number((shift.start_time || "0:00").split(":")[0]);
+    const threshold = pvz.evening_threshold ?? 17;
+    return startHour >= threshold ? Number(pvz.evening_pay || 0) : Number(pvz.full_shift_pay || 0);
   }
 
   // ---------------- ТЕМА ----------------
@@ -236,7 +244,7 @@ const App = (() => {
 
       for (let i = 0; i < startOffset; i++) html += `<div class="day-cell empty"></div>`;
 
-      let totalShifts = 0, totalHours = 0;
+      let totalShifts = 0, totalAmount = 0;
 
       for (let d = 1; d <= daysInMonth; d++) {
         const dayShifts = shiftsForPvzAndDay(pvz.id, d);
@@ -246,20 +254,25 @@ const App = (() => {
 
         if (dayShifts.length > 0) {
           html += `<div class="chip-row">`;
-          const visible = dayShifts.slice(0, MAX_CHIPS_PER_DAY);
+          const visible = dayShifts.slice(0, MAX_NAMES_PER_DAY);
 
           visible.forEach((shift) => {
             if (shift.employee_id) {
               totalShifts++;
-              totalHours += hoursBetween(shift.start_time, shift.end_time);
+              totalAmount += shiftAmount(shift, pvz);
               const isMine = shift.employee_id === state.employee.id;
-              const pendingCls = shift.status === "pending" ? "chip-pending" : "";
-              const mineCls = isMine ? "mine" : "";
               const empName = shift.employees?.full_name || "?";
-              const initials = empName[0] || "?";
               const bg = isMine ? "#ff6b00" : pvz.color;
-              const title = `${empName} • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}${shift.status === "pending" ? " (заявка)" : ""}`;
-              html += `<span class="chip ${pendingCls} ${mineCls}" style="background:${bg};" title="${escapeHtml(title)}">${escapeHtml(initials)}</span>`;
+              const title = `${empName} • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • ${Math.round(shiftAmount(shift, pvz))}₽`;
+              html += `<span class="name-chip ${isMine ? "mine" : ""}" style="background:${bg};" title="${escapeHtml(title)}">${escapeHtml(empName)}</span>`;
+            } else if (shift.status === "pending") {
+              const cnt = state.requests.filter((r) => r.shift_id === shift.id).length;
+              const title = `Есть отклики (${cnt || "?"}) • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}`;
+              if (state.isAdminView) {
+                html += `<button class="chip-pending-dot" title="${escapeHtml(title)}" onclick="App.openShiftRequestsModal('${shift.id}')"></button>`;
+              } else {
+                html += `<button class="chip-pending-dot" title="Откликнуться • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}" onclick="App.applyForShift('${shift.id}')"></button>`;
+              }
             } else if (!state.isAdminView) {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
               html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="App.applyForShift('${shift.id}')">+</button>`;
@@ -269,8 +282,8 @@ const App = (() => {
             }
           });
 
-          if (dayShifts.length > MAX_CHIPS_PER_DAY) {
-            html += `<span class="chip-more">+${dayShifts.length - MAX_CHIPS_PER_DAY}</span>`;
+          if (dayShifts.length > MAX_NAMES_PER_DAY) {
+            html += `<span class="chip-more">+${dayShifts.length - MAX_NAMES_PER_DAY}</span>`;
           }
           html += `</div>`;
         }
@@ -287,7 +300,7 @@ const App = (() => {
       if (state.isAdminView) {
         html += `<div class="admin-panel" style="border-color:${pvz.color};">
           <div class="stat-row"><span>Смен назначено:</span><strong>${totalShifts}</strong></div>
-          <div class="stat-row"><span>Часов:</span><strong>${Math.round(totalHours)}</strong></div>
+          <div class="stat-row"><span>Сумма:</span><strong>${Math.round(totalAmount).toLocaleString("ru-RU")} ₽</strong></div>
         </div>`;
       }
 
@@ -304,6 +317,7 @@ const App = (() => {
       await Api.applyForShift(shiftId);
       toast("✅ Заявка отправлена администратору");
       await reloadShifts();
+      await reloadRequests();
       renderCalendar();
       renderMyShifts();
     } catch (e) {
@@ -318,12 +332,20 @@ const App = (() => {
     const dayShifts = shiftsForPvzAndDay(pvzId, day);
 
     const rowsHtml = dayShifts.map((s) => {
-      const empName = s.employees?.full_name ? escapeHtml(s.employees.full_name) : "🆓 Свободно";
-      const pendingTag = s.status === "pending" ? " ⏳" : "";
+      let label, clickAttr;
+      if (s.employee_id) {
+        label = escapeHtml(s.employees?.full_name || "—");
+        clickAttr = `App.openShiftForm('${pvzId}', '${dStr}', '${s.id}')`;
+      } else if (s.status === "pending") {
+        const cnt = state.requests.filter((r) => r.shift_id === s.id).length;
+        label = `⏳ ${cnt} отклик(ов) — посмотреть`;
+        clickAttr = `App.openShiftRequestsModal('${s.id}')`;
+      } else {
+        label = "🆓 Свободно";
+        clickAttr = `App.openShiftForm('${pvzId}', '${dStr}', '${s.id}')`;
+      }
       return `<div class="day-shift-row">
-        <div class="left" onclick="App.openShiftForm('${pvzId}', '${dStr}', '${s.id}')">
-          ${empName} • ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}${pendingTag}
-        </div>
+        <div class="left" onclick="${clickAttr}">${label} • ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div>
         <button onclick="App.deleteShiftConfirm('${s.id}', '${pvzId}', ${day})" title="Удалить">🗑️</button>
       </div>`;
     }).join("");
@@ -336,15 +358,16 @@ const App = (() => {
 
   function openShiftForm(pvzId, dStr, shiftId) {
     const shift = shiftId ? state.shifts.find((s) => s.id === shiftId) : null;
+    const pvz = state.pvz.find((p) => p.id === pvzId);
     const [year, month, day] = dStr.split("-").map(Number);
 
     openModal(shiftId ? "Редактировать смену" : "Новая смена", `
       <label>Сотрудник</label>
       ${renderEmpPicker(shift?.employee_id || "")}
       <label>Начало</label>
-      <input type="time" id="f_start" value="${shift?.start_time?.slice(0,5) || "09:00"}">
+      <input type="time" id="f_start" value="${shift?.start_time?.slice(0,5) || pvz?.default_start_time?.slice(0,5) || "09:00"}">
       <label>Конец</label>
-      <input type="time" id="f_end" value="${shift?.end_time?.slice(0,5) || "18:00"}">
+      <input type="time" id="f_end" value="${shift?.end_time?.slice(0,5) || pvz?.default_end_time?.slice(0,5) || "21:00"}">
     `, async () => {
       const employeeId = document.getElementById("f_emp_hidden").value || null;
       const start = document.getElementById("f_start").value;
@@ -388,6 +411,26 @@ const App = (() => {
     }
   }
 
+  function openShiftRequestsModal(shiftId) {
+    const list = state.requests
+      .filter((r) => r.shift_id === shiftId)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    const rowsHtml = list.map((r, i) => `
+      <div class="request-card" style="margin-bottom:6px;">
+        <div class="info">
+          <div class="name">${i + 1}. ${escapeHtml(r.employees?.full_name || "—")}</div>
+          <div class="details">Откликнулся: ${new Date(r.created_at).toLocaleString("ru-RU", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}</div>
+        </div>
+        <div class="actions">
+          <button class="approve" onclick="App.resolveRequest('${r.id}', '${shiftId}', '${r.employee_id}', true)">✅</button>
+          <button class="reject" onclick="App.resolveRequest('${r.id}', '${shiftId}', '${r.employee_id}', false)">❌</button>
+        </div>
+      </div>`).join("");
+
+    openModal("Отклики на смену (по порядку)", rowsHtml || '<div class="center-msg">Откликов нет</div>', null);
+  }
+
   // ---------------- ПОИСК СОТРУДНИКА (переиспользуемый виджет) ----------------
   function renderEmpPicker(selectedId) {
     const freeItem = `<div class="emp-picker-item ${!selectedId ? "selected" : ""}" data-always="1" onclick="App._selectEmp(this,'')">
@@ -429,27 +472,31 @@ const App = (() => {
     if (!container) return;
     if (state.demo) { container.innerHTML = `<div class="center-msg">Нет данных</div>`; return; }
 
-    const mine = state.shifts
-      .filter((s) => s.employee_id === state.employee.id)
-      .sort((a, b) => a.shift_date.localeCompare(b.shift_date));
+    const mineConfirmed = state.shifts.filter((s) => s.employee_id === state.employee.id);
+    const minePending = state.myRequests.filter((r) => r.shifts); // из shift_requests, ещё не подтверждено
 
-    if (mine.length === 0) {
+    const items = [
+      ...mineConfirmed.map((s) => ({ pending: false, date: s.shift_date, start: s.start_time, end: s.end_time, pvzId: s.pvz_id })),
+      ...minePending.map((r) => ({ pending: true, date: r.shifts.shift_date, start: r.shifts.start_time, end: r.shifts.end_time, pvzName: r.shifts.pvz?.name, pvzColor: r.shifts.pvz?.color })),
+    ].sort((a, b) => a.date.localeCompare(b.date));
+
+    if (items.length === 0) {
       container.innerHTML = `<div class="center-msg">В этом месяце смен пока нет</div>`;
       return;
     }
 
-    container.innerHTML = mine.map((s) => {
-      const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-      const hours = Math.round(hoursBetween(s.start_time, s.end_time));
-      const dateObj = new Date(s.shift_date + "T00:00:00");
+    container.innerHTML = items.map((it) => {
+      const pvz = it.pvzId ? state.pvz.find((p) => p.id === it.pvzId) : null;
+      const pvzName = pvz?.name || it.pvzName || "—";
+      const pvzColor = pvz?.color || it.pvzColor || "#007aff";
+      const dateObj = new Date(it.date + "T00:00:00");
       const dateLabel = dateObj.toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" });
-      return `<div class="my-shift-card" style="border-left-color:${pvz?.color || "#007aff"};">
+      return `<div class="my-shift-card" style="border-left-color:${pvzColor};">
         <div class="info">
-          <div class="pzv-name">🏢 ${escapeHtml(pvz?.name || "—")}</div>
-          <div class="date-time">${dateLabel} • ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div>
-          ${s.status === "pending" ? `<div class="status-badge pending">⏳ Заявка отправлена</div>` : ""}
+          <div class="pzv-name">🏢 ${escapeHtml(pvzName)}</div>
+          <div class="date-time">${dateLabel} • ${it.start.slice(0,5)}–${it.end.slice(0,5)}</div>
+          ${it.pending ? `<div class="status-badge pending">⏳ Заявка отправлена</div>` : ""}
         </div>
-        <div class="hours-count">${hours}ч</div>
       </div>`;
     }).join("");
   }
@@ -473,21 +520,22 @@ const App = (() => {
             <div class="details">${escapeHtml(r.shifts?.pvz?.name || "")} • ${r.shifts?.shift_date} ${r.shifts?.start_time?.slice(0,5)}–${r.shifts?.end_time?.slice(0,5)}</div>
           </div>
           <div class="actions">
-            <button class="approve" onclick="App.resolveRequest('${r.id}', '${r.shift_id}', true)">✅</button>
-            <button class="reject" onclick="App.resolveRequest('${r.id}', '${r.shift_id}', false)">❌</button>
+            <button class="approve" onclick="App.resolveRequest('${r.id}', '${r.shift_id}', '${r.employee_id}', true)">✅</button>
+            <button class="reject" onclick="App.resolveRequest('${r.id}', '${r.shift_id}', '${r.employee_id}', false)">❌</button>
           </div>
         </div>`).join("");
     }
   }
 
-  async function resolveRequest(requestId, shiftId, approve) {
+  async function resolveRequest(requestId, shiftId, employeeId, approve) {
     try {
-      await Api.resolveRequest(requestId, shiftId, approve);
-      toast(approve ? "✅ Заявка одобрена" : "❌ Заявка отклонена");
-      state.requests = await Api.getPendingRequests();
+      await Api.resolveRequest(requestId, shiftId, employeeId, approve);
+      toast(approve ? "✅ Заявка одобрена, остальные отклики на эту смену закрыты" : "❌ Заявка отклонена");
+      await reloadRequests();
       await reloadShifts();
       renderRequests();
       renderCalendar();
+      closeModal();
     } catch (e) {
       toast("🚫 " + e.message);
     }
@@ -604,44 +652,36 @@ const App = (() => {
 
     if (state.demo) return;
 
-    const myShifts = state.shifts.filter((s) => s.employee_id === e.id && s.status !== "pending");
-    const totalHours = myShifts.reduce((sum, s) => sum + hoursBetween(s.start_time, s.end_time), 0);
+    const myShifts = state.shifts.filter((s) => s.employee_id === e.id);
     document.getElementById("statShifts").textContent = myShifts.length;
+    const totalHours = myShifts.reduce((sum, s) => sum + hoursBetween(s.start_time, s.end_time), 0);
     document.getElementById("statHours").textContent = Math.round(totalHours);
 
     const incomeContainer = document.getElementById("incomeContainer");
     let total = 0;
-    let rows = [];
 
-    const sortedShifts = myShifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date));
+    const pendingRows = state.myRequests.filter((r) => r.shifts).map((r) => {
+      const s = r.shifts;
+      return `<div class="profile-income-item">
+        <div class="left"><div class="title">⏳ ${escapeHtml(s.pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)} • заявка на рассмотрении</div></div>
+        <div class="right" style="color:var(--text-secondary); font-weight:500;">—</div>
+      </div>`;
+    });
 
-    if (e.pay_type === "fixed") {
-      total += Number(e.fixed_salary || 0);
-      rows.push(`<div class="profile-income-item">
-        <div class="left"><div class="title">💼 Оклад за месяц</div><div class="desc">Фиксированная оплата</div></div>
-        <div class="right">${Math.round(e.fixed_salary || 0).toLocaleString("ru-RU")} ₽</div>
-      </div>`);
-      rows = rows.concat(sortedShifts.map((s) => {
+    const confirmedRows = myShifts
+      .slice()
+      .sort((a, b) => a.shift_date.localeCompare(b.shift_date))
+      .map((s) => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-        const hours = hoursBetween(s.start_time, s.end_time);
-        return `<div class="profile-income-item">
-          <div class="left"><div class="title">🏢 ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)} • ${Math.round(hours)}ч</div></div>
-          <div class="right" style="color:var(--text-secondary); font-weight:500;">—</div>
-        </div>`;
-      }));
-    } else {
-      const rate = e.default_rate || 350;
-      rows = sortedShifts.map((s) => {
-        const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-        const hours = hoursBetween(s.start_time, s.end_time);
-        const amount = Math.round(hours * rate);
+        const amount = Math.round(shiftAmount(s, pvz));
         total += amount;
         return `<div class="profile-income-item">
-          <div class="left"><div class="title">🏢 ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)} • ${Math.round(hours)}ч</div></div>
+          <div class="left"><div class="title">🏢 ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
           <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>
         </div>`;
       });
-    }
+
+    let rows = pendingRows.concat(confirmedRows);
 
     const myBF = state.bonusesFines.filter((b) => b.employee_id === e.id);
     myBF.forEach((b) => {
@@ -709,12 +749,11 @@ const App = (() => {
     if (!listEl) return;
     if (!state.employee.is_admin || state.demo) return;
 
-    let fund = 0, totalHoursAll = 0;
+    let fund = 0, totalShiftsAll = 0;
 
     const rows = state.employees.filter((e) => e.is_active !== false).map((e) => {
-      const empShifts = state.shifts.filter((s) => s.employee_id === e.id && s.status !== "pending");
-      const hours = empShifts.reduce((sum, s) => sum + hoursBetween(s.start_time, s.end_time), 0);
-      const base = employeeBaseAmount(e, hours);
+      const empShifts = state.shifts.filter((s) => s.employee_id === e.id);
+      const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
       const bf = state.bonusesFines.filter((b) => b.employee_id === e.id);
       const bonuses = bf.filter((b) => b.kind === "bonus");
       const fines = bf.filter((b) => b.kind === "fine");
@@ -722,87 +761,69 @@ const App = (() => {
       const fineSum = fines.reduce((s, b) => s + Number(b.amount), 0);
       const amount = base + bonusSum - fineSum;
       fund += amount;
-      totalHoursAll += hours;
+      totalShiftsAll += empShifts.length;
 
       const empPvzIds = new Set(empShifts.map((s) => s.pvz_id));
       const markets = new Set([...empPvzIds].map((id) => state.pvz.find((p) => p.id === id)?.marketplace).filter(Boolean));
 
-      const detailsText = e.pay_type === "fixed"
-        ? `${empShifts.length} смен • ${Math.round(hours)} ч • оклад ${Math.round(e.fixed_salary || 0).toLocaleString("ru-RU")}₽/мес`
-        : `${empShifts.length} смен • ${Math.round(hours)} ч • ставка ${e.default_rate || 350}₽/ч`;
-
       return `<div class="finance-employee">
         <div class="left">
           <div class="name">${escapeHtml(e.full_name)}</div>
-          <div class="details">${detailsText}</div>
+          <div class="details">${empShifts.length} смен • ${Math.round(base).toLocaleString("ru-RU")} ₽ по тарифам ПВЗ</div>
           ${bonuses.map((b) => `<div class="bonus-list">✨ Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
           ${fines.map((b) => `<div class="fine-list">⚠️ Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
         </div>
         <div class="right">
           ${[...markets].map((m) => `<span class="market-tag ${m}">${m.toUpperCase()}</span>`).join("")}
           <span class="amount">${Math.round(amount).toLocaleString("ru-RU")} ₽</span>
-          <button class="edit-rate" onclick="App.openEditRateModal('${e.id}')">✏️</button>
         </div>
       </div>`;
     }).join("");
 
     listEl.innerHTML = rows || `<div class="center-msg">Нет сотрудников</div>`;
     document.getElementById("totalFund").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
-    document.getElementById("totalFundSub").innerHTML = `${state.employees.length} сотрудников • <span>${Math.round(totalHoursAll)}</span> отработанных часов`;
+    document.getElementById("totalFundSub").innerHTML = `${state.employees.length} сотрудников • <span>${totalShiftsAll}</span> смен за месяц`;
     document.getElementById("financeGrandTotal").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
 
     document.getElementById("pvzTagRow").innerHTML = state.pvz.map((p) => `
       <div class="pvz-grid-item">
+        <button class="pvz-edit-rate" onclick="App.openPvzRateModal('${p.id}')" title="Тарифы">✏️</button>
         <button class="pvz-remove" onclick="App.deletePvzConfirm('${p.id}', '${escapeHtml(p.name)}')" title="Удалить">✕</button>
         <span class="dot" style="background:${p.color};"></span>
         <span class="pvz-name">${escapeHtml(p.name)}</span>
       </div>`).join("");
   }
 
-  function openEditRateModal(employeeId) {
-    const emp = state.employees.find((e) => e.id === employeeId);
-    const payType = emp.pay_type || "hourly";
-    openModal(`Оплата: ${escapeHtml(emp.full_name)}`, `
-      <div class="pay-type-toggle">
-        <button type="button" class="${payType === "hourly" ? "active" : ""}" onclick="App._setPayTypeUI('hourly', this)">Почасовая</button>
-        <button type="button" class="${payType === "fixed" ? "active" : ""}" onclick="App._setPayTypeUI('fixed', this)">Оклад</button>
-      </div>
-      <input type="hidden" id="f_pay_type" value="${payType}">
-      <div id="f_rate_wrap" style="${payType === "fixed" ? "display:none;" : ""}">
-        <label>Ставка, ₽/час</label>
-        <input type="number" id="f_rate" value="${emp.default_rate || 350}" min="0">
-      </div>
-      <div id="f_salary_wrap" style="${payType === "hourly" ? "display:none;" : ""}">
-        <label>Оклад, ₽/месяц</label>
-        <input type="number" id="f_salary" value="${emp.fixed_salary || 0}" min="0">
-      </div>
+  function openPvzRateModal(pvzId) {
+    const pvz = state.pvz.find((p) => p.id === pvzId);
+    if (!pvz) return;
+    openModal(`Тарифы: ${escapeHtml(pvz.name)}`, `
+      <label>Полная смена, ₽</label>
+      <input type="number" id="f_full" value="${pvz.full_shift_pay}" min="0">
+      <label>"Вечерняя" смена, ₽</label>
+      <input type="number" id="f_evening" value="${pvz.evening_pay}" min="0">
+      <label>С какого часа смена считается вечерней (0–23)</label>
+      <input type="number" id="f_threshold" value="${pvz.evening_threshold}" min="0" max="23">
+      <label>Стандартное начало смены (для быстрого создания)</label>
+      <input type="time" id="f_dstart" value="${pvz.default_start_time?.slice(0,5) || "09:00"}">
+      <label>Стандартный конец смены</label>
+      <input type="time" id="f_dend" value="${pvz.default_end_time?.slice(0,5) || "21:00"}">
     `, async () => {
-      const pt = document.getElementById("f_pay_type").value;
-      const fields = { pay_type: pt };
-      if (pt === "hourly") {
-        const rate = Number(document.getElementById("f_rate").value);
-        if (!rate || rate <= 0) return toast("Введите корректную ставку");
-        fields.default_rate = rate;
-      } else {
-        const salary = Number(document.getElementById("f_salary").value);
-        if (!salary || salary <= 0) return toast("Введите корректный оклад");
-        fields.fixed_salary = salary;
-      }
+      const full_shift_pay = Number(document.getElementById("f_full").value);
+      const evening_pay = Number(document.getElementById("f_evening").value);
+      const evening_threshold = Number(document.getElementById("f_threshold").value);
+      const default_start_time = document.getElementById("f_dstart").value;
+      const default_end_time = document.getElementById("f_dend").value;
+      if (!full_shift_pay || full_shift_pay <= 0) return toast("Введите сумму за полную смену");
       try {
-        await Api.updateEmployee(employeeId, fields);
-        toast("✅ Оплата обновлена");
-        state.employees = await Api.getEmployees();
+        await Api.updatePvz(pvzId, { full_shift_pay, evening_pay, evening_threshold, default_start_time, default_end_time });
+        toast("✅ Тарифы обновлены");
+        state.pvz = await Api.getPvzList();
         renderManagement();
+        renderCalendar();
+        renderProfile();
       } catch (e) { toast("🚫 " + e.message); }
     });
-  }
-
-  function _setPayTypeUI(pt, btn) {
-    document.getElementById("f_pay_type").value = pt;
-    btn.parentElement.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("f_rate_wrap").style.display = pt === "hourly" ? "" : "none";
-    document.getElementById("f_salary_wrap").style.display = pt === "fixed" ? "" : "none";
   }
 
   function openBonusFineModal(kind) {
@@ -839,7 +860,7 @@ const App = (() => {
       const color = document.getElementById("f_color").value;
       try {
         await Api.addPvz(name, marketplace, color);
-        toast("✅ ПВЗ добавлен");
+        toast("✅ ПВЗ добавлен, не забудьте настроить тарифы (✏️)");
         state.pvz = await Api.getPvzList();
         renderManagement();
         renderCalendar();
@@ -858,19 +879,29 @@ const App = (() => {
     } catch (e) { toast("🚫 " + e.message); }
   }
 
+  async function bulkFreeMonthConfirm() {
+    const label = `${MONTHS[state.month]} ${state.year}`;
+    if (!confirm(`Создать свободные смены на все дни ${label} для всех ПВЗ, где смен ещё нет? Уже назначенные смены не тронет.`)) return;
+    try {
+      const count = await Api.bulkCreateFreeMonth(state.year, state.month);
+      toast(count > 0 ? `✅ Создано свободных смен: ${count}` : "Нечего создавать — все дни уже заняты сменами");
+      await reloadShifts();
+      renderCalendar();
+    } catch (e) {
+      toast("🚫 " + e.message);
+    }
+  }
+
   function exportPayroll() {
-    let csv = "Сотрудник;Тип оплаты;Смены;Часы;Ставка/Оклад;Бонусы;Штрафы;Итого\n";
+    let csv = "Сотрудник;Смены;Сумма по тарифам;Бонусы;Штрафы;Итого\n";
     state.employees.filter((e) => e.is_active !== false).forEach((e) => {
-      const empShifts = state.shifts.filter((s) => s.employee_id === e.id && s.status !== "pending");
-      const hours = empShifts.reduce((sum, s) => sum + hoursBetween(s.start_time, s.end_time), 0);
-      const base = employeeBaseAmount(e, hours);
+      const empShifts = state.shifts.filter((s) => s.employee_id === e.id);
+      const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
       const bf = state.bonusesFines.filter((b) => b.employee_id === e.id);
       const bonusSum = bf.filter((b) => b.kind === "bonus").reduce((s, b) => s + Number(b.amount), 0);
       const fineSum = bf.filter((b) => b.kind === "fine").reduce((s, b) => s + Number(b.amount), 0);
       const total = base + bonusSum - fineSum;
-      const payLabel = e.pay_type === "fixed" ? "оклад" : "почасовая";
-      const payValue = e.pay_type === "fixed" ? (e.fixed_salary || 0) : (e.default_rate || 350);
-      csv += `${e.full_name};${payLabel};${empShifts.length};${Math.round(hours)};${payValue};${bonusSum};${fineSum};${Math.round(total)}\n`;
+      csv += `${e.full_name};${empShifts.length};${Math.round(base)};${bonusSum};${fineSum};${Math.round(total)}\n`;
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -912,11 +943,11 @@ const App = (() => {
 
   return {
     init, toggleTheme, switchTab, toggleAdmin, changeMonth, switchMarket,
-    applyForShift, openDayShiftsModal, openShiftForm, deleteShiftConfirm, resolveRequest,
+    applyForShift, openDayShiftsModal, openShiftForm, deleteShiftConfirm, openShiftRequestsModal, resolveRequest,
     _filterEmpPicker, _selectEmp,
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, deleteEmployee, openChat,
     changeAvatar, _pickAvatar, togglePush, saveNotificationSettings,
-    openEditRateModal, _setPayTypeUI, openBonusFineModal, openAddPvzModal, deletePvzConfirm, exportPayroll,
+    openPvzRateModal, openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm, exportPayroll,
     closeModal,
   };
 })();

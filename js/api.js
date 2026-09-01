@@ -67,9 +67,41 @@ const Api = (() => {
     if (error) throw error;
   }
 
+  async function updatePvz(id, fields) {
+    const { error } = await client.from("pvz").update(fields).eq("id", id);
+    if (error) throw error;
+  }
+
   async function deletePvz(id) {
     const { error } = await client.from("pvz").update({ is_active: false }).eq("id", id);
     if (error) throw error;
+  }
+
+  // массово создаёт свободные смены на весь месяц для всех ПВЗ,
+  // но только для тех дней/ПВЗ, где ещё вообще нет ни одной смены
+  async function bulkCreateFreeMonth(year, month) {
+    const pvzList = await getPvzList();
+    const existing = await getShiftsForMonth(year, month);
+    const existingKey = new Set(existing.map((s) => `${s.pvz_id}_${s.shift_date}`));
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const rows = [];
+    for (const pvz of pvzList) {
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const key = `${pvz.id}_${dateStr}`;
+        if (existingKey.has(key)) continue;
+        rows.push({
+          pvz_id: pvz.id, shift_date: dateStr,
+          start_time: pvz.default_start_time || "09:00",
+          end_time: pvz.default_end_time || "21:00",
+          employee_id: null, status: "free",
+        });
+      }
+    }
+    if (rows.length === 0) return 0;
+    const { error } = await client.from("shifts").insert(rows);
+    if (error) throw error;
+    return rows.length;
   }
 
   // ---------- СМЕНЫ ----------
@@ -105,36 +137,65 @@ const Api = (() => {
       shift_id: shiftId,
       employee_id: currentEmployee.id,
     });
-    if (reqErr) throw reqErr;
+    if (reqErr) {
+      if (reqErr.code === "23505") throw new Error("Вы уже откликнулись на эту смену");
+      throw reqErr;
+    }
 
-    const { error: shiftErr } = await client
-      .from("shifts")
-      .update({ status: "pending", employee_id: currentEmployee.id })
-      .eq("id", shiftId);
-    if (shiftErr) throw shiftErr;
+    // free -> pending; если уже pending (кто-то ещё откликнулся раньше) — ничего не меняем
+    await client.from("shifts").update({ status: "pending" }).eq("id", shiftId).eq("status", "free");
+  }
+
+  async function getMyPendingRequests() {
+    const { data, error } = await client
+      .from("shift_requests")
+      .select("*, shifts:shift_id(shift_date, start_time, end_time, pvz:pvz_id(name, color))")
+      .eq("employee_id", currentEmployee.id)
+      .eq("status", "pending");
+    if (error) throw error;
+    return data;
   }
 
   async function getPendingRequests() {
     const { data, error } = await client
       .from("shift_requests")
       .select("*, employees:employee_id(full_name), shifts:shift_id(shift_date, start_time, end_time, pvz:pvz_id(name))")
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
     if (error) throw error;
     return data;
   }
 
-  async function resolveRequest(requestId, shiftId, approve) {
+  async function resolveRequest(requestId, shiftId, employeeId, approve) {
     const { error: reqErr } = await client
       .from("shift_requests")
       .update({ status: approve ? "approved" : "rejected", resolved_at: new Date().toISOString() })
       .eq("id", requestId);
     if (reqErr) throw reqErr;
 
-    const { error: shiftErr } = await client
-      .from("shifts")
-      .update(approve ? { status: "confirmed" } : { status: "free", employee_id: null })
-      .eq("id", shiftId);
-    if (shiftErr) throw shiftErr;
+    if (approve) {
+      // остальные отклики на эту же смену больше не актуальны
+      await client
+        .from("shift_requests")
+        .update({ status: "rejected", resolved_at: new Date().toISOString() })
+        .eq("shift_id", shiftId)
+        .eq("status", "pending");
+
+      const { error: shiftErr } = await client
+        .from("shifts")
+        .update({ employee_id: employeeId, status: "confirmed" })
+        .eq("id", shiftId);
+      if (shiftErr) throw shiftErr;
+    } else {
+      const { count } = await client
+        .from("shift_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("shift_id", shiftId)
+        .eq("status", "pending");
+      if (!count) {
+        await client.from("shifts").update({ status: "free" }).eq("id", shiftId);
+      }
+    }
   }
 
   // ---------- СОТРУДНИКИ ----------
@@ -196,9 +257,9 @@ const Api = (() => {
 
   return {
     login, getCurrentEmployee, isReady,
-    getPvzList, addPvz, deletePvz,
+    getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getShiftsForMonth, upsertShift, deleteShift,
-    applyForShift, getPendingRequests, resolveRequest,
+    applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest,
     getEmployees, addEmployee, updateEmployee, deleteEmployee,
     addBonusFine, getBonusesFines,
     getNotificationSettings, saveNotificationSettings,

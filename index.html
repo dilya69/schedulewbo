@@ -37,7 +37,7 @@
                     <button onclick="App.changeMonth(1)">▶</button>
                 </div>
 
-                <div class="admin-only market-switcher" id="marketSwitcher">
+                <div class="market-switcher" id="marketSwitcher">
                     <button class="market-btn active-wb" data-market="wb" onclick="App.switchMarket('wb')">🟣 WB</button>
                     <button class="market-btn" data-market="ozon" onclick="App.switchMarket('ozon')">🔵 OZON</button>
                 </div>
@@ -47,6 +47,11 @@
 
             <!-- ВКЛАДКА 2: СМЕНЫ -->
             <div id="tab2" class="tab-content">
+                <div class="month-nav">
+                    <button onclick="App.changeMonth(-1)">◀</button>
+                    <div class="month-label" id="monthLabel2">—</div>
+                    <button onclick="App.changeMonth(1)">▶</button>
+                </div>
                 <div style="font-weight:700; font-size:16px; margin-bottom:8px; color:var(--text);">Мои смены</div>
                 <div id="myShiftsContainer"></div>
 
@@ -91,10 +96,9 @@
                     </div>
                 </div>
 
-                <div class="profile-stats">
+                <div class="profile-stats profile-stats-2">
                     <div class="profile-stat"><div class="number" id="statShifts">0</div><div class="label">Смен за месяц</div></div>
                     <div class="profile-stat"><div class="number" id="statHours">0</div><div class="label">Часов</div></div>
-                    <div class="profile-stat"><div class="number" id="statRating">—</div><div class="label">Рейтинг</div></div>
                 </div>
 
                 <div class="profile-income-title">💰 Доход за месяц</div>
@@ -173,7 +177,7 @@
 
                 <div style="margin-top:20px; border-top:2px solid var(--border); padding-top:16px;">
                     <div style="font-weight:600; font-size:14px; margin-bottom:10px; color:var(--text);">🏢 Управление ПВЗ</div>
-                    <div class="pvz-tag-row" id="pvzTagRow"></div>
+                    <div class="pvz-grid" id="pvzTagRow"></div>
                     <div style="display:flex; gap:8px;">
                         <button onclick="App.openAddPvzModal()" style="flex:1; padding:8px; background:#007aff; color:white; border:none; border-radius:30px; font-size:12px; font-weight:600; cursor:pointer;">➕ Добавить ПВЗ</button>
                     </div>

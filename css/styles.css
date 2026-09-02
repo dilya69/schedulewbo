@@ -748,6 +748,29 @@ span.chip-pending-dot { cursor: default; }
 }
 .bulk-free-btn:active { transform: scale(0.97); }
 
+.purge-warning {
+    background: #ff950020;
+    color: #ff9500;
+    border: 1px solid #ff9500;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 12px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+.purge-warning button {
+    display: block;
+    margin-top: 8px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 20px;
+    background: #ff9500;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
 /* ---------- переключатель оклад/ставка ---------- */
 .pay-type-toggle { display: flex; gap: 6px; margin-bottom: 4px; }
 .pay-type-toggle button {

@@ -152,6 +152,7 @@
             <div id="tab5" class="tab-content admin-only">
                 <div style="font-weight:700; font-size:16px; margin-bottom:4px; color:var(--text);">⚙️ Управление</div>
                 <div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px;" id="adminMonthLabel"></div>
+                <div id="purgeWarning" class="purge-warning" style="display:none;"></div>
 
                 <div class="finance-summary">
                     <div class="total-label">💰 Фонд оплаты труда</div>
@@ -163,6 +164,9 @@
                 <div id="financeEmployeeList"></div>
 
                 <button class="bulk-free-btn" onclick="App.bulkFreeMonthConfirm()">🗓️ Освободить весь текущий месяц (для откликов)</button>
+                <div style="font-size:10.5px; color:var(--text-secondary); text-align:center; margin:-4px 0 6px;">
+                    ⚠️ 15 числа каждого месяца данные о прошлых месяцах удаляются автоматически — не забудьте экспортировать нужное заранее
+                </div>
 
                 <div class="finance-actions">
                     <button class="bonus-btn" onclick="App.openBonusFineModal('bonus')">➕ Бонус</button>
@@ -175,6 +179,7 @@
                         <span id="financeGrandTotal">0 ₽</span>
                     </div>
                     <button class="finance-export" onclick="App.exportPayroll()">📊 Экспортировать ведомость (CSV)</button>
+                <button class="finance-export" style="background:#5856d6; margin-top:6px;" onclick="App.exportShiftsDetailed()">📄 Детальный экспорт смен за этот месяц</button>
                 </div>
 
                 <div style="margin-top:20px; border-top:2px solid var(--border); padding-top:16px;">

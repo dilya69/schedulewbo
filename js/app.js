@@ -119,12 +119,20 @@ const App = (() => {
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
   }
 
-  // Сумма за смену зависит от ПВЗ и времени начала (полная / "вечерняя"), а не от сотрудника
+  // Сумма за смену зависит от ПВЗ и времени начала:
+  //  - старт ровно в стандартное время открытия -> полная смена
+  //  - старт в вечерний порог и позже -> вечерняя смена
+  //  - старт где-то между ("вышел позже, но не вечером") -> почасовая ставка
   function shiftAmount(shift, pvz) {
     if (!pvz) return 0;
-    const startHour = Number((shift.start_time || "0:00").split(":")[0]);
+    const startStr = (shift.start_time || "").slice(0, 5);
+    const openStr = (pvz.default_start_time || "09:00").slice(0, 5);
+    const startHour = Number(startStr.split(":")[0]);
     const threshold = pvz.evening_threshold ?? 17;
-    return startHour >= threshold ? Number(pvz.evening_pay || 0) : Number(pvz.full_shift_pay || 0);
+
+    if (startStr === openStr) return Number(pvz.full_shift_pay || 0);
+    if (startHour >= threshold) return Number(pvz.evening_pay || 0);
+    return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 200);
   }
 
   // ---------------- ТЕМА ----------------
@@ -559,7 +567,7 @@ const App = (() => {
         <div class="actions">
           ${e.tg_username ? `<button class="chat-btn" onclick="App.openChat('${e.tg_username}')" title="Чат в Telegram">💬</button>` : ""}
           <button class="edit-btn admin-only" onclick="App.openEditEmployeeModal('${e.id}')" title="Редактировать">✏️</button>
-          <button class="delete admin-only" onclick="App.deleteEmployee('${e.id}', '${escapeHtml(e.full_name)}')" title="Удалить">🗑️</button>
+          <button class="delete admin-only" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Уволить">🗑️</button>
         </div>
       </div>`).join("");
   }
@@ -621,15 +629,46 @@ const App = (() => {
     });
   }
 
-  async function deleteEmployee(id, name) {
-    if (!confirm(`Удалить сотрудника «${name}»? Доступ будет отозван.`)) return;
-    try {
-      await Api.deleteEmployee(id);
-      toast("✅ Сотрудник удалён");
-      state.employees = await Api.getEmployees();
-      renderEmployees();
-      renderManagement();
-    } catch (e) { toast("🚫 " + e.message); }
+  function openDeleteEmployeeModal(id, name) {
+    openModal(`Уволить: ${escapeHtml(name)}`, `
+      <p style="font-size:13px; color:var(--text); line-height:1.5; margin-bottom:10px;">
+        После увольнения данные сотрудника будут удалены из базы через 7 дней без возможности восстановления.
+        Рекомендуем сначала скачать его историю смен и зарплат.
+      </p>
+      <button type="button" class="add-shift-btn" onclick="App.exportEmployeeHistory('${id}','${escapeHtml(name)}')">📥 Скачать данные сотрудника</button>
+    `, null, {
+      label: "🗑️ Уволить",
+      action: async () => {
+        try {
+          await Api.deleteEmployee(id);
+          toast("✅ Уволен. Данные будут удалены через 7 дней");
+          state.employees = await Api.getEmployees();
+          renderEmployees();
+          renderManagement();
+        } catch (e) { toast("🚫 " + e.message); }
+      },
+    });
+  }
+
+  async function exportEmployeeHistory(employeeId, name) {
+    const data = await Api.getEmployeeFullHistory(employeeId);
+    let csv = "Тип;Дата/Месяц;ПВЗ;Начало;Конец;Сумма;Причина\n";
+    data.shifts.forEach((s) => {
+      const pvz = s.pvz || state.pvz.find((p) => p.id === s.pvz_id);
+      const amount = Math.round(shiftAmount(s, pvz));
+      csv += `Смена;${s.shift_date};${pvz?.name || ""};${s.start_time?.slice(0,5) || ""};${s.end_time?.slice(0,5) || ""};${amount};\n`;
+    });
+    data.bonusesFines.forEach((b) => {
+      csv += `${b.kind === "bonus" ? "Бонус" : "Штраф"};${b.period_month};;;;${b.amount};${(b.reason || "").replace(/;/g, ",")}\n`;
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${name.replace(/\s+/g, "_")}_история.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("✅ Файл скачан");
   }
 
   function openChat(username) {
@@ -749,6 +788,8 @@ const App = (() => {
     if (!listEl) return;
     if (!state.employee.is_admin || state.demo) return;
 
+    renderPurgeWarning();
+
     let fund = 0, totalShiftsAll = 0;
 
     const rows = state.employees.filter((e) => e.is_active !== false).map((e) => {
@@ -804,7 +845,9 @@ const App = (() => {
       <input type="number" id="f_evening" value="${pvz.evening_pay}" min="0">
       <label>С какого часа смена считается вечерней (0–23)</label>
       <input type="number" id="f_threshold" value="${pvz.evening_threshold}" min="0" max="23">
-      <label>Стандартное начало смены (для быстрого создания)</label>
+      <label>Промежуточная смена (не в открытие и не вечером), ₽/час</label>
+      <input type="number" id="f_mid" value="${pvz.mid_hourly_rate ?? 200}" min="0">
+      <label>Стандартное начало смены (это время = "полная смена")</label>
       <input type="time" id="f_dstart" value="${pvz.default_start_time?.slice(0,5) || "09:00"}">
       <label>Стандартный конец смены</label>
       <input type="time" id="f_dend" value="${pvz.default_end_time?.slice(0,5) || "21:00"}">
@@ -812,11 +855,12 @@ const App = (() => {
       const full_shift_pay = Number(document.getElementById("f_full").value);
       const evening_pay = Number(document.getElementById("f_evening").value);
       const evening_threshold = Number(document.getElementById("f_threshold").value);
+      const mid_hourly_rate = Number(document.getElementById("f_mid").value);
       const default_start_time = document.getElementById("f_dstart").value;
       const default_end_time = document.getElementById("f_dend").value;
       if (!full_shift_pay || full_shift_pay <= 0) return toast("Введите сумму за полную смену");
       try {
-        await Api.updatePvz(pvzId, { full_shift_pay, evening_pay, evening_threshold, default_start_time, default_end_time });
+        await Api.updatePvz(pvzId, { full_shift_pay, evening_pay, evening_threshold, mid_hourly_rate, default_start_time, default_end_time });
         toast("✅ Тарифы обновлены");
         state.pvz = await Api.getPvzList();
         renderManagement();
@@ -903,13 +947,71 @@ const App = (() => {
       const total = base + bonusSum - fineSum;
       csv += `${e.full_name};${empShifts.length};${Math.round(base)};${bonusSum};${fineSum};${Math.round(total)}\n`;
     });
+    downloadCsv(csv, `payroll_${state.year}_${state.month + 1}.csv`);
+  }
+
+  function exportShiftsDetailed() {
+    let csv = "Дата;ПВЗ;Сотрудник;Начало;Конец;Статус;Сумма\n";
+    state.shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
+      const pvz = state.pvz.find((p) => p.id === s.pvz_id);
+      const empName = s.employees?.full_name || "";
+      const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
+      csv += `${s.shift_date};${pvz?.name || ""};${empName};${s.start_time?.slice(0,5)};${s.end_time?.slice(0,5)};${s.status};${amount}\n`;
+    });
+    downloadCsv(csv, `смены_${state.year}_${state.month + 1}.csv`);
+  }
+
+  function downloadCsv(csv, filename) {
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `payroll_${state.year}_${state.month + 1}.csv`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  // экспорт произвольного (в т.ч. прошлого) месяца, не трогая текущий вид календаря
+  async function exportMonth(year, month) {
+    try {
+      const [shifts, bf] = await Promise.all([
+        Api.getShiftsForMonth(year, month),
+        Api.getBonusesFines(year, month),
+      ]);
+      let csv = "Дата;ПВЗ;Сотрудник;Начало;Конец;Статус;Сумма\n";
+      shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
+        const pvz = state.pvz.find((p) => p.id === s.pvz_id);
+        const empName = s.employees?.full_name || "";
+        const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
+        csv += `${s.shift_date};${pvz?.name || ""};${empName};${s.start_time?.slice(0,5)};${s.end_time?.slice(0,5)};${s.status};${amount}\n`;
+      });
+      csv += "\nБонусы/Штрафы\nСотрудник;Тип;Сумма;Причина\n";
+      bf.forEach((b) => {
+        const emp = state.employees.find((e) => e.id === b.employee_id);
+        csv += `${emp?.full_name || "—"};${b.kind === "bonus" ? "Бонус" : "Штраф"};${b.amount};${(b.reason || "").replace(/;/g, ",")}\n`;
+      });
+      downloadCsv(csv, `данные_${year}_${month + 1}.csv`);
+      toast("✅ Файл скачан");
+    } catch (e) {
+      toast("🚫 " + e.message);
+    }
+  }
+
+  function renderPurgeWarning() {
+    const el = document.getElementById("purgeWarning");
+    if (!el) return;
+    const now = new Date();
+    const day = now.getDate();
+    if (day >= 10 && day <= 14) {
+      let prevMonth = now.getMonth() - 1, prevYear = now.getFullYear();
+      if (prevMonth < 0) { prevMonth = 11; prevYear--; }
+      const daysLeft = 15 - day;
+      el.style.display = "block";
+      el.innerHTML = `⚠️ Через ${daysLeft} дн. (15 числа) будут удалены смены и финансы за ${MONTHS[prevMonth].toLowerCase()} и раньше.
+        <button type="button" onclick="App.exportMonth(${prevYear}, ${prevMonth})">📥 Скачать за ${MONTHS[prevMonth].toLowerCase()}</button>`;
+    } else {
+      el.style.display = "none";
+    }
   }
 
   // ---------------- УНИВЕРСАЛЬНАЯ МОДАЛКА ----------------
@@ -945,9 +1047,10 @@ const App = (() => {
     init, toggleTheme, switchTab, toggleAdmin, changeMonth, switchMarket,
     applyForShift, openDayShiftsModal, openShiftForm, deleteShiftConfirm, openShiftRequestsModal, resolveRequest,
     _filterEmpPicker, _selectEmp,
-    filterEmployees, openAddEmployeeModal, openEditEmployeeModal, deleteEmployee, openChat,
+    filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, exportEmployeeHistory, openChat,
     changeAvatar, _pickAvatar, togglePush, saveNotificationSettings,
-    openPvzRateModal, openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm, exportPayroll,
+    openPvzRateModal, openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
+    exportPayroll, exportShiftsDetailed, exportMonth,
     closeModal,
   };
 })();

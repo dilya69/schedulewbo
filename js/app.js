@@ -119,11 +119,20 @@ const App = (() => {
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
   }
 
-  // Сумма за смену зависит от ПВЗ и времени начала:
-  //  - старт ровно в стандартное время открытия -> полная смена
-  //  - старт в вечерний порог и позже -> вечерняя смена
-  //  - старт где-то между ("вышел позже, но не вечером") -> почасовая ставка
+  function hexToRgba(hex, alpha) {
+    const h = String(hex || "#007aff").replace("#", "");
+    const r = parseInt(h.substring(0, 2), 16) || 0;
+    const g = parseInt(h.substring(2, 4), 16) || 0;
+    const b = parseInt(h.substring(4, 6), 16) || 0;
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  // Сумма за смену: если задана custom_amount — используется она,
+  // иначе считается по тарифам ПВЗ (полная / вечерняя / почасовая "средняя")
   function shiftAmount(shift, pvz) {
+    if (shift.custom_amount !== undefined && shift.custom_amount !== null && shift.custom_amount !== "") {
+      return Number(shift.custom_amount);
+    }
     if (!pvz) return 0;
     const startStr = (shift.start_time || "").slice(0, 5);
     const openStr = (pvz.default_start_time || "09:00").slice(0, 5);
@@ -133,6 +142,18 @@ const App = (() => {
     if (startStr === openStr) return Number(pvz.full_shift_pay || 0);
     if (startHour >= threshold) return Number(pvz.evening_pay || 0);
     return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 200);
+  }
+
+  // ---------------- ЭКСПОРТ ФАЙЛОВ (через Telegram, не через <a download>) ----------------
+  async function deliverCsv(csv, filename) {
+    if (state.demo) { toast("В демо-режиме экспорт недоступен"); return; }
+    try {
+      toast("⏳ Отправляю файл в Telegram...");
+      await Api.sendFileToMe(filename, csv);
+      toast("✅ Файл отправлен вам в Telegram");
+    } catch (e) {
+      toast("🚫 Не удалось отправить файл: " + e.message);
+    }
   }
 
   // ---------------- ТЕМА ----------------
@@ -214,9 +235,36 @@ const App = (() => {
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
   }
 
+  function renderTodaySummary() {
+    const el = document.getElementById("todaySummary");
+    if (!el) return;
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() === state.month && today.getFullYear() === state.year;
+    if (state.demo || !isCurrentMonth) { el.style.display = "none"; return; }
+
+    const todayStr = dateStrFor(state.year, state.month, today.getDate());
+    const todayShifts = state.shifts
+      .filter((s) => s.shift_date === todayStr && s.employee_id)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+    if (todayShifts.length === 0) { el.style.display = "none"; return; }
+
+    el.style.display = "block";
+    el.innerHTML = `<div style="font-weight:600; font-size:12px; margin-bottom:4px; color:var(--text);">📍 Сегодня работают</div>` +
+      todayShifts.map((s) => {
+        const pvz = state.pvz.find((p) => p.id === s.pvz_id);
+        return `<div class="row">
+          <span>${escapeHtml(s.employees?.full_name || "—")} — ${escapeHtml(pvz?.name || "")}</span>
+          <span class="time">${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</span>
+        </div>`;
+      }).join("");
+  }
+
   function renderCalendar() {
     const container = document.getElementById("calendarContainer");
     if (!container) return;
+
+    renderTodaySummary();
 
     const switcher = document.getElementById("marketSwitcher");
     if (switcher) switcher.style.display = "flex";
@@ -242,7 +290,7 @@ const App = (() => {
     }
 
     pvzList.forEach((pvz) => {
-      html += `<div class="pzv-block" style="border-left-color:${pvz.color}; background:${pvz.color}14;">
+      html += `<div class="pzv-block" style="border-left-color:${pvz.color}; background:${hexToRgba(pvz.color, 0.08)};">
         <div class="pzv-title" style="color:${pvz.color};">
           <span>🏢 ${escapeHtml(pvz.name)}</span>
           <span>${pvz.marketplace.toUpperCase()}</span>
@@ -279,11 +327,11 @@ const App = (() => {
               if (state.isAdminView) {
                 html += `<button class="chip-pending-dot" title="${escapeHtml(title)}" onclick="App.openShiftRequestsModal('${shift.id}')"></button>`;
               } else {
-                html += `<button class="chip-pending-dot" title="Откликнуться • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}" onclick="App.applyForShift('${shift.id}')"></button>`;
+                html += `<button class="chip-pending-dot" title="Откликнуться • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}" onclick="App.openApplyModal('${shift.id}')"></button>`;
               }
             } else if (!state.isAdminView) {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
-              html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="App.applyForShift('${shift.id}')">+</button>`;
+              html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="App.openApplyModal('${shift.id}')">+</button>`;
             } else {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}`;
               html += `<span class="chip-free" title="${escapeHtml(title)}">·</span>`;
@@ -319,18 +367,49 @@ const App = (() => {
     container.innerHTML = html;
   }
 
-  async function applyForShift(shiftId) {
-    if (!confirm("Подать заявку на эту смену?")) return;
-    try {
-      await Api.applyForShift(shiftId);
-      toast("✅ Заявка отправлена администратору");
-      await reloadShifts();
-      await reloadRequests();
-      renderCalendar();
-      renderMyShifts();
-    } catch (e) {
-      toast("🚫 " + e.message);
-    }
+  // ---------------- ОТКЛИК СОТРУДНИКА НА СВОБОДНУЮ СМЕНУ ----------------
+  function openApplyModal(shiftId) {
+    const shift = state.shifts.find((s) => s.id === shiftId);
+    if (!shift) return;
+    const pvz = state.pvz.find((p) => p.id === shift.pvz_id);
+    const fullLabel = `Полная смена (${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)})`;
+
+    openModal("Откликнуться на смену", `
+      <div class="pay-type-toggle">
+        <button type="button" class="active" onclick="App._setApplyMode('full', this)">Полная смена</button>
+        <button type="button" onclick="App._setApplyMode('custom', this)">Другое время</button>
+      </div>
+      <input type="hidden" id="f_apply_mode" value="full">
+      <div style="font-size:11px; color:var(--text-secondary); margin-top:6px;">${escapeHtml(fullLabel)}</div>
+      <div id="f_apply_time_wrap" style="display:none; margin-top:8px;">
+        <label>Начало (конец — как в объявлении, ${shift.end_time.slice(0,5)})</label>
+        <input type="time" id="f_apply_start" value="17:00">
+      </div>
+    `, async () => {
+      const mode = document.getElementById("f_apply_mode").value;
+      try {
+        if (mode === "custom") {
+          const start = document.getElementById("f_apply_start").value;
+          await Api.applyForShift(shiftId, start, shift.end_time.slice(0,5));
+        } else {
+          await Api.applyForShift(shiftId);
+        }
+        toast("✅ Заявка отправлена администратору");
+        await reloadShifts();
+        await reloadRequests();
+        renderCalendar();
+        renderMyShifts();
+      } catch (e) {
+        toast("🚫 " + e.message);
+      }
+    });
+  }
+
+  function _setApplyMode(mode, btn) {
+    document.getElementById("f_apply_mode").value = mode;
+    btn.parentElement.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("f_apply_time_wrap").style.display = mode === "custom" ? "block" : "none";
   }
 
   // ---------------- РЕДАКТИРОВАНИЕ СМЕН (АДМИН) ----------------
@@ -364,32 +443,45 @@ const App = (() => {
     `, null);
   }
 
-  function openShiftForm(pvzId, dStr, shiftId) {
+  function openShiftForm(pvzId, dStr, shiftId, presetEmployeeId, presetStart, resolveRequestId) {
     const shift = shiftId ? state.shifts.find((s) => s.id === shiftId) : null;
     const pvz = state.pvz.find((p) => p.id === pvzId);
     const [year, month, day] = dStr.split("-").map(Number);
 
+    const startVal = shift?.start_time?.slice(0,5) || presetStart || pvz?.default_start_time?.slice(0,5) || "09:00";
+    const endVal = shift?.end_time?.slice(0,5) || pvz?.default_end_time?.slice(0,5) || "21:00";
+    const autoAmount = Math.round(shiftAmount({ start_time: startVal, end_time: endVal, custom_amount: null }, pvz));
+    const currentAmount = shift?.custom_amount != null ? Math.round(shift.custom_amount) : autoAmount;
+
     openModal(shiftId ? "Редактировать смену" : "Новая смена", `
       <label>Сотрудник</label>
-      ${renderEmpPicker(shift?.employee_id || "")}
+      ${renderEmpPicker(shift?.employee_id || presetEmployeeId || "")}
       <label>Начало</label>
-      <input type="time" id="f_start" value="${shift?.start_time?.slice(0,5) || pvz?.default_start_time?.slice(0,5) || "09:00"}">
+      <input type="time" id="f_start" value="${startVal}" oninput="App._recalcAmount('${pvzId}')">
       <label>Конец</label>
-      <input type="time" id="f_end" value="${shift?.end_time?.slice(0,5) || pvz?.default_end_time?.slice(0,5) || "21:00"}">
+      <input type="time" id="f_end" value="${endVal}" oninput="App._recalcAmount('${pvzId}')">
+      <label>Ставка за смену, ₽</label>
+      <input type="number" id="f_amount" value="${currentAmount}" min="0" oninput="this.dataset.touched='1'">
+      <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">По умолчанию для этого времени: <span id="f_amount_auto">${autoAmount}</span> ₽</div>
     `, async () => {
       const employeeId = document.getElementById("f_emp_hidden").value || null;
       const start = document.getElementById("f_start").value;
       const end = document.getElementById("f_end").value;
+      const amountInput = document.getElementById("f_amount");
+      const custom_amount = amountInput.dataset.touched === "1" ? Number(amountInput.value) : null;
       try {
         await Api.upsertShift({
           id: shiftId || undefined, pvz_id: pvzId, shift_date: dStr,
           start_time: start, end_time: end, employee_id: employeeId,
-          status: employeeId ? "confirmed" : "free",
+          status: employeeId ? "confirmed" : "free", custom_amount,
         });
+        if (resolveRequestId) await Api.markRequestApproved(resolveRequestId);
         toast("✅ Смена сохранена");
         await reloadShifts();
+        await reloadRequests();
         renderCalendar();
-        openDayShiftsModal(pvzId, day);
+        renderRequests();
+        if (!resolveRequestId) openDayShiftsModal(pvzId, day);
       } catch (e) {
         toast("🚫 " + e.message);
       }
@@ -406,6 +498,18 @@ const App = (() => {
     } : null);
   }
 
+  function _recalcAmount(pvzId) {
+    const pvz = state.pvz.find((p) => p.id === pvzId);
+    const start = document.getElementById("f_start")?.value;
+    const end = document.getElementById("f_end")?.value;
+    if (!start || !end) return;
+    const auto = Math.round(shiftAmount({ start_time: start, end_time: end, custom_amount: null }, pvz));
+    const autoEl = document.getElementById("f_amount_auto");
+    if (autoEl) autoEl.textContent = auto;
+    const amountInput = document.getElementById("f_amount");
+    if (amountInput && amountInput.dataset.touched !== "1") amountInput.value = auto;
+  }
+
   async function deleteShiftConfirm(shiftId, pvzId, day) {
     if (!confirm("Удалить эту смену?")) return;
     try {
@@ -419,24 +523,97 @@ const App = (() => {
     }
   }
 
+  // ---------------- ОТКЛИКИ НА КОНКРЕТНУЮ СМЕНУ (АДМИН) ----------------
   function openShiftRequestsModal(shiftId) {
+    const shift = state.shifts.find((s) => s.id === shiftId);
     const list = state.requests
       .filter((r) => r.shift_id === shiftId)
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-    const rowsHtml = list.map((r, i) => `
-      <div class="request-card" style="margin-bottom:6px;">
+    const rowsHtml = list.map((r, i) => renderRequestRow(r, i + 1, shift)).join("");
+    openModal("Отклики на смену (по порядку)", rowsHtml || '<div class="center-msg">Откликов нет</div>', null);
+  }
+
+  function renderRequestRow(r, index, shiftOverride) {
+    const shift = shiftOverride || r.shifts;
+    const wantsCustom = !!r.requested_start_time;
+    const timeLabel = wantsCustom
+      ? `хочет с ${r.requested_start_time.slice(0,5)} до ${(r.requested_end_time || shift?.end_time || "").slice(0,5)}`
+      : "хочет на всю смену";
+
+    const approveBtn = wantsCustom
+      ? `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', true)" title="Принять как просит">✅ Как просит</button>`
+      : `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', false)">✅</button>`;
+
+    const pvzId = shift?.pvz_id || shift?.pvz?.id || "";
+    const shiftDate = shift?.shift_date || "";
+
+    return `
+      <div class="request-card" style="margin-bottom:6px; flex-wrap:wrap;">
         <div class="info">
-          <div class="name">${i + 1}. ${escapeHtml(r.employees?.full_name || "—")}</div>
-          <div class="details">Откликнулся: ${new Date(r.created_at).toLocaleString("ru-RU", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}</div>
+          <div class="name">${index ? index + ". " : ""}${escapeHtml(r.employees?.full_name || "—")}</div>
+          <div class="details">${escapeHtml(timeLabel)}</div>
         </div>
         <div class="actions">
-          <button class="approve" onclick="App.resolveRequest('${r.id}', '${shiftId}', '${r.employee_id}', true)">✅</button>
-          <button class="reject" onclick="App.resolveRequest('${r.id}', '${shiftId}', '${r.employee_id}', false)">❌</button>
+          ${approveBtn}
+          <button class="approve" style="background:#5856d6;" title="Изменить время и принять"
+            onclick="App.openShiftForm('${pvzId}', '${shiftDate}', null, '${r.employee_id}', '${(r.requested_start_time || "").slice(0,5)}', '${r.id}')">✏️</button>
+          <button class="reject" onclick="App.rejectRequest('${r.id}','${r.shift_id}')">❌</button>
         </div>
-      </div>`).join("");
+      </div>`;
+  }
 
-    openModal("Отклики на смену (по порядку)", rowsHtml || '<div class="center-msg">Откликов нет</div>', null);
+  async function approveRequest(requestId, shiftId, employeeId, useRequestedTime) {
+    const r = state.requests.find((x) => x.id === requestId);
+    const shift = r?.shifts;
+    try {
+      if (useRequestedTime && r?.requested_start_time) {
+        await Api.resolveRequest({
+          requestId, shiftId, employeeId, action: "approve_with_time",
+          pvzId: shift?.pvz_id, shiftDate: shift?.shift_date,
+          overrideStart: r.requested_start_time, overrideEnd: r.requested_end_time || shift?.end_time,
+        });
+      } else {
+        await Api.resolveRequest({ requestId, shiftId, employeeId, action: "approve_as_is" });
+      }
+      toast("✅ Заявка одобрена");
+      await reloadRequests();
+      await reloadShifts();
+      renderRequests();
+      renderCalendar();
+      closeModal();
+    } catch (e) {
+      toast("🚫 " + e.message);
+    }
+  }
+
+  async function rejectRequest(requestId, shiftId) {
+    try {
+      await Api.resolveRequest({ requestId, shiftId, action: "reject" });
+      toast("❌ Заявка отклонена");
+      await reloadRequests();
+      await reloadShifts();
+      renderRequests();
+      renderCalendar();
+      closeModal();
+    } catch (e) {
+      toast("🚫 " + e.message);
+    }
+  }
+
+  async function rejectAllRequests() {
+    if (state.requests.length === 0) return;
+    if (!confirm(`Отклонить все заявки (${state.requests.length} шт.)? Их статус станет "отклонено", а свободные слоты без сотрудника снова станут доступны.`)) return;
+    try {
+      const n = await Api.rejectAllPendingRequests();
+      toast(`✅ Отклонено заявок: ${n}`);
+      await reloadRequests();
+      await reloadShifts();
+      renderRequests();
+      renderCalendar();
+    } catch (e) {
+      toast("🚫 " + e.message);
+    }
   }
 
   // ---------------- ПОИСК СОТРУДНИКА (переиспользуемый виджет) ----------------
@@ -481,11 +658,16 @@ const App = (() => {
     if (state.demo) { container.innerHTML = `<div class="center-msg">Нет данных</div>`; return; }
 
     const mineConfirmed = state.shifts.filter((s) => s.employee_id === state.employee.id);
-    const minePending = state.myRequests.filter((r) => r.shifts); // из shift_requests, ещё не подтверждено
+    const minePending = state.myRequests.filter((r) => r.shifts);
 
     const items = [
       ...mineConfirmed.map((s) => ({ pending: false, date: s.shift_date, start: s.start_time, end: s.end_time, pvzId: s.pvz_id })),
-      ...minePending.map((r) => ({ pending: true, date: r.shifts.shift_date, start: r.shifts.start_time, end: r.shifts.end_time, pvzName: r.shifts.pvz?.name, pvzColor: r.shifts.pvz?.color })),
+      ...minePending.map((r) => ({
+        pending: true, date: r.shifts.shift_date,
+        start: r.requested_start_time || r.shifts.start_time,
+        end: r.requested_end_time || r.shifts.end_time,
+        pvzName: r.shifts.pvz?.name, pvzColor: r.shifts.pvz?.color,
+      })),
     ].sort((a, b) => a.date.localeCompare(b.date));
 
     if (items.length === 0) {
@@ -512,52 +694,38 @@ const App = (() => {
   function renderRequests() {
     const container = document.getElementById("requestsContainer");
     const badge = document.getElementById("requestsBadge");
+    const rejectAllBtn = document.getElementById("rejectAllBtn");
     if (!container) return;
     if (!state.employee.is_admin || state.demo) { if (badge) badge.style.display = "none"; return; }
 
     if (state.requests.length === 0) {
       container.innerHTML = `<div class="center-msg">Нет активных заявок</div>`;
       badge.style.display = "none";
+      if (rejectAllBtn) rejectAllBtn.style.display = "none";
     } else {
       badge.style.display = "inline-block";
       badge.textContent = state.requests.length;
-      container.innerHTML = state.requests.map((r) => `
-        <div class="request-card">
-          <div class="info">
-            <div class="name">${escapeHtml(r.employees?.full_name || "—")}</div>
-            <div class="details">${escapeHtml(r.shifts?.pvz?.name || "")} • ${r.shifts?.shift_date} ${r.shifts?.start_time?.slice(0,5)}–${r.shifts?.end_time?.slice(0,5)}</div>
-          </div>
-          <div class="actions">
-            <button class="approve" onclick="App.resolveRequest('${r.id}', '${r.shift_id}', '${r.employee_id}', true)">✅</button>
-            <button class="reject" onclick="App.resolveRequest('${r.id}', '${r.shift_id}', '${r.employee_id}', false)">❌</button>
-          </div>
-        </div>`).join("");
-    }
-  }
-
-  async function resolveRequest(requestId, shiftId, employeeId, approve) {
-    try {
-      await Api.resolveRequest(requestId, shiftId, employeeId, approve);
-      toast(approve ? "✅ Заявка одобрена, остальные отклики на эту смену закрыты" : "❌ Заявка отклонена");
-      await reloadRequests();
-      await reloadShifts();
-      renderRequests();
-      renderCalendar();
-      closeModal();
-    } catch (e) {
-      toast("🚫 " + e.message);
+      if (rejectAllBtn) rejectAllBtn.style.display = "block";
+      container.innerHTML = state.requests.map((r) => renderRequestRow(r, null)).join("");
     }
   }
 
   // ---------------- СОТРУДНИКИ ----------------
   function renderEmployees() {
-    const container = document.getElementById("employeeList");
+    const activeContainer = document.getElementById("employeeList");
+    const pendingContainer = document.getElementById("pendingEmployeeList");
+    const pendingSection = document.getElementById("pendingEmployeeSection");
     const countEl = document.getElementById("employeeCount");
-    if (countEl) countEl.textContent = state.demo ? "" : `${state.employees.length} чел.`;
-    if (!container) return;
-    if (state.demo) { container.innerHTML = ""; return; }
+    if (!activeContainer) return;
 
-    container.innerHTML = state.employees.map((e) => `
+    if (state.demo) { activeContainer.innerHTML = ""; return; }
+
+    const active = state.employees.filter((e) => e.is_active !== false);
+    const pending = state.employees.filter((e) => e.is_active === false);
+
+    if (countEl) countEl.textContent = `${active.length} чел.`;
+
+    activeContainer.innerHTML = active.map((e) => `
       <div class="employee-card" data-name="${escapeHtml(e.full_name.toLowerCase())}">
         <div class="avatar" style="background:${colorForName(e.full_name)};">${escapeHtml(e.full_name[0] || "?")}</div>
         <div class="info">
@@ -570,11 +738,41 @@ const App = (() => {
           <button class="delete admin-only" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Уволить">🗑️</button>
         </div>
       </div>`).join("");
+
+    if (pendingSection) {
+      if (state.employee.is_admin && pending.length > 0) {
+        pendingSection.style.display = "block";
+        pendingContainer.innerHTML = pending.map((e) => `
+          <div class="employee-card pending-card">
+            <div class="avatar" style="background:#8e8e93;">${escapeHtml(e.full_name[0] || "?")}</div>
+            <div class="info">
+              <div class="name">${escapeHtml(e.full_name)}</div>
+              <div class="role">${e.tg_username ? "@" + escapeHtml(e.tg_username) : "новый пользователь"}${e.terminated_at ? " • уволен" : ""}</div>
+            </div>
+            <div class="actions">
+              <button class="grant-btn" onclick="App.grantAccess('${e.id}', '${escapeHtml(e.full_name)}')" title="Дать доступ">✅</button>
+              <button class="delete" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Удалить совсем">🗑️</button>
+            </div>
+          </div>`).join("");
+      } else {
+        pendingSection.style.display = "none";
+      }
+    }
+  }
+
+  async function grantAccess(id, name) {
+    try {
+      await Api.updateEmployee(id, { is_active: true });
+      toast(`✅ Доступ выдан: ${name}`);
+      state.employees = await Api.getEmployees();
+      renderEmployees();
+      renderManagement();
+    } catch (e) { toast("🚫 " + e.message); }
   }
 
   function filterEmployees() {
     const q = document.getElementById("searchInput").value.toLowerCase().trim();
-    const cards = document.querySelectorAll(".employee-card");
+    const cards = document.querySelectorAll("#employeeList .employee-card");
     let visible = 0;
     cards.forEach((c) => {
       const match = (c.dataset.name || "").includes(q);
@@ -661,14 +859,7 @@ const App = (() => {
     data.bonusesFines.forEach((b) => {
       csv += `${b.kind === "bonus" ? "Бонус" : "Штраф"};${b.period_month};;;;${b.amount};${(b.reason || "").replace(/;/g, ",")}\n`;
     });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${name.replace(/\s+/g, "_")}_история.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast("✅ Файл скачан");
+    await deliverCsv(csv, `${name.replace(/\s+/g, "_")}_история.csv`);
   }
 
   function openChat(username) {
@@ -701,8 +892,10 @@ const App = (() => {
 
     const pendingRows = state.myRequests.filter((r) => r.shifts).map((r) => {
       const s = r.shifts;
+      const start = r.requested_start_time || s.start_time;
+      const end = r.requested_end_time || s.end_time;
       return `<div class="profile-income-item">
-        <div class="left"><div class="title">⏳ ${escapeHtml(s.pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)} • заявка на рассмотрении</div></div>
+        <div class="left"><div class="title">⏳ ${escapeHtml(s.pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${start.slice(0,5)}–${end.slice(0,5)} • заявка на рассмотрении</div></div>
         <div class="right" style="color:var(--text-secondary); font-weight:500;">—</div>
       </div>`;
     });
@@ -947,7 +1140,7 @@ const App = (() => {
       const total = base + bonusSum - fineSum;
       csv += `${e.full_name};${empShifts.length};${Math.round(base)};${bonusSum};${fineSum};${Math.round(total)}\n`;
     });
-    downloadCsv(csv, `payroll_${state.year}_${state.month + 1}.csv`);
+    deliverCsv(csv, `payroll_${state.year}_${state.month + 1}.csv`);
   }
 
   function exportShiftsDetailed() {
@@ -958,17 +1151,7 @@ const App = (() => {
       const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
       csv += `${s.shift_date};${pvz?.name || ""};${empName};${s.start_time?.slice(0,5)};${s.end_time?.slice(0,5)};${s.status};${amount}\n`;
     });
-    downloadCsv(csv, `смены_${state.year}_${state.month + 1}.csv`);
-  }
-
-  function downloadCsv(csv, filename) {
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    deliverCsv(csv, `смены_${state.year}_${state.month + 1}.csv`);
   }
 
   // экспорт произвольного (в т.ч. прошлого) месяца, не трогая текущий вид календаря
@@ -990,8 +1173,7 @@ const App = (() => {
         const emp = state.employees.find((e) => e.id === b.employee_id);
         csv += `${emp?.full_name || "—"};${b.kind === "bonus" ? "Бонус" : "Штраф"};${b.amount};${(b.reason || "").replace(/;/g, ",")}\n`;
       });
-      downloadCsv(csv, `данные_${year}_${month + 1}.csv`);
-      toast("✅ Файл скачан");
+      await deliverCsv(csv, `данные_${year}_${month + 1}.csv`);
     } catch (e) {
       toast("🚫 " + e.message);
     }
@@ -1045,9 +1227,12 @@ const App = (() => {
 
   return {
     init, toggleTheme, switchTab, toggleAdmin, changeMonth, switchMarket,
-    applyForShift, openDayShiftsModal, openShiftForm, deleteShiftConfirm, openShiftRequestsModal, resolveRequest,
+    openApplyModal, _setApplyMode,
+    openDayShiftsModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
+    openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
     _filterEmpPicker, _selectEmp,
-    filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, exportEmployeeHistory, openChat,
+    filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, exportEmployeeHistory,
+    grantAccess, openChat,
     changeAvatar, _pickAvatar, togglePush, saveNotificationSettings,
     openPvzRateModal, openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     exportPayroll, exportShiftsDetailed, exportMonth,

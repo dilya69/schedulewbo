@@ -330,11 +330,14 @@ body {
     background: var(--card-bg);
     color: var(--text);
     padding: 2px 1px;
-    min-height: 42px;
+    min-height: 58px;
     position: relative;
     transition: all 0.2s;
-    cursor: default;
+    cursor: pointer;
 }
+
+.day-cell.empty { cursor: default; }
+.day-cell:active { transform: scale(0.96); }
 
 .day-cell.empty { background: transparent; border-color: transparent; }
 .day-cell { overflow: hidden; border: 1px solid rgba(128,128,128,0.28); }
@@ -626,12 +629,12 @@ body {
 
 .day-cell .name-chip {
     width: 100%;
-    font-size: 6.5px;
+    font-size: 8.5px;
     font-weight: 800;
     color: #fff;
     border-radius: 3px;
-    padding: 1px 1px;
-    line-height: 1.2;
+    padding: 2px 2px;
+    line-height: 1.25;
     text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;

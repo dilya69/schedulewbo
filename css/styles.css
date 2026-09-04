@@ -337,7 +337,7 @@ body {
 }
 
 .day-cell.empty { background: transparent; border-color: transparent; }
-.day-cell { overflow: hidden; border: 1px solid var(--border); }
+.day-cell { overflow: hidden; border: 1px solid rgba(128,128,128,0.28); }
 
 .day-cell .shift-badge {
     font-size: 6px;

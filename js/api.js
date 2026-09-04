@@ -277,6 +277,11 @@ const Api = (() => {
     if (error) throw error;
   }
 
+  async function hardDeleteEmployee(id) {
+    const { error } = await client.from("employees").delete().eq("id", id);
+    if (error) throw error;
+  }
+
   // вся история сотрудника за всё время — используется для экспорта перед увольнением
   async function getEmployeeFullHistory(employeeId) {
     const [{ data: shifts, error: e1 }, { data: bf, error: e2 }] = await Promise.all([
@@ -326,7 +331,7 @@ const Api = (() => {
     getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getShiftsForMonth, upsertShift, deleteShift,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
-    getEmployees, addEmployee, updateEmployee, deleteEmployee, getEmployeeFullHistory,
+    getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
     addBonusFine, getBonusesFines,
     getNotificationSettings, saveNotificationSettings,
   };

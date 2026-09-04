@@ -53,6 +53,18 @@ const Api = (() => {
     return !!client;
   }
 
+  // отправляет файл прямо в Telegram-чат текущего пользователя (обходит
+  // блокировку скачивания в WebView)
+  async function sendFileToMe(filename, content) {
+    const res = await fetch(CONFIG.SEND_FILE_FUNCTION_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ filename, content }),
+    });
+    const body = await res.json();
+    if (!res.ok || !body.ok) throw new Error(body.error || "Не удалось отправить файл");
+  }
+
   // ---------- ПВЗ ----------
   async function getPvzList() {
     const { data, error } = await client.from("pvz").select("*").eq("is_active", true).order("sort_order");
@@ -119,8 +131,8 @@ const Api = (() => {
     return data;
   }
 
-  async function upsertShift({ id, pvz_id, shift_date, start_time, end_time, employee_id, status }) {
-    const payload = { pvz_id, shift_date, start_time, end_time, employee_id, status };
+  async function upsertShift({ id, pvz_id, shift_date, start_time, end_time, employee_id, status, custom_amount }) {
+    const payload = { pvz_id, shift_date, start_time, end_time, employee_id, status, custom_amount: custom_amount ?? null };
     if (id) payload.id = id;
     const { error } = await client.from("shifts").upsert(payload);
     if (error) throw error;
@@ -132,11 +144,14 @@ const Api = (() => {
   }
 
   // ---------- ЗАЯВКИ НА СМЕНЫ ----------
-  async function applyForShift(shiftId) {
-    const { error: reqErr } = await client.from("shift_requests").insert({
-      shift_id: shiftId,
-      employee_id: currentEmployee.id,
-    });
+  // requestedStart/requestedEnd — если сотрудник хочет выйти не на весь
+  // день, а с какого-то часа (например, помочь вечером)
+  async function applyForShift(shiftId, requestedStart, requestedEnd) {
+    const payload = { shift_id: shiftId, employee_id: currentEmployee.id };
+    if (requestedStart) payload.requested_start_time = requestedStart;
+    if (requestedEnd) payload.requested_end_time = requestedEnd;
+
+    const { error: reqErr } = await client.from("shift_requests").insert(payload);
     if (reqErr) {
       if (reqErr.code === "23505") throw new Error("Вы уже откликнулись на эту смену");
       throw reqErr;
@@ -159,22 +174,41 @@ const Api = (() => {
   async function getPendingRequests() {
     const { data, error } = await client
       .from("shift_requests")
-      .select("*, employees:employee_id(full_name), shifts:shift_id(shift_date, start_time, end_time, pvz:pvz_id(name))")
+      .select("*, employees:employee_id(full_name), shifts:shift_id(pvz_id, shift_date, start_time, end_time, pvz:pvz_id(name))")
       .eq("status", "pending")
       .order("created_at", { ascending: true });
     if (error) throw error;
     return data;
   }
 
-  async function resolveRequest(requestId, shiftId, employeeId, approve) {
+  // action: 'approve_as_is' | 'approve_with_time' | 'reject'
+  async function resolveRequest({ requestId, shiftId, employeeId, action, pvzId, shiftDate, overrideStart, overrideEnd }) {
+    if (action === "reject") {
+      await client.from("shift_requests").update({ status: "rejected", resolved_at: new Date().toISOString() }).eq("id", requestId);
+      const { count } = await client
+        .from("shift_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("shift_id", shiftId)
+        .eq("status", "pending");
+      if (!count) await client.from("shifts").update({ status: "free" }).eq("id", shiftId);
+      return;
+    }
+
     const { error: reqErr } = await client
       .from("shift_requests")
-      .update({ status: approve ? "approved" : "rejected", resolved_at: new Date().toISOString() })
+      .update({ status: "approved", resolved_at: new Date().toISOString() })
       .eq("id", requestId);
     if (reqErr) throw reqErr;
 
-    if (approve) {
-      // остальные отклики на эту же смену больше не актуальны
+    if (action === "approve_with_time") {
+      // отдельная смена на указанное время — исходная (на весь день) остаётся свободной для других
+      const { error } = await client.from("shifts").insert({
+        pvz_id: pvzId, shift_date: shiftDate, start_time: overrideStart, end_time: overrideEnd,
+        employee_id: employeeId, status: "confirmed",
+      });
+      if (error) throw error;
+    } else {
+      // approve_as_is: остальные отклики на эту же смену больше не актуальны
       await client
         .from("shift_requests")
         .update({ status: "rejected", resolved_at: new Date().toISOString() })
@@ -186,16 +220,32 @@ const Api = (() => {
         .update({ employee_id: employeeId, status: "confirmed" })
         .eq("id", shiftId);
       if (shiftErr) throw shiftErr;
-    } else {
-      const { count } = await client
-        .from("shift_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("shift_id", shiftId)
-        .eq("status", "pending");
-      if (!count) {
-        await client.from("shifts").update({ status: "free" }).eq("id", shiftId);
-      }
     }
+  }
+
+  async function markRequestApproved(requestId) {
+    const { error } = await client
+      .from("shift_requests")
+      .update({ status: "approved", resolved_at: new Date().toISOString() })
+      .eq("id", requestId);
+    if (error) throw error;
+  }
+
+  async function rejectAllPendingRequests() {
+    const { data: pending, error: selErr } = await client.from("shift_requests").select("id, shift_id").eq("status", "pending");
+    if (selErr) throw selErr;
+    if (!pending || pending.length === 0) return 0;
+
+    const ids = pending.map((r) => r.id);
+    const { error: updErr } = await client
+      .from("shift_requests")
+      .update({ status: "rejected", resolved_at: new Date().toISOString() })
+      .in("id", ids);
+    if (updErr) throw updErr;
+
+    const shiftIds = [...new Set(pending.map((r) => r.shift_id))];
+    await client.from("shifts").update({ status: "free" }).in("id", shiftIds).is("employee_id", null);
+    return pending.length;
   }
 
   // ---------- СОТРУДНИКИ ----------
@@ -206,8 +256,13 @@ const Api = (() => {
   }
 
   async function addEmployee({ full_name, position, tg_username }) {
+    // отрицательный уникальный "плейсхолдер" вместо 0 — иначе второй такой же
+    // сотрудник не сохранится (tg_id должен быть уникальным).
+    // Когда человек сам откроет бота, telegram-auth сама привяжет его
+    // настоящий tg_id к этой записи по совпадению username.
+    const placeholderTgId = -(Date.now() * 1000 + Math.floor(Math.random() * 1000));
     const { error } = await client.from("employees").insert({
-      full_name, position, tg_username, tg_id: 0, is_active: true,
+      full_name, position, tg_username, tg_id: placeholderTgId, is_active: true,
     });
     if (error) throw error;
   }
@@ -220,6 +275,17 @@ const Api = (() => {
   async function deleteEmployee(id) {
     const { error } = await client.from("employees").update({ is_active: false }).eq("id", id);
     if (error) throw error;
+  }
+
+  // вся история сотрудника за всё время — используется для экспорта перед увольнением
+  async function getEmployeeFullHistory(employeeId) {
+    const [{ data: shifts, error: e1 }, { data: bf, error: e2 }] = await Promise.all([
+      client.from("shifts").select("*, pvz:pvz_id(name)").eq("employee_id", employeeId).order("shift_date"),
+      client.from("bonuses_fines").select("*").eq("employee_id", employeeId).order("period_month"),
+    ]);
+    if (e1) throw e1;
+    if (e2) throw e2;
+    return { shifts: shifts || [], bonusesFines: bf || [] };
   }
 
   // ---------- БОНУСЫ / ШТРАФЫ ----------
@@ -256,11 +322,11 @@ const Api = (() => {
   }
 
   return {
-    login, getCurrentEmployee, isReady,
+    login, getCurrentEmployee, isReady, sendFileToMe,
     getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getShiftsForMonth, upsertShift, deleteShift,
-    applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest,
-    getEmployees, addEmployee, updateEmployee, deleteEmployee,
+    applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
+    getEmployees, addEmployee, updateEmployee, deleteEmployee, getEmployeeFullHistory,
     addBonusFine, getBonusesFines,
     getNotificationSettings, saveNotificationSettings,
   };

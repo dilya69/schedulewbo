@@ -37,6 +37,8 @@
                     <button onclick="App.changeMonth(1)">▶</button>
                 </div>
 
+                <div id="todaySummary" class="today-summary" style="display:none;"></div>
+
                 <div class="market-switcher" id="marketSwitcher">
                     <button class="market-btn active-wb" data-market="wb" onclick="App.switchMarket('wb')">🟣 WB</button>
                     <button class="market-btn" data-market="ozon" onclick="App.switchMarket('ozon')">🔵 OZON</button>
@@ -56,7 +58,10 @@
                 <div id="myShiftsContainer"></div>
 
                 <div class="admin-only" style="margin-top:10px;">
-                    <div style="font-weight:600; font-size:13px; margin-bottom:6px; color:var(--text);">📋 Заявки на смены</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <div style="font-weight:600; font-size:13px; color:var(--text);">📋 Заявки на смены</div>
+                        <button id="rejectAllBtn" onclick="App.rejectAllRequests()" style="display:none; border:none; background:#ff3b3020; color:#ff3b30; font-size:10px; font-weight:600; padding:4px 10px; border-radius:20px; cursor:pointer;">❌ Отклонить все</button>
+                    </div>
                     <div id="requestsContainer"></div>
                 </div>
             </div>
@@ -74,6 +79,11 @@
 
                 <div id="employeeList"></div>
                 <div id="noResults" class="no-results" style="display:none;">👤 Сотрудников не найдено</div>
+
+                <div id="pendingEmployeeSection" class="admin-only" style="display:none; margin-top:16px;">
+                    <div style="font-weight:600; font-size:13px; margin-bottom:6px; color:#ff9500;">🆕 Новые / ожидают доступа</div>
+                    <div id="pendingEmployeeList"></div>
+                </div>
 
                 <div class="admin-only" style="margin-top:10px;">
                     <button onclick="App.openAddEmployeeModal()" style="width:100%; padding:10px; background:#34c759; color:white; border:none; border-radius:30px; font-size:13px; font-weight:600; cursor:pointer;">

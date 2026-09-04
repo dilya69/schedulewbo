@@ -144,6 +144,17 @@ const App = (() => {
     return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 200);
   }
 
+  // ---------------- CSV (универсальный формат: запятая + кавычки, чтобы
+  // открывалось таблицей в любом приложении, а не в одну строку) ----------------
+  function csvField(v) {
+    const s = String(v ?? "");
+    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  function csvRow(fields) {
+    return fields.map(csvField).join(",") + "\n";
+  }
+
   // ---------------- ЭКСПОРТ ФАЙЛОВ (через Telegram, не через <a download>) ----------------
   async function deliverCsv(csv, filename) {
     if (state.demo) { toast("В демо-режиме экспорт недоступен"); return; }
@@ -734,6 +745,7 @@ const App = (() => {
         </div>
         <div class="actions">
           ${e.tg_username ? `<button class="chat-btn" onclick="App.openChat('${e.tg_username}')" title="Чат в Telegram">💬</button>` : ""}
+          <button class="edit-btn admin-only" onclick="App.openEmployeeScheduleModal('${e.id}', '${escapeHtml(e.full_name)}')" title="График за месяц">📅</button>
           <button class="edit-btn admin-only" onclick="App.openEditEmployeeModal('${e.id}')" title="Редактировать">✏️</button>
           <button class="delete admin-only" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Уволить">🗑️</button>
         </div>
@@ -743,11 +755,11 @@ const App = (() => {
       if (state.employee.is_admin && pending.length > 0) {
         pendingSection.style.display = "block";
         pendingContainer.innerHTML = pending.map((e) => `
-          <div class="employee-card pending-card">
+          <div class="employee-card pending-card" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgid="${e.tg_id > 0 ? e.tg_id : ""}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
             <div class="avatar" style="background:#8e8e93;">${escapeHtml(e.full_name[0] || "?")}</div>
             <div class="info">
               <div class="name">${escapeHtml(e.full_name)}</div>
-              <div class="role">${e.tg_username ? "@" + escapeHtml(e.tg_username) : "новый пользователь"}${e.terminated_at ? " • уволен" : ""}</div>
+              <div class="role">${e.tg_id > 0 ? "ID: " + e.tg_id : "ждёт первого входа"}${e.tg_username ? " • @" + escapeHtml(e.tg_username) : ""}${e.terminated_at ? " • уволен" : ""}</div>
             </div>
             <div class="actions">
               <button class="grant-btn" onclick="App.grantAccess('${e.id}', '${escapeHtml(e.full_name)}')" title="Дать доступ">✅</button>
@@ -758,6 +770,30 @@ const App = (() => {
         pendingSection.style.display = "none";
       }
     }
+  }
+
+  function openEmployeeScheduleModal(employeeId, name) {
+    const shifts = state.shifts
+      .filter((s) => s.employee_id === employeeId)
+      .sort((a, b) => a.shift_date.localeCompare(b.shift_date));
+
+    let total = 0;
+    const rows = shifts.map((s) => {
+      const pvz = state.pvz.find((p) => p.id === s.pvz_id);
+      const amount = Math.round(shiftAmount(s, pvz));
+      total += amount;
+      const dateObj = new Date(s.shift_date + "T00:00:00");
+      const dateLabel = dateObj.toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" });
+      return `<div class="profile-income-item">
+        <div class="left"><div class="title">🏢 ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${dateLabel}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
+        <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>
+      </div>`;
+    }).join("");
+
+    openModal(`График: ${escapeHtml(name)} — ${MONTHS[state.month]} ${state.year}`, `
+      ${rows || '<div class="center-msg">В этом месяце смен нет</div>'}
+      ${shifts.length ? `<div style="display:flex; justify-content:space-between; font-weight:700; font-size:14px; padding:10px 0 2px; color:var(--text); border-top:1px solid var(--border); margin-top:6px;"><span>${shifts.length} смен, итого</span><span>${Math.round(total).toLocaleString("ru-RU")} ₽</span></div>` : ""}
+    `, null);
   }
 
   async function grantAccess(id, name) {
@@ -772,14 +808,20 @@ const App = (() => {
 
   function filterEmployees() {
     const q = document.getElementById("searchInput").value.toLowerCase().trim();
-    const cards = document.querySelectorAll("#employeeList .employee-card");
     let visible = 0;
-    cards.forEach((c) => {
+    document.querySelectorAll("#employeeList .employee-card").forEach((c) => {
       const match = (c.dataset.name || "").includes(q);
       c.style.display = match ? "flex" : "none";
       if (match) visible++;
     });
-    document.getElementById("noResults").style.display = visible === 0 ? "block" : "none";
+    document.querySelectorAll("#pendingEmployeeList .employee-card").forEach((c) => {
+      const match = !q
+        || (c.dataset.name || "").includes(q)
+        || (c.dataset.tgid || "").includes(q)
+        || (c.dataset.tgusername || "").includes(q);
+      c.style.display = match ? "flex" : "none";
+    });
+    document.getElementById("noResults").style.display = visible === 0 && q ? "block" : "none";
   }
 
   function openAddEmployeeModal() {
@@ -850,14 +892,14 @@ const App = (() => {
 
   async function exportEmployeeHistory(employeeId, name) {
     const data = await Api.getEmployeeFullHistory(employeeId);
-    let csv = "Тип;Дата/Месяц;ПВЗ;Начало;Конец;Сумма;Причина\n";
+    let csv = csvRow(["Тип", "Дата/Месяц", "ПВЗ", "Начало", "Конец", "Сумма", "Причина"]);
     data.shifts.forEach((s) => {
       const pvz = s.pvz || state.pvz.find((p) => p.id === s.pvz_id);
       const amount = Math.round(shiftAmount(s, pvz));
-      csv += `Смена;${s.shift_date};${pvz?.name || ""};${s.start_time?.slice(0,5) || ""};${s.end_time?.slice(0,5) || ""};${amount};\n`;
+      csv += csvRow(["Смена", s.shift_date, pvz?.name || "", s.start_time?.slice(0,5) || "", s.end_time?.slice(0,5) || "", amount, ""]);
     });
     data.bonusesFines.forEach((b) => {
-      csv += `${b.kind === "bonus" ? "Бонус" : "Штраф"};${b.period_month};;;;${b.amount};${(b.reason || "").replace(/;/g, ",")}\n`;
+      csv += csvRow([b.kind === "bonus" ? "Бонус" : "Штраф", b.period_month, "", "", "", b.amount, b.reason || ""]);
     });
     await deliverCsv(csv, `${name.replace(/\s+/g, "_")}_история.csv`);
   }
@@ -1130,7 +1172,7 @@ const App = (() => {
   }
 
   function exportPayroll() {
-    let csv = "Сотрудник;Смены;Сумма по тарифам;Бонусы;Штрафы;Итого\n";
+    let csv = csvRow(["Сотрудник", "Смены", "Сумма по тарифам", "Бонусы", "Штрафы", "Итого"]);
     state.employees.filter((e) => e.is_active !== false).forEach((e) => {
       const empShifts = state.shifts.filter((s) => s.employee_id === e.id);
       const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
@@ -1138,18 +1180,18 @@ const App = (() => {
       const bonusSum = bf.filter((b) => b.kind === "bonus").reduce((s, b) => s + Number(b.amount), 0);
       const fineSum = bf.filter((b) => b.kind === "fine").reduce((s, b) => s + Number(b.amount), 0);
       const total = base + bonusSum - fineSum;
-      csv += `${e.full_name};${empShifts.length};${Math.round(base)};${bonusSum};${fineSum};${Math.round(total)}\n`;
+      csv += csvRow([e.full_name, empShifts.length, Math.round(base), bonusSum, fineSum, Math.round(total)]);
     });
     deliverCsv(csv, `payroll_${state.year}_${state.month + 1}.csv`);
   }
 
   function exportShiftsDetailed() {
-    let csv = "Дата;ПВЗ;Сотрудник;Начало;Конец;Статус;Сумма\n";
+    let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
     state.shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
       const empName = s.employees?.full_name || "";
       const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
-      csv += `${s.shift_date};${pvz?.name || ""};${empName};${s.start_time?.slice(0,5)};${s.end_time?.slice(0,5)};${s.status};${amount}\n`;
+      csv += csvRow([s.shift_date, pvz?.name || "", empName, s.start_time?.slice(0,5), s.end_time?.slice(0,5), s.status, amount]);
     });
     deliverCsv(csv, `смены_${state.year}_${state.month + 1}.csv`);
   }
@@ -1161,17 +1203,18 @@ const App = (() => {
         Api.getShiftsForMonth(year, month),
         Api.getBonusesFines(year, month),
       ]);
-      let csv = "Дата;ПВЗ;Сотрудник;Начало;Конец;Статус;Сумма\n";
+      let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
       shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
         const empName = s.employees?.full_name || "";
         const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
-        csv += `${s.shift_date};${pvz?.name || ""};${empName};${s.start_time?.slice(0,5)};${s.end_time?.slice(0,5)};${s.status};${amount}\n`;
+        csv += csvRow([s.shift_date, pvz?.name || "", empName, s.start_time?.slice(0,5), s.end_time?.slice(0,5), s.status, amount]);
       });
-      csv += "\nБонусы/Штрафы\nСотрудник;Тип;Сумма;Причина\n";
+      csv += "\n" + csvRow(["Бонусы/Штрафы"]);
+      csv += csvRow(["Сотрудник", "Тип", "Сумма", "Причина"]);
       bf.forEach((b) => {
         const emp = state.employees.find((e) => e.id === b.employee_id);
-        csv += `${emp?.full_name || "—"};${b.kind === "bonus" ? "Бонус" : "Штраф"};${b.amount};${(b.reason || "").replace(/;/g, ",")}\n`;
+        csv += csvRow([emp?.full_name || "—", b.kind === "bonus" ? "Бонус" : "Штраф", b.amount, b.reason || ""]);
       });
       await deliverCsv(csv, `данные_${year}_${month + 1}.csv`);
     } catch (e) {
@@ -1232,7 +1275,7 @@ const App = (() => {
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
     _filterEmpPicker, _selectEmp,
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, exportEmployeeHistory,
-    grantAccess, openChat,
+    openEmployeeScheduleModal, grantAccess, openChat,
     changeAvatar, _pickAvatar, togglePush, saveNotificationSettings,
     openPvzRateModal, openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     exportPayroll, exportShiftsDetailed, exportMonth,

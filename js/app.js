@@ -338,7 +338,10 @@ const App = (() => {
         const dayShifts = shiftsForPvzAndDay(pvz.id, d);
         const isToday = isCurrentMonth && d === today.getDate();
 
-        html += `<div class="day-cell ${isToday ? "today" : ""}"><span>${d}</span>`;
+        const cellClick = state.isAdminView
+          ? `App.openDayShiftsModal('${pvz.id}', ${d})`
+          : `App.openDayViewModal('${pvz.id}', ${d})`;
+        html += `<div class="day-cell ${isToday ? "today" : ""}" onclick="${cellClick}"><span>${d}</span>`;
 
         if (dayShifts.length > 0) {
           html += `<div class="chip-row">`;
@@ -350,20 +353,20 @@ const App = (() => {
               totalAmount += shiftAmount(shift, pvz);
               const isMine = shift.employee_id === state.employee.id;
               const empName = shift.employees?.full_name || "?";
-              const bg = isMine ? "#ff6b00" : pvz.color;
+              const bg = colorForName(empName);
               const title = `${empName} • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • ${Math.round(shiftAmount(shift, pvz))}₽`;
               html += `<span class="name-chip ${isMine ? "mine" : ""}" style="background:${bg};" title="${escapeHtml(title)}">${escapeHtml(empName)}</span>`;
             } else if (shift.status === "pending") {
               const cnt = state.requests.filter((r) => r.shift_id === shift.id).length;
               const title = `Есть отклики (${cnt || "?"}) • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}`;
               if (state.isAdminView) {
-                html += `<button class="chip-pending-dot" title="${escapeHtml(title)}" onclick="App.openShiftRequestsModal('${shift.id}')"></button>`;
+                html += `<button class="chip-pending-dot" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openShiftRequestsModal('${shift.id}')"></button>`;
               } else {
-                html += `<button class="chip-pending-dot" title="Откликнуться • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}" onclick="App.openApplyModal('${shift.id}')"></button>`;
+                html += `<button class="chip-pending-dot" title="Откликнуться • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"></button>`;
               }
             } else if (!state.isAdminView) {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
-              html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="App.openApplyModal('${shift.id}')">+</button>`;
+              html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;
             } else {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}`;
               html += `<span class="chip-free" title="${escapeHtml(title)}">·</span>`;
@@ -377,7 +380,7 @@ const App = (() => {
         }
 
         if (state.isAdminView) {
-          html += `<button class="edit-shift-btn" onclick="App.openDayShiftsModal('${pvz.id}', ${d})">✎</button>`;
+          html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.openDayShiftsModal('${pvz.id}', ${d})">✎</button>`;
         }
 
         html += `</div>`;
@@ -414,20 +417,22 @@ const App = (() => {
       <input type="hidden" id="f_apply_mode" value="full">
       <div style="font-size:11px; color:var(--text-secondary); margin-top:6px;">${escapeHtml(fullLabel)}</div>
       <div id="f_apply_time_wrap" style="display:none; margin-top:8px;">
-        <label>Начало (конец — как в объявлении, ${shift.end_time.slice(0,5)})</label>
-        <input type="time" id="f_apply_start" value="17:00">
+        <label>Начало</label>
+        <input type="time" id="f_apply_start" value="${shift.start_time.slice(0,5)}">
+        <label>Конец</label>
+        <input type="time" id="f_apply_end" value="${shift.end_time.slice(0,5)}">
+        <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">Можно указать любой промежуток внутри рабочего дня — например, только утро с ${shift.start_time.slice(0,5)} до 15:00, или помочь вечером.</div>
       </div>
     `, async () => {
       const mode = document.getElementById("f_apply_mode").value;
       const applyStart = mode === "custom" ? document.getElementById("f_apply_start").value : shift.start_time;
-      const applyEnd = shift.end_time;
+      const applyEnd = mode === "custom" ? document.getElementById("f_apply_end").value : shift.end_time;
 
       if (!confirmConflictOrCancel(state.employee.id, shift.shift_date, applyStart, applyEnd, shiftId, "откликнуться")) return;
 
       try {
         if (mode === "custom") {
-          const start = document.getElementById("f_apply_start").value;
-          await Api.applyForShift(shiftId, start, shift.end_time.slice(0,5));
+          await Api.applyForShift(shiftId, applyStart, applyEnd);
         } else {
           await Api.applyForShift(shiftId);
         }
@@ -450,6 +455,22 @@ const App = (() => {
   }
 
   // ---------------- РЕДАКТИРОВАНИЕ СМЕН (АДМИН) ----------------
+  // read-only версия для обычного сотрудника: просто посмотреть, кто работает
+  function openDayViewModal(pvzId, day) {
+    const pvz = state.pvz.find((p) => p.id === pvzId);
+    const dayShifts = shiftsForPvzAndDay(pvzId, day).filter((s) => s.employee_id);
+
+    const rowsHtml = dayShifts.map((s) => `
+      <div class="day-shift-row" style="cursor:default;">
+        <div class="left">👤 ${escapeHtml(s.employees?.full_name || "—")} • ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div>
+      </div>`).join("");
+
+    openModal(`${pvz ? escapeHtml(pvz.name) : "ПВЗ"} • ${day} ${MONTHS[state.month].toLowerCase()}`, `
+      <div style="font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text);">Кто работает в этот день</div>
+      ${rowsHtml || '<div class="center-msg">Пока никто не назначен</div>'}
+    `, null);
+  }
+
   function openDayShiftsModal(pvzId, day) {
     const pvz = state.pvz.find((p) => p.id === pvzId);
     const dStr = dateStrFor(state.year, state.month, day);
@@ -578,8 +599,13 @@ const App = (() => {
     const shift = shiftOverride || r.shifts;
     const wantsCustom = !!r.requested_start_time;
     const timeLabel = wantsCustom
-      ? `хочет с ${r.requested_start_time.slice(0,5)} до ${(r.requested_end_time || shift?.end_time || "").slice(0,5)}`
-      : "хочет на всю смену";
+      ? `с ${r.requested_start_time.slice(0,5)} до ${(r.requested_end_time || shift?.end_time || "").slice(0,5)}`
+      : `${(shift?.start_time || "").slice(0,5)}–${(shift?.end_time || "").slice(0,5)} (вся смена)`;
+
+    const pvzName = shift?.pvz?.name || state.pvz.find((p) => p.id === (shift?.pvz_id || ""))?.name || "ПВЗ";
+    const dateLabel = shift?.shift_date
+      ? new Date(shift.shift_date + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" })
+      : "";
 
     const approveBtn = wantsCustom
       ? `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', true)" title="Принять как просит">✅ Как просит</button>`
@@ -592,7 +618,8 @@ const App = (() => {
       <div class="request-card" style="margin-bottom:6px; flex-wrap:wrap;">
         <div class="info">
           <div class="name">${index ? index + ". " : ""}${escapeHtml(r.employees?.full_name || "—")}</div>
-          <div class="details">${escapeHtml(timeLabel)}</div>
+          <div class="details">🏢 ${escapeHtml(pvzName)} • 📅 ${dateLabel}</div>
+          <div class="details">🕐 ${escapeHtml(timeLabel)}</div>
         </div>
         <div class="actions">
           ${approveBtn}
@@ -772,8 +799,8 @@ const App = (() => {
     if (countEl) countEl.textContent = `${active.length} чел.`;
 
     activeContainer.innerHTML = active.map((e) => `
-      <div class="employee-card" data-name="${escapeHtml(e.full_name.toLowerCase())}">
-        <div class="avatar" style="background:${colorForName(e.full_name)};">${escapeHtml(e.full_name[0] || "?")}</div>
+      <div class="employee-card" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
+        <div class="avatar" style="background:${colorForName(e.full_name)}; ${e.avatar_frame ? `box-shadow:0 0 0 2px ${e.avatar_frame};` : ""}">${e.avatar_emoji ? escapeHtml(e.avatar_emoji) : escapeHtml(e.full_name[0] || "?")}</div>
         <div class="info">
           <div class="name">${escapeHtml(e.full_name)}</div>
           <div class="role">${escapeHtml(e.position || "Менеджер")}</div>
@@ -791,7 +818,7 @@ const App = (() => {
         pendingSection.style.display = "block";
         pendingContainer.innerHTML = pending.map((e) => `
           <div class="employee-card pending-card" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgid="${e.tg_id > 0 ? e.tg_id : ""}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
-            <div class="avatar" style="background:#8e8e93;">${escapeHtml(e.full_name[0] || "?")}</div>
+            <div class="avatar" style="background:#8e8e93;">${e.avatar_emoji ? escapeHtml(e.avatar_emoji) : escapeHtml(e.full_name[0] || "?")}</div>
             <div class="info">
               <div class="name">${escapeHtml(e.full_name)}</div>
               <div class="role">${e.tg_id > 0 ? "ID: " + e.tg_id : "ждёт первого входа"}${e.tg_username ? " • @" + escapeHtml(e.tg_username) : ""}${e.terminated_at ? " • уволен" : ""}</div>
@@ -842,10 +869,10 @@ const App = (() => {
   }
 
   function filterEmployees() {
-    const q = document.getElementById("searchInput").value.toLowerCase().trim();
+    const q = document.getElementById("searchInput").value.toLowerCase().trim().replace(/^@/, "");
     let visible = 0;
     document.querySelectorAll("#employeeList .employee-card").forEach((c) => {
-      const match = (c.dataset.name || "").includes(q);
+      const match = (c.dataset.name || "").includes(q) || (c.dataset.tgusername || "").includes(q);
       c.style.display = match ? "flex" : "none";
       if (match) visible++;
     });
@@ -907,12 +934,13 @@ const App = (() => {
   function openDeleteEmployeeModal(id, name) {
     openModal(`Уволить: ${escapeHtml(name)}`, `
       <p style="font-size:13px; color:var(--text); line-height:1.5; margin-bottom:10px;">
-        После увольнения данные сотрудника будут удалены из базы через 7 дней без возможности восстановления.
-        Рекомендуем сначала скачать его историю смен и зарплат.
+        Данные сотрудника можно удалить через 7 дней (стандартный вариант, есть время передумать)
+        либо сразу и без возврата. Рекомендуем сначала скачать его историю смен и зарплат.
       </p>
       <button type="button" class="add-shift-btn" onclick="App.exportEmployeeHistory('${id}','${escapeHtml(name)}')">📥 Скачать данные сотрудника</button>
+      <button type="button" class="add-shift-btn" style="border-color:#ff3b30; color:#ff3b30; margin-top:6px;" onclick="App.hardDeleteNow('${id}','${escapeHtml(name)}')">⛔ Удалить сразу, без ожидания</button>
     `, null, {
-      label: "🗑️ Уволить",
+      label: "🗑️ Уволить (удалить через 7 дней)",
       action: async () => {
         try {
           await Api.deleteEmployee(id);
@@ -923,6 +951,18 @@ const App = (() => {
         } catch (e) { toast("🚫 " + e.message); }
       },
     });
+  }
+
+  async function hardDeleteNow(id, name) {
+    if (!confirm(`Удалить «${name}» ПОЛНОСТЬЮ И НЕМЕДЛЕННО? Отменить это будет нельзя.`)) return;
+    try {
+      await Api.hardDeleteEmployee(id);
+      toast("✅ Удалён полностью");
+      state.employees = await Api.getEmployees();
+      renderEmployees();
+      renderManagement();
+      closeModal();
+    } catch (e) { toast("🚫 " + e.message); }
   }
 
   async function exportEmployeeHistory(employeeId, name) {
@@ -949,7 +989,10 @@ const App = (() => {
   function renderProfile() {
     const e = state.employee;
     const avatarEl = document.getElementById("profileAvatar");
-    if (avatarEl) avatarEl.childNodes[0].nodeValue = e.avatar_emoji || "👤";
+    if (avatarEl) {
+      avatarEl.childNodes[0].nodeValue = e.avatar_emoji || "👤";
+      avatarEl.style.boxShadow = e.avatar_frame ? `0 0 0 3px ${e.avatar_frame}` : "";
+    }
     const nameEl = document.getElementById("profileName");
     if (nameEl) nameEl.textContent = e.full_name;
     const roleEl = document.getElementById("profileRole");
@@ -1013,11 +1056,40 @@ const App = (() => {
     }
   }
 
+  function openAvatarFrameModal() {
+    const current = state.employee.avatar_frame || "";
+    openModal("Рамка иконки профиля", `
+      <label style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="f_frame_none" ${!current ? "checked" : ""} onchange="document.getElementById('f_frame_color').disabled=this.checked;">
+        Без рамки
+      </label>
+      <label style="margin-top:8px;">Цвет рамки</label>
+      <input type="color" id="f_frame_color" value="${current || "#ffd700"}" ${!current ? "disabled" : ""}>
+    `, async () => {
+      const none = document.getElementById("f_frame_none").checked;
+      const color = none ? null : document.getElementById("f_frame_color").value;
+      try {
+        await Api.updateEmployee(state.employee.id, { avatar_frame: color });
+        state.employee.avatar_frame = color;
+        const me = state.employees.find((e2) => e2.id === state.employee.id);
+        if (me) me.avatar_frame = color;
+        toast("✅ Рамка обновлена");
+        renderProfile();
+        renderEmployees();
+      } catch (e) { toast("🚫 " + e.message); }
+    });
+  }
+
   function changeAvatar() {
-    const emojis = ["👤","😊","😎","🧑‍💻","👨‍💼","👩‍💼","🦊","🐱","🐶","🦄","⭐","🔥","💪","🎯","🚀","🌟"];
+    const emojis = [
+      "👤","😊","😎","🧑‍💻","👨‍💼","👩‍💼","🦊","🐱","🐶","🦄","⭐","🔥","💪","🎯","🚀","🌟",
+      "😀","😄","🙂","😉","🤓","🥳","😇","🤠","👻","🤖","🐻","🐼","🐨","🐯","🦁","🐸",
+      "🐵","🐷","🐮","🦉","🦋","🌸","🍀","🍎","🍕","☕","⚽","🏀","🎮","🎧","📚","✏️",
+      "💎","🎨","🎵","🌈","☀️","🌙","❄️","⚡","🔥","💧","🌊","🏔️","🚗","✈️","⚓","🏆",
+    ];
     openModal("Выберите аватар", `
-      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; font-size:26px; text-align:center;">
-        ${emojis.map((em) => `<button type="button" onclick="App._pickAvatar('${em}')" style="border:none; background:var(--card-secondary); border-radius:12px; padding:8px 0; cursor:pointer;">${em}</button>`).join("")}
+      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:6px; font-size:22px; text-align:center; max-height:280px; overflow-y:auto;">
+        ${emojis.map((em) => `<button type="button" onclick="App._pickAvatar('${em}')" style="border:none; background:var(--card-secondary); border-radius:10px; padding:6px 0; cursor:pointer;">${em}</button>`).join("")}
       </div>
     `, null);
   }
@@ -1027,8 +1099,12 @@ const App = (() => {
     document.getElementById("profileAvatar").childNodes[0].nodeValue = emoji;
     state.employee.avatar_emoji = emoji;
     if (!state.demo) {
-      try { await Api.updateEmployee(state.employee.id, { avatar_emoji: emoji }); }
-      catch (e) { toast("🚫 " + e.message); }
+      try {
+        await Api.updateEmployee(state.employee.id, { avatar_emoji: emoji });
+        const me = state.employees.find((e) => e.id === state.employee.id);
+        if (me) me.avatar_emoji = emoji;
+        renderEmployees();
+      } catch (e) { toast("🚫 " + e.message); }
     }
   }
 
@@ -1262,13 +1338,12 @@ const App = (() => {
     if (!el) return;
     const now = new Date();
     const day = now.getDate();
-    if (day >= 10 && day <= 14) {
-      let prevMonth = now.getMonth() - 1, prevYear = now.getFullYear();
-      if (prevMonth < 0) { prevMonth = 11; prevYear--; }
-      const daysLeft = 15 - day;
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    if (day >= daysInMonth - 5) {
+      const daysLeft = daysInMonth - day + 1;
       el.style.display = "block";
-      el.innerHTML = `⚠️ Через ${daysLeft} дн. (15 числа) будут удалены смены и финансы за ${MONTHS[prevMonth].toLowerCase()} и раньше.
-        <button type="button" onclick="App.exportMonth(${prevYear}, ${prevMonth})">📥 Скачать за ${MONTHS[prevMonth].toLowerCase()}</button>`;
+      el.innerHTML = `⚠️ Через ${daysLeft} дн. (в начале нового месяца) будут удалены смены и финансы за ${MONTHS[now.getMonth()].toLowerCase()}.
+        <button type="button" onclick="App.exportMonth(${now.getFullYear()}, ${now.getMonth()})">📥 Скачать за ${MONTHS[now.getMonth()].toLowerCase()}</button>`;
     } else {
       el.style.display = "none";
     }
@@ -1306,12 +1381,12 @@ const App = (() => {
   return {
     init, toggleTheme, switchTab, toggleAdmin, changeMonth, switchMarket,
     openApplyModal, _setApplyMode,
-    openDayShiftsModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
+    openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
     _filterEmpPicker, _selectEmp,
-    filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, exportEmployeeHistory,
+    filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
     openEmployeeScheduleModal, grantAccess, openChat,
-    changeAvatar, _pickAvatar, togglePush, saveNotificationSettings,
+    changeAvatar, _pickAvatar, openAvatarFrameModal, togglePush, saveNotificationSettings,
     openPvzRateModal, openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     exportPayroll, exportShiftsDetailed, exportMonth,
     closeModal,

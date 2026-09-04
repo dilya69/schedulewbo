@@ -144,6 +144,27 @@ const App = (() => {
     return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 200);
   }
 
+  // ищет у сотрудника другую смену в этот же день, пересекающуюся по времени
+  // (чтобы не поставить одного и того же человека в два места одновременно)
+  function findConflict(employeeId, date, start, end, excludeShiftId) {
+    if (!employeeId || !date || !start || !end) return null;
+    return state.shifts.find((s) => {
+      if (s.employee_id !== employeeId) return false;
+      if (s.shift_date !== date) return false;
+      if (excludeShiftId && s.id === excludeShiftId) return false;
+      return start < s.end_time && s.start_time < end;
+    }) || null;
+  }
+
+  function confirmConflictOrCancel(employeeId, date, start, end, excludeShiftId, actionLabel) {
+    const conflict = findConflict(employeeId, date, start, end, excludeShiftId);
+    if (!conflict) return true;
+    const pvzC = state.pvz.find((p) => p.id === conflict.pvz_id);
+    return confirm(
+      `⚠️ У этого сотрудника уже есть смена в это время:\n${pvzC?.name || "?"} • ${conflict.start_time.slice(0,5)}–${conflict.end_time.slice(0,5)}\n\nЧеловек не может быть в двух местах одновременно. Всё равно ${actionLabel}?`
+    );
+  }
+
   // ---------------- CSV (универсальный формат: запятая + кавычки, чтобы
   // открывалось таблицей в любом приложении, а не в одну строку) ----------------
   function csvField(v) {
@@ -398,6 +419,11 @@ const App = (() => {
       </div>
     `, async () => {
       const mode = document.getElementById("f_apply_mode").value;
+      const applyStart = mode === "custom" ? document.getElementById("f_apply_start").value : shift.start_time;
+      const applyEnd = shift.end_time;
+
+      if (!confirmConflictOrCancel(state.employee.id, shift.shift_date, applyStart, applyEnd, shiftId, "откликнуться")) return;
+
       try {
         if (mode === "custom") {
           const start = document.getElementById("f_apply_start").value;
@@ -480,6 +506,9 @@ const App = (() => {
       const end = document.getElementById("f_end").value;
       const amountInput = document.getElementById("f_amount");
       const custom_amount = amountInput.dataset.touched === "1" ? Number(amountInput.value) : null;
+
+      if (employeeId && !confirmConflictOrCancel(employeeId, dStr, start, end, shiftId, "назначить")) return;
+
       try {
         await Api.upsertShift({
           id: shiftId || undefined, pvz_id: pvzId, shift_date: dStr,
@@ -577,6 +606,12 @@ const App = (() => {
   async function approveRequest(requestId, shiftId, employeeId, useRequestedTime) {
     const r = state.requests.find((x) => x.id === requestId);
     const shift = r?.shifts;
+    const useCustomTime = useRequestedTime && r?.requested_start_time;
+    const finalStart = useCustomTime ? r.requested_start_time : shift?.start_time;
+    const finalEnd = useCustomTime ? (r.requested_end_time || shift?.end_time) : shift?.end_time;
+
+    if (!confirmConflictOrCancel(employeeId, shift?.shift_date, finalStart, finalEnd, shiftId, "одобрить")) return;
+
     try {
       if (useRequestedTime && r?.requested_start_time) {
         await Api.resolveRequest({

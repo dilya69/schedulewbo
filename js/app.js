@@ -757,6 +757,7 @@ const App = (() => {
   }
 
   // ---------------- СОТРУДНИКИ ----------------
+  // ---------------- СОТРУДНИКИ ----------------
   function renderEmployees() {
     const activeContainer = document.getElementById("employeeList");
     const pendingContainer = document.getElementById("pendingEmployeeList");
@@ -772,7 +773,7 @@ const App = (() => {
     if (countEl) countEl.textContent = `${active.length} чел.`;
 
     activeContainer.innerHTML = active.map((e) => `
-      <div class="employee-card" data-name="${escapeHtml(e.full_name.toLowerCase())}">
+      <div class="employee-card" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgid="${e.tg_id > 0 ? e.tg_id : ""}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
         <div class="avatar" style="background:${colorForName(e.full_name)};">${escapeHtml(e.full_name[0] || "?")}</div>
         <div class="info">
           <div class="name">${escapeHtml(e.full_name)}</div>
@@ -841,24 +842,31 @@ const App = (() => {
     } catch (e) { toast("🚫 " + e.message); }
   }
 
-  function filterEmployees() {
+    function filterEmployees() {
     const q = document.getElementById("searchInput").value.toLowerCase().trim();
     let visible = 0;
+    
     document.querySelectorAll("#employeeList .employee-card").forEach((c) => {
-      const match = (c.dataset.name || "").includes(q);
+      const name = c.dataset.name || "";
+      const tgId = c.dataset.tgid || "";
+      const tgUsername = c.dataset.tgusername || "";
+      const match = !q || name.includes(q) || tgId.includes(q) || tgUsername.includes(q);
       c.style.display = match ? "flex" : "none";
       if (match) visible++;
     });
-    document.querySelectorAll("#pendingEmployeeList .employee-card").forEach((c) => {
-      const match = !q
-        || (c.dataset.name || "").includes(q)
-        || (c.dataset.tgid || "").includes(q)
-        || (c.dataset.tgusername || "").includes(q);
-      c.style.display = match ? "flex" : "none";
-    });
+    
+    if (state.employee.is_admin) {
+      document.querySelectorAll("#pendingEmployeeList .employee-card").forEach((c) => {
+        const name = c.dataset.name || "";
+        const tgId = c.dataset.tgid || "";
+        const tgUsername = c.dataset.tgusername || "";
+        const match = !q || name.includes(q) || tgId.includes(q) || tgUsername.includes(q);
+        c.style.display = match ? "flex" : "none";
+      });
+    }
+    
     document.getElementById("noResults").style.display = visible === 0 && q ? "block" : "none";
   }
-
   function openAddEmployeeModal() {
     openModal("Добавить сотрудника", `
       <label>ФИО</label><input type="text" id="f_name" placeholder="Иван Иванов">

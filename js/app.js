@@ -791,14 +791,12 @@ const App = (() => {
       </div>`;
     }).join("");
 
+       // Ожидающие доступа — видны только админу
     if (pendingSection) {
       if (state.employee.is_admin && pending.length > 0) {
         pendingSection.style.display = "block";
-        pendingContainer.innerHTML = pending.map((e) => {
-          const tgId = e.tg_id && e.tg_id > 0 ? String(e.tg_id) : "";
-          const tgUsername = (e.tg_username || "").toLowerCase();
-          return `
-          <div class="employee-card pending-card" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgid="${escapeHtml(tgId)}" data-tgusername="${escapeHtml(tgUsername)}">
+        pendingContainer.innerHTML = pending.map((e) => `
+          <div class="employee-card pending-card">
             <div class="avatar" style="background:#8e8e93;">${escapeHtml(e.full_name[0] || "?")}</div>
             <div class="info">
               <div class="name">${escapeHtml(e.full_name)}</div>
@@ -808,8 +806,7 @@ const App = (() => {
               <button class="grant-btn" onclick="App.grantAccess('${e.id}', '${escapeHtml(e.full_name)}')" title="Дать доступ">✅</button>
               <button class="delete" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Удалить совсем">🗑️</button>
             </div>
-          </div>`;
-        }).join("");
+          </div>`).join("");
       } else {
         pendingSection.style.display = "none";
       }

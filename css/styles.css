@@ -336,8 +336,8 @@ body {
     cursor: default;
 }
 
-.day-cell.empty { background: transparent; }
-.day-cell { overflow: hidden; }
+.day-cell.empty { background: transparent; border-color: transparent; }
+.day-cell { overflow: hidden; border: 1px solid var(--border); }
 
 .day-cell .shift-badge {
     font-size: 6px;
@@ -441,11 +441,15 @@ body {
 .request-card .info { min-width: 0; }
 .request-card .info .name { font-weight: 600; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .request-card .info .details { font-size: 11px; color: var(--text-secondary); }
-.request-card .actions { display: flex; gap: 6px; flex-shrink: 0; }
-.request-card .actions button { border: none; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+.request-card .actions { display: flex; gap: 5px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.request-card .actions button { border: none; padding: 4px 9px; border-radius: 20px; font-size: 10px; font-weight: 600; cursor: pointer; transition: 0.15s; white-space: nowrap; }
 .request-card .actions .approve { background: #34c759; color: white; }
 .request-card .actions .reject { background: #ff3b30; color: white; }
 .request-card .actions button:active { transform: scale(0.94); }
+
+.pending-card { border: 1px dashed #ff9500; background: #ff950010; }
+.grant-btn { border: none; background: none; font-size: 16px; cursor: pointer; padding: 4px; opacity: 0.8; }
+.grant-btn:hover { opacity: 1; }
 
 .profile-header { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--profile-bg); border-radius: 20px; margin-bottom: 16px; transition: background 0.3s; }
 
@@ -769,6 +773,25 @@ span.chip-pending-dot { cursor: default; }
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
+}
+
+.today-summary {
+    background: var(--card-secondary);
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+.today-summary .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11.5px;
+    padding: 3px 0;
+    color: var(--text);
+}
+.today-summary .row .time {
+    color: var(--text-secondary);
+    flex-shrink: 0;
 }
 
 /* ---------- переключатель оклад/ставка ---------- */

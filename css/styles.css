@@ -632,16 +632,16 @@ body {
 
 .day-cell .name-chip {
     width: 100%;
-    font-size: clamp(6px, 1.2vw, 8.5px);  /* динамический размер шрифта */
+    font-size: clamp(5px, 1vw, 7px);  /* сделать шрифт поменьше */
     font-weight: 800;
     color: #fff;
     border-radius: 3px;
-    padding: 1px 3px;
-    line-height: 1.2;
+    padding: 1px 2px;
+    line-height: 1.1;
     text-align: center;
-    overflow: hidden;
-    text-overflow: ellipsis;  /* если слишком длинное - обрезаем с ... */
-    white-space: nowrap;      /* не переносим на новую строку */
+    overflow: visible;
+    white-space: normal;
+    word-break: break-all;
     max-width: 100%;
 }
 

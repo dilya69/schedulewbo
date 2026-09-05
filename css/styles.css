@@ -53,7 +53,7 @@ body {
 }
 
 .app-container {
-    max-width: 460px;
+    max-width: 480px;
     width: 100%;
     background: var(--card-bg);
     border-radius: 28px;
@@ -177,7 +177,7 @@ body {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 10px 14px 4px;
+    padding: 10px 10px 4px;
     scroll-behavior: smooth;
     min-height: 0;
 }
@@ -269,7 +269,7 @@ body {
 .market-btn.active-ozon { background: #007aff; color: white; box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3); }
 .market-btn:active { transform: scale(0.96); }
 
-.calendar-wrapper { border-radius: 16px; padding: 8px 6px; transition: background 0.3s; }
+.calendar-wrapper { border-radius: 16px; padding: 6px 4px; transition: background 0.3s; }
 .calendar-wrapper.bg-wb { background: var(--calendar-bg-wb); }
 .calendar-wrapper.bg-ozon { background: var(--calendar-bg-ozon); }
 
@@ -282,7 +282,7 @@ body {
 
 .pzv-block {
     border-radius: 14px;
-    padding: 10px 10px 8px;
+    padding: 8px 6px 6px;
     margin-bottom: 12px;
     border-left: 3px solid #007aff;
     transition: all 0.2s;
@@ -330,7 +330,7 @@ body {
     background: var(--card-bg);
     color: var(--text);
     padding: 2px 1px;
-    min-height: 58px;
+    min-height: 66px;
     position: relative;
     transition: all 0.2s;
     cursor: pointer;
@@ -646,14 +646,15 @@ body {
 }
 
 .day-cell .chip-free {
-    width: 11px;
-    height: 11px;
-    min-width: 11px;
+    width: 13px;
+    height: 13px;
+    min-width: 13px;
     border-radius: 50%;
-    border: 1px dashed var(--text-secondary);
-    background: none;
-    color: var(--text-secondary);
-    font-size: 7px;
+    border: none;
+    background: #34c759;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
     line-height: 1;
     display: flex;
     align-items: center;
@@ -710,6 +711,7 @@ span.chip-pending-dot { cursor: default; }
 .day-shift-row {
     display: flex; justify-content: space-between; align-items: center; gap: 8px;
     background: var(--card-secondary); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px;
+    cursor: pointer;
 }
 .day-shift-row .left { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .day-shift-row button {
@@ -809,7 +811,8 @@ span.chip-pending-dot { cursor: default; }
     .app-container { height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; border-radius: 0; }
     body { padding: 0; }
     .header { padding: 10px 14px 8px; }
-    .day-cell { min-height: 27px; font-size: 10px; }
+    .day-cell { min-height: 62px; font-size: 10px; }
+    .day-cell .name-chip { font-size: 8px; }
     .profile-header { flex-direction: column; text-align: center; }
     .finance-employee { flex-direction: column; align-items: stretch; gap: 6px; }
     .finance-employee .right { justify-content: flex-start; }
@@ -818,13 +821,9 @@ span.chip-pending-dot { cursor: default; }
 }
 
 @media (max-width: 350px) {
-    .day-cell { min-height: 24px; font-size: 8px; }
-    .day-cell .shift-badge { font-size: 5px; }
-    .day-cell .shift-free { font-size: 5px; }
-    .day-cell .hours { font-size: 5px; }
-    .day-cell .chip, .day-cell .chip-free { width: 9px; height: 9px; min-width: 9px; font-size: 5px; }
-    .day-cell .name-chip { font-size: 5.5px; }
-    .day-cell .chip-pending-dot { width: 9px; height: 9px; min-width: 9px; }
+    .day-cell { min-height: 54px; font-size: 9px; }
+    .day-cell .chip-free, .day-cell .chip-pending-dot { width: 10px; height: 10px; min-width: 10px; font-size: 7px; }
+    .day-cell .name-chip { font-size: 7px; }
     .header h1 { font-size: 14px; }
     .admin-toggle span { display: none; }
     .pvz-grid { grid-template-columns: 1fr; }

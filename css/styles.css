@@ -269,7 +269,7 @@ body {
 .market-btn.active-ozon { background: #007aff; color: white; box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3); }
 .market-btn:active { transform: scale(0.96); }
 
-.calendar-wrapper { border-radius: 16px; padding: 8px 6px; transition: background 0.3s; }
+.calendar-wrapper { border-radius: 16px; padding: 8px 4px; transition: background 0.3s; }
 .calendar-wrapper.bg-wb { background: var(--calendar-bg-wb); }
 .calendar-wrapper.bg-ozon { background: var(--calendar-bg-ozon); }
 
@@ -282,7 +282,7 @@ body {
 
 .pzv-block {
     border-radius: 14px;
-    padding: 10px 10px 8px;
+    padding: 10px 6px 8px;
     margin-bottom: 12px;
     border-left: 3px solid #007aff;
     transition: all 0.2s;
@@ -316,7 +316,7 @@ body {
     margin-bottom: 2px;
 }
 
-.days-grid { display: grid; grid-template-columns: repeat(7, 1.3fr); gap: 2px; }
+.days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
 
 .day-cell {
     display: flex;

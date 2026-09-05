@@ -135,12 +135,16 @@ const App = (() => {
     }
     if (!pvz) return 0;
     const startStr = (shift.start_time || "").slice(0, 5);
+    const endStr = (shift.end_time || "").slice(0, 5);
     const openStr = (pvz.default_start_time || "09:00").slice(0, 5);
+    const closeStr = (pvz.default_end_time || "21:00").slice(0, 5);
     const startHour = Number(startStr.split(":")[0]);
     const threshold = pvz.evening_threshold ?? 17;
 
-    if (startStr === openStr) return Number(pvz.full_shift_pay || 0);
+    // "полная" смена — это открытие И закрытие целиком, а не просто совпадение начала
+    if (startStr === openStr && endStr === closeStr) return Number(pvz.full_shift_pay || 0);
     if (startHour >= threshold) return Number(pvz.evening_pay || 0);
+    // любая другая (в т.ч. "с открытия, но ушёл раньше") — почасовая ставка
     return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 200);
   }
 
@@ -458,16 +462,28 @@ const App = (() => {
   // read-only версия для обычного сотрудника: просто посмотреть, кто работает
   function openDayViewModal(pvzId, day) {
     const pvz = state.pvz.find((p) => p.id === pvzId);
-    const dayShifts = shiftsForPvzAndDay(pvzId, day).filter((s) => s.employee_id);
+    const dayShifts = shiftsForPvzAndDay(pvzId, day);
 
-    const rowsHtml = dayShifts.map((s) => `
-      <div class="day-shift-row" style="cursor:default;">
-        <div class="left">👤 ${escapeHtml(s.employees?.full_name || "—")} • ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div>
-      </div>`).join("");
+    const rowsHtml = dayShifts.map((s) => {
+      const timeLabel = `${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}`;
+      if (s.employee_id) {
+        return `<div class="day-shift-row" style="cursor:default;">
+          <div class="left">👤 ${escapeHtml(s.employees?.full_name || "—")} • ${timeLabel}</div>
+        </div>`;
+      }
+      if (s.status === "pending") {
+        return `<div class="day-shift-row" onclick="App.closeModal(); App.openApplyModal('${s.id}')">
+          <div class="left">⏳ Есть отклики • ${timeLabel} • можно тоже откликнуться</div>
+        </div>`;
+      }
+      return `<div class="day-shift-row" onclick="App.closeModal(); App.openApplyModal('${s.id}')">
+        <div class="left">🟢 Свободно • ${timeLabel} • нажмите, чтобы откликнуться</div>
+      </div>`;
+    }).join("");
 
     openModal(`${pvz ? escapeHtml(pvz.name) : "ПВЗ"} • ${day} ${MONTHS[state.month].toLowerCase()}`, `
-      <div style="font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text);">Кто работает в этот день</div>
-      ${rowsHtml || '<div class="center-msg">Пока никто не назначен</div>'}
+      <div style="font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text);">Смены в этот день</div>
+      ${rowsHtml || '<div class="center-msg">В этот день смен нет</div>'}
     `, null);
   }
 

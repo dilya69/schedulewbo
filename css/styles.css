@@ -628,16 +628,17 @@ body {
 
 .day-cell .name-chip {
     width: 100%;
-    font-size: 8px;
+    font-size: clamp(6px, 1.2vw, 8.5px);  /* динамический размер шрифта */
     font-weight: 800;
     color: #fff;
     border-radius: 3px;
     padding: 1px 3px;
-    line-height: 1.25;
+    line-height: 1.2;
     text-align: center;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    text-overflow: ellipsis;  /* если слишком длинное - обрезаем с ... */
+    white-space: nowrap;      /* не переносим на новую строку */
+    max-width: 100%;
 }
 
 .name-chip.mine {

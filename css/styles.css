@@ -333,6 +333,8 @@ body {
     position: relative;
     transition: all 0.2s;
     cursor: pointer;
+    overflow: hidden;
+    width: 100%;
 }
 
 .day-cell.empty { cursor: default; }
@@ -624,6 +626,8 @@ body {
     gap: 1px;
     margin-top: 1px;
     width: 100%;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .day-cell .name-chip {

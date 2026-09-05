@@ -647,7 +647,9 @@ body {
 .name-chip.mine {
     box-shadow: 0 0 0 1.5px #ff6b00;
 }
-
+.day-cell .name-chip:not(.mine) {
+    opacity: 0.5;
+    
 .day-cell .chip-free {
     width: 18px;
     height: 18px;

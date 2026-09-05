@@ -145,7 +145,7 @@ const App = (() => {
     if (startStr === openStr && endStr === closeStr) return Number(pvz.full_shift_pay || 0);
     if (startHour >= threshold) return Number(pvz.evening_pay || 0);
     // любая другая (в т.ч. "с открытия, но ушёл раньше") — почасовая ставка
-    return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 200);
+    return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 250);
   }
 
   // ищет у сотрудника другую смену в этот же день, пересекающуюся по времени
@@ -1208,7 +1208,7 @@ const App = (() => {
       <label>С какого часа смена считается вечерней (0–23)</label>
       <input type="number" id="f_threshold" value="${pvz.evening_threshold}" min="0" max="23">
       <label>Промежуточная смена (не в открытие и не вечером), ₽/час</label>
-      <input type="number" id="f_mid" value="${pvz.mid_hourly_rate ?? 200}" min="0">
+      <input type="number" id="f_mid" value="${pvz.mid_hourly_rate ?? 250}" min="0">
       <label>Стандартное начало смены (это время = "полная смена")</label>
       <input type="time" id="f_dstart" value="${pvz.default_start_time?.slice(0,5) || "09:00"}">
       <label>Стандартный конец смены</label>

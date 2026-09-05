@@ -316,7 +316,7 @@ body {
     margin-bottom: 2px;
 }
 
-.days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.days-grid { display: grid; grid-template-columns: repeat(7, 1.3fr); gap: 2px; }
 
 .day-cell {
     display: flex;

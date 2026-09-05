@@ -371,10 +371,10 @@ const App = (() => {
             } else if (!state.isAdminView) {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
               html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;
-            } else {
-              const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}`;
-              html += `<span class="chip-free" title="${escapeHtml(title)}">·</span>`;
-            }
+           } else {
+    const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
+    html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;
+}
           });
 
           if (dayShifts.length > MAX_NAMES_PER_DAY) {

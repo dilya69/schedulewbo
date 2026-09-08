@@ -242,25 +242,20 @@ const App = (() => {
   }
 
   // ---------------- CSV ----------------
-  // разделитель — точка с запятой (это то, что Excel с русской локалью
-  // по умолчанию понимает как разделитель столбцов при обычном открытии
-  // файла двойным кликом; запятая в такой локали — десятичный разделитель,
-  // из-за чего всё "слипается" в один столбец/одну строку).
-  // Перевод строки — \r\n (CRLF), иначе некоторые программы на Windows
-  // (например старый Блокнот) не показывают переносы строк вообще.
+  // Разделитель — табуляция, перевод строки — \r\n. Кодировка файла (важнее
+  // самого разделителя!) переводится в UTF-16LE с BOM на стороне edge-функции
+  // send-file — это "родной" юникод-формат самого Excel, и именно в этой
+  // связке (UTF-16LE + таб) Excel распознаёт кириллицу и режет по столбцам
+  // без сбоев на любой версии, включая мобильную — в отличие от UTF-8,
+  // который часть Excel-клиентов читает как Windows-1251 (кракозябры),
+  // независимо от BOM или разделителя.
   function csvField(v) {
     const s = String(v ?? "");
-    if (/[";\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    if (/["\t\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
     return s;
   }
   function csvRow(fields) {
-    return fields.map(csvField).join(";") + "\r\n";
-  }
-  // спец-строка, которую Excel распознаёт как явное указание разделителя
-  // столбцов — работает независимо от региональных настроек Windows/Mac
-  // (в отличие от расчёта "на глазок" по локали, который не всегда угадывает)
-  function csvSepHint() {
-    return "sep=;\r\n";
+    return fields.map(csvField).join("\t") + "\r\n";
   }
 
   // ---------------- ЭКСПОРТ ФАЙЛОВ (через Telegram, не через <a download>) ----------------
@@ -1107,7 +1102,7 @@ const App = (() => {
 
   async function exportEmployeeHistory(employeeId, name) {
     const data = await Api.getEmployeeFullHistory(employeeId);
-    let csv = csvSepHint() + csvRow(["Тип", "Дата/Месяц", "ПВЗ", "Начало", "Конец", "Сумма", "Причина"]);
+    let csv = csvRow(["Тип", "Дата/Месяц", "ПВЗ", "Начало", "Конец", "Сумма", "Причина"]);
     data.shifts.forEach((s) => {
       const pvz = s.pvz || state.pvz.find((p) => p.id === s.pvz_id);
       const amount = Math.round(shiftAmount(s, pvz));
@@ -1490,7 +1485,7 @@ const App = (() => {
 
   function exportPayroll() {
     const includeBF = state.payPeriod === "full";
-    let csv = csvSepHint() + csvRow(["Сотрудник", "Смены", "Сумма по тарифам", "Бонусы", "Штрафы", "Итого"]);
+    let csv = csvRow(["Сотрудник", "Смены", "Сумма по тарифам", "Бонусы", "Штрафы", "Итого"]);
     state.employees.filter((e) => e.is_active !== false).forEach((e) => {
       const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
       const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
@@ -1504,7 +1499,7 @@ const App = (() => {
   }
 
   function exportShiftsDetailed() {
-    let csv = csvSepHint() + csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
+    let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
     state.shifts.filter((s) => inPayPeriod(s.shift_date, state.payPeriod)).slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
       const empName = s.employees?.full_name || "";
@@ -1521,7 +1516,7 @@ const App = (() => {
         Api.getShiftsForMonth(year, month),
         Api.getBonusesFines(year, month),
       ]);
-      let csv = csvSepHint() + csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
+      let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
       shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
         const empName = s.employees?.full_name || "";

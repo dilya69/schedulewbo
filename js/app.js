@@ -256,6 +256,12 @@ const App = (() => {
   function csvRow(fields) {
     return fields.map(csvField).join(";") + "\r\n";
   }
+  // спец-строка, которую Excel распознаёт как явное указание разделителя
+  // столбцов — работает независимо от региональных настроек Windows/Mac
+  // (в отличие от расчёта "на глазок" по локали, который не всегда угадывает)
+  function csvSepHint() {
+    return "sep=;\r\n";
+  }
 
   // ---------------- ЭКСПОРТ ФАЙЛОВ (через Telegram, не через <a download>) ----------------
   async function deliverCsv(csv, filename) {
@@ -1101,7 +1107,7 @@ const App = (() => {
 
   async function exportEmployeeHistory(employeeId, name) {
     const data = await Api.getEmployeeFullHistory(employeeId);
-    let csv = csvRow(["Тип", "Дата/Месяц", "ПВЗ", "Начало", "Конец", "Сумма", "Причина"]);
+    let csv = csvSepHint() + csvRow(["Тип", "Дата/Месяц", "ПВЗ", "Начало", "Конец", "Сумма", "Причина"]);
     data.shifts.forEach((s) => {
       const pvz = s.pvz || state.pvz.find((p) => p.id === s.pvz_id);
       const amount = Math.round(shiftAmount(s, pvz));
@@ -1484,7 +1490,7 @@ const App = (() => {
 
   function exportPayroll() {
     const includeBF = state.payPeriod === "full";
-    let csv = csvRow(["Сотрудник", "Смены", "Сумма по тарифам", "Бонусы", "Штрафы", "Итого"]);
+    let csv = csvSepHint() + csvRow(["Сотрудник", "Смены", "Сумма по тарифам", "Бонусы", "Штрафы", "Итого"]);
     state.employees.filter((e) => e.is_active !== false).forEach((e) => {
       const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
       const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
@@ -1498,7 +1504,7 @@ const App = (() => {
   }
 
   function exportShiftsDetailed() {
-    let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
+    let csv = csvSepHint() + csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
     state.shifts.filter((s) => inPayPeriod(s.shift_date, state.payPeriod)).slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
       const empName = s.employees?.full_name || "";
@@ -1515,7 +1521,7 @@ const App = (() => {
         Api.getShiftsForMonth(year, month),
         Api.getBonusesFines(year, month),
       ]);
-      let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
+      let csv = csvSepHint() + csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
       shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
         const empName = s.employees?.full_name || "";

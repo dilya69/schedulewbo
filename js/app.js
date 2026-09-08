@@ -147,44 +147,55 @@ const App = (() => {
   // Иначе считается по гибким тарифам ПВЗ (state.pvzPayRules) — админ может
   // задать сколько угодно правил вида "с такого по такое время — сумма/час
   // или сумма целиком", и они действуют по умолчанию для любой будущей смены.
-  function shiftAmount(shift, pvz) {
-    if (shift.custom_amount !== undefined && shift.custom_amount !== null && shift.custom_amount !== "") {
-      return Number(shift.custom_amount);
-    }
-    if (!pvz) return 0;
-
-    const rules = state.pvzPayRules[pvz.id];
-    if (!rules || rules.length === 0) return legacyShiftAmount(shift, pvz);
-
-    const toMin = (t) => {
-      const [h, m] = String(t || "0:0").slice(0, 5).split(":").map(Number);
-      return (h || 0) * 60 + (m || 0);
-    };
-    const s0 = toMin(shift.start_time), e0 = toMin(shift.end_time);
-    if (e0 <= s0) return 0;
-
-    // 1) точное совпадение с "суммой за смену целиком" — приоритетно, всё правило целиком
-    const exact = rules.find((r) => r.rate_type === "fixed" && toMin(r.start_time) === s0 && toMin(r.end_time) === e0);
-    if (exact) return Number(exact.amount);
-
-    // 2) иначе суммируем пересечение смены с каждым почасовым правилом
-    let amount = 0;
-    let coveredMinutes = 0;
-    rules.filter((r) => r.rate_type === "hourly").forEach((r) => {
-      const rs = toMin(r.start_time), re = toMin(r.end_time);
-      const overlap = Math.max(0, Math.min(e0, re) - Math.max(s0, rs));
-      if (overlap > 0) {
-        amount += (overlap / 60) * Number(r.amount);
-        coveredMinutes += overlap;
-      }
-    });
-
-    // время смены, не попавшее ни в одно правило, — по ставке по умолчанию (₽/час)
-    const uncoveredMinutes = Math.max(0, (e0 - s0) - coveredMinutes);
-    if (uncoveredMinutes > 0) amount += (uncoveredMinutes / 60) * Number(pvz.mid_hourly_rate || 0);
-
-    return amount;
+function shiftAmount(shift, pvz) {
+  if (shift.custom_amount !== undefined && shift.custom_amount !== null && shift.custom_amount !== "") {
+    return Number(shift.custom_amount);
   }
+  if (!pvz) return 0;
+
+  const rules = state.pvzPayRules[pvz.id];
+  if (!rules || rules.length === 0) return legacyShiftAmount(shift, pvz);
+
+  const toMin = (t) => {
+    const [h, m] = String(t || "0:0").slice(0, 5).split(":").map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+  const s0 = toMin(shift.start_time);
+  const e0 = toMin(shift.end_time);
+  if (e0 <= s0) return 0;
+
+  // 1) точное совпадение с "суммой за смену целиком" — приоритетно
+  const exact = rules.find((r) => r.rate_type === "fixed" && toMin(r.start_time) === s0 && toMin(r.end_time) === e0);
+  if (exact) return Number(exact.amount);
+
+  // 2) НОВАЯ ЛОГИКА: определяем ставку по времени НАЧАЛА смены
+  // Сортируем правила по времени начала (от раннего к позднему)
+  const sortedRules = rules
+    .filter((r) => r.rate_type === "hourly")
+    .sort((a, b) => toMin(a.start_time) - toMin(b.start_time));
+
+  // Ищем правило, которое покрывает время начала смены
+  let selectedRate = null;
+  for (const r of sortedRules) {
+    const rs = toMin(r.start_time);
+    const re = toMin(r.end_time);
+    // Если время начала смены попадает в интервал правила (включая границы)
+    if (s0 >= rs && s0 < re) {
+      selectedRate = r;
+      break;
+    }
+  }
+
+  // Если правило найдено — применяем его ставку ко ВСЕЙ длительности смены
+  if (selectedRate) {
+    const hours = (e0 - s0) / 60;
+    return hours * Number(selectedRate.amount);
+  }
+
+  // 3) Если ни одно правило не покрывает начало смены — ставка по умолчанию
+  const hours = (e0 - s0) / 60;
+  return hours * Number(pvz.mid_hourly_rate || 0);
+}
 
   // старая схема (полная/вечерняя/почасовая), используется только как запасной
   // вариант, если у ПВЗ почему-то ещё нет ни одного тарифа в pvzPayRules

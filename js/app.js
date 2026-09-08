@@ -15,6 +15,8 @@ const App = (() => {
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
     pvz: [],
+    pvzPayRules: {},   // { [pvz_id]: [ {start_time,end_time,rate_type,amount,label}, ... ] }
+    payPeriod: "full",  // 'full' | 'first' (1–15) | 'second' (16–конец) — для просмотра ЗП по половинам месяца
     shifts: [],
     employees: [],
     requests: [],
@@ -29,6 +31,10 @@ const App = (() => {
       const result = await Api.login();
       state.demo = !!result.demo;
       state.employee = result.employee || demoEmployee();
+
+      // tg.WebApp к этому моменту уже точно готов (ready()/expand() вызваны в Api.login) —
+      // самое надёжное место, чтобы перекрасить нативный Telegram под тему приложения
+      syncTelegramChrome(document.body.classList.contains("dark-theme") ? "dark" : "light");
 
       if (state.demo) toast("⚠️ Демо-режим: нет соединения с Supabase, данные не сохраняются");
 
@@ -56,15 +62,25 @@ const App = (() => {
   async function reloadAll() {
     if (state.demo) return;
     state.pvz = await Api.getPvzList();
+    await reloadPayRules();
     await reloadShifts();
     state.employees = await Api.getEmployees();
-    state.bonusesFines = await Api.getBonusesFines(state.year, state.month);
+    // бонусы/штрафы видит только администратор — обычному сотруднику их даже не запрашиваем
+    state.bonusesFines = state.employee.is_admin ? await Api.getBonusesFines(state.year, state.month) : [];
     state.myRequests = await Api.getMyPendingRequests();
     if (state.employee.is_admin) {
       state.requests = await Api.getPendingRequests();
     }
     state.notif = await Api.getNotificationSettings();
     renderAll();
+  }
+
+  async function reloadPayRules() {
+    if (state.demo) return;
+    const rows = await Api.getAllPayRules();
+    const grouped = {};
+    for (const r of rows) (grouped[r.pvz_id] ??= []).push(r);
+    state.pvzPayRules = grouped;
   }
 
   async function reloadShifts() {
@@ -127,25 +143,81 @@ const App = (() => {
     return `rgba(${r},${g},${b},${alpha})`;
   }
 
-  // Сумма за смену: если задана custom_amount — используется она,
-  // иначе считается по тарифам ПВЗ (полная / вечерняя / почасовая "средняя")
+  // Сумма за смену: если задана custom_amount — используется она.
+  // Иначе считается по гибким тарифам ПВЗ (state.pvzPayRules) — админ может
+  // задать сколько угодно правил вида "с такого по такое время — сумма/час
+  // или сумма целиком", и они действуют по умолчанию для любой будущей смены.
   function shiftAmount(shift, pvz) {
     if (shift.custom_amount !== undefined && shift.custom_amount !== null && shift.custom_amount !== "") {
       return Number(shift.custom_amount);
     }
     if (!pvz) return 0;
+
+    const rules = state.pvzPayRules[pvz.id];
+    if (!rules || rules.length === 0) return legacyShiftAmount(shift, pvz);
+
+    const toMin = (t) => {
+      const [h, m] = String(t || "0:0").slice(0, 5).split(":").map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const s0 = toMin(shift.start_time), e0 = toMin(shift.end_time);
+    if (e0 <= s0) return 0;
+
+    // 1) точное совпадение с "суммой за смену целиком" — приоритетно, всё правило целиком
+    const exact = rules.find((r) => r.rate_type === "fixed" && toMin(r.start_time) === s0 && toMin(r.end_time) === e0);
+    if (exact) return Number(exact.amount);
+
+    // 2) иначе суммируем пересечение смены с каждым почасовым правилом
+    let amount = 0;
+    let coveredMinutes = 0;
+    rules.filter((r) => r.rate_type === "hourly").forEach((r) => {
+      const rs = toMin(r.start_time), re = toMin(r.end_time);
+      const overlap = Math.max(0, Math.min(e0, re) - Math.max(s0, rs));
+      if (overlap > 0) {
+        amount += (overlap / 60) * Number(r.amount);
+        coveredMinutes += overlap;
+      }
+    });
+
+    // время смены, не попавшее ни в одно правило, — по ставке по умолчанию (₽/час)
+    const uncoveredMinutes = Math.max(0, (e0 - s0) - coveredMinutes);
+    if (uncoveredMinutes > 0) amount += (uncoveredMinutes / 60) * Number(pvz.mid_hourly_rate || 0);
+
+    return amount;
+  }
+
+  // старая схема (полная/вечерняя/почасовая), используется только как запасной
+  // вариант, если у ПВЗ почему-то ещё нет ни одного тарифа в pvzPayRules
+  function legacyShiftAmount(shift, pvz) {
     const startStr = (shift.start_time || "").slice(0, 5);
     const endStr = (shift.end_time || "").slice(0, 5);
     const openStr = (pvz.default_start_time || "09:00").slice(0, 5);
     const closeStr = (pvz.default_end_time || "21:00").slice(0, 5);
     const startHour = Number(startStr.split(":")[0]);
     const threshold = pvz.evening_threshold ?? 17;
-
-    // "полная" смена — это открытие И закрытие целиком, а не просто совпадение начала
     if (startStr === openStr && endStr === closeStr) return Number(pvz.full_shift_pay || 0);
     if (startHour >= threshold) return Number(pvz.evening_pay || 0);
-    // любая другая (в т.ч. "с открытия, но ушёл раньше") — почасовая ставка
     return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 250);
+  }
+
+  // ---------------- ПЕРИОД ВЫПЛАТЫ ЗП (весь месяц / 1–15 / 16–конец) ----------------
+  function inPayPeriod(dateStr, period) {
+    if (!period || period === "full") return true;
+    const day = Number(String(dateStr).slice(8, 10));
+    if (period === "first") return day <= 15;
+    if (period === "second") return day >= 16;
+    return true;
+  }
+
+  function setPayPeriod(period) {
+    state.payPeriod = period;
+    renderProfile();
+    renderManagement();
+  }
+
+  function periodToggleHtml() {
+    const opt = (val, label) => `<button type="button" class="${state.payPeriod === val ? "active" : ""}" onclick="App.setPayPeriod('${val}')">${label}</button>`;
+    return `<div class="period-toggle">${opt("full", "Весь месяц")}${opt("first", "1–15")}${opt("second", "16–конец")}</div>`;
   }
 
   // ищет у сотрудника другую смену в этот же день, пересекающуюся по времени
@@ -169,15 +241,20 @@ const App = (() => {
     );
   }
 
-  // ---------------- CSV (универсальный формат: запятая + кавычки, чтобы
-  // открывалось таблицей в любом приложении, а не в одну строку) ----------------
+  // ---------------- CSV ----------------
+  // разделитель — точка с запятой (это то, что Excel с русской локалью
+  // по умолчанию понимает как разделитель столбцов при обычном открытии
+  // файла двойным кликом; запятая в такой локали — десятичный разделитель,
+  // из-за чего всё "слипается" в один столбец/одну строку).
+  // Перевод строки — \r\n (CRLF), иначе некоторые программы на Windows
+  // (например старый Блокнот) не показывают переносы строк вообще.
   function csvField(v) {
     const s = String(v ?? "");
-    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    if (/[";\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
     return s;
   }
   function csvRow(fields) {
-    return fields.map(csvField).join(",") + "\n";
+    return fields.map(csvField).join(";") + "\r\n";
   }
 
   // ---------------- ЭКСПОРТ ФАЙЛОВ (через Telegram, не через <a download>) ----------------
@@ -193,13 +270,54 @@ const App = (() => {
   }
 
   // ---------------- ТЕМА ----------------
-  function toggleTheme() {
-    document.body.classList.toggle("dark-theme");
-    document.body.classList.toggle("light-theme");
-    localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light");
+  // Раньше при переключении темы к body ДОБАВлялся класс, но старый (заданный
+  // прямо в HTML или оставшийся с прошлого раза) не убирался — из-за этого
+  // на body могли одновременно висеть и light-theme, и dark-theme. А главное:
+  // Telegram красит нативный "хром" вокруг приложения (шапку, фон,
+  // системные элементы вроде <select> и <input type="time">) под ТЕМУ САМОГО
+  // TELEGRAM-клиента, а не под тему нашего приложения — поэтому если в
+  // Telegram включена тёмная тема, а в приложении выбрана светлая, всё
+  // "ломается" визуально. Правим оба момента: жёстко ставим только один
+  // класс и явно перекрашиваем Telegram под текущую тему приложения.
+  const THEME_COLORS = {
+    light: { bg: "#eef0f3", header: "#ffffff", bottom: "#f8f9fc" },
+    dark:  { bg: "#1a1a1e", header: "#2c2c2e", bottom: "#2c2c2e" },
+  };
+
+  function applyTheme(theme) {
+    document.body.classList.remove("light-theme", "dark-theme");
+    document.body.classList.add(theme === "dark" ? "dark-theme" : "light-theme");
+    localStorage.setItem("theme", theme);
+    syncTelegramChrome(theme);
   }
+
+  function toggleTheme() {
+    const isDark = document.body.classList.contains("dark-theme");
+    applyTheme(isDark ? "light" : "dark");
+  }
+
+  // принудительно синхронизирует нативные элементы Telegram (шапку, фон,
+  // цвет нижней системной полосы) и цветовую схему браузерных контролов
+  // с темой приложения — независимо от того, какая тема в самом Telegram
+  function syncTelegramChrome(theme) {
+    document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
+    const tg = window.Telegram?.WebApp;
+    if (!tg) return;
+    const c = THEME_COLORS[theme] || THEME_COLORS.light;
+    try {
+      tg.setHeaderColor?.(c.header);
+      tg.setBackgroundColor?.(c.bg);
+      tg.setBottomBarColor?.(c.bottom);
+    } catch (e) {
+      // старые версии клиента Telegram могут не поддерживать один из методов — не критично
+    }
+  }
+
   (function initTheme() {
-    document.body.classList.add(localStorage.getItem("theme") === "dark" ? "dark-theme" : "light-theme");
+    const theme = localStorage.getItem("theme") === "dark" ? "dark" : "light";
+    document.body.classList.remove("light-theme", "dark-theme");
+    document.body.classList.add(theme === "dark" ? "dark-theme" : "light-theme");
+    document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
   })();
 
   // ---------------- ВКЛАДКИ ----------------
@@ -234,7 +352,7 @@ const App = (() => {
     if (state.month > 11) { state.month = 0; state.year++; }
     if (state.month < 0) { state.month = 11; state.year--; }
     await reloadShifts();
-    state.bonusesFines = state.demo ? [] : await Api.getBonusesFines(state.year, state.month);
+    state.bonusesFines = (state.demo || !state.employee.is_admin) ? [] : await Api.getBonusesFines(state.year, state.month);
     updateMonthLabel();
     renderCalendar();
     renderMyShifts();
@@ -1018,7 +1136,7 @@ const App = (() => {
 
     if (state.demo) return;
 
-    const myShifts = state.shifts.filter((s) => s.employee_id === e.id);
+    const myShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
     document.getElementById("statShifts").textContent = myShifts.length;
     const totalHours = myShifts.reduce((sum, s) => sum + hoursBetween(s.start_time, s.end_time), 0);
     document.getElementById("statHours").textContent = Math.round(totalHours);
@@ -1051,17 +1169,10 @@ const App = (() => {
 
     let rows = pendingRows.concat(confirmedRows);
 
-    const myBF = state.bonusesFines.filter((b) => b.employee_id === e.id);
-    myBF.forEach((b) => {
-      const sign = b.kind === "bonus" ? 1 : -1;
-      total += sign * Number(b.amount);
-      rows.push(`<div class="profile-income-item">
-        <div class="left"><div class="title">${b.kind === "bonus" ? "⭐ Бонус" : "⚠️ Штраф"}</div><div class="desc">${escapeHtml(b.reason || "")}</div></div>
-        <div class="right ${b.kind}">${sign > 0 ? "+" : "-"}${Number(b.amount).toLocaleString("ru-RU")} ₽</div>
-      </div>`);
-    });
+    // Бонусы и штрафы сотруднику не показываются нигде в его профиле —
+    // их видит только администратор, в разделе «Управление».
 
-    incomeContainer.innerHTML = rows.join("") || `<div class="center-msg">Пока нет данных за месяц</div>`;
+    incomeContainer.innerHTML = periodToggleHtml() + (rows.join("") || `<div class="center-msg">Пока нет данных за выбранный период</div>`);
     document.getElementById("profileTotal").textContent = `${Math.round(total).toLocaleString("ru-RU")} ₽`;
 
     if (state.notif) {
@@ -1154,10 +1265,15 @@ const App = (() => {
 
     let fund = 0, totalShiftsAll = 0;
 
+    // бонусы/штрафы привязаны к месяцу целиком (не к конкретному дню), поэтому
+    // учитываем их только при просмотре "за весь месяц" — при делении на
+    // половины они не дублируются и не теряются, а видны только в полном виде
+    const includeBF = state.payPeriod === "full";
+
     const rows = state.employees.filter((e) => e.is_active !== false).map((e) => {
-      const empShifts = state.shifts.filter((s) => s.employee_id === e.id);
+      const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
       const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
-      const bf = state.bonusesFines.filter((b) => b.employee_id === e.id);
+      const bf = includeBF ? state.bonusesFines.filter((b) => b.employee_id === e.id) : [];
       const bonuses = bf.filter((b) => b.kind === "bonus");
       const fines = bf.filter((b) => b.kind === "fine");
       const bonusSum = bonuses.reduce((s, b) => s + Number(b.amount), 0);
@@ -1183,7 +1299,7 @@ const App = (() => {
       </div>`;
     }).join("");
 
-    listEl.innerHTML = rows || `<div class="center-msg">Нет сотрудников</div>`;
+    listEl.innerHTML = periodToggleHtml() + (rows || `<div class="center-msg">Нет сотрудников</div>`);
     document.getElementById("totalFund").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
     document.getElementById("totalFundSub").innerHTML = `${state.employees.length} сотрудников • <span>${totalShiftsAll}</span> смен за месяц`;
     document.getElementById("financeGrandTotal").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
@@ -1197,39 +1313,103 @@ const App = (() => {
       </div>`).join("");
   }
 
+  // ---------------- ТАРИФЫ ПВЗ (гибкие правила по времени) ----------------
+  // Черновик правил открытой модалки тарифов — редактируется построчно
+  // (добавить/убрать/поменять) и сохраняется целиком одной кнопкой.
+  let _rateDraft = [];
+  let _rateDraftPvzId = null;
+
   function openPvzRateModal(pvzId) {
     const pvz = state.pvz.find((p) => p.id === pvzId);
     if (!pvz) return;
+    _rateDraftPvzId = pvzId;
+    const existing = state.pvzPayRules[pvzId] || [];
+    _rateDraft = existing.length
+      ? existing.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((r) => ({ ...r }))
+      : [{
+          start_time: (pvz.default_start_time || "09:00").slice(0, 5),
+          end_time: (pvz.default_end_time || "21:00").slice(0, 5),
+          rate_type: "fixed",
+          amount: pvz.full_shift_pay || 3000,
+          label: "Полная смена",
+        }];
+    renderRateModal();
+  }
+
+  function renderRateModal() {
+    const pvz = state.pvz.find((p) => p.id === _rateDraftPvzId);
+    if (!pvz) return;
+
+    const rowsHtml = _rateDraft.map((r, i) => `
+      <div class="pay-rule-row">
+        <div class="pay-rule-row-top">
+          <input type="text" placeholder="Название (напр. Утро, Вечер)" value="${escapeHtml(r.label || "")}" onchange="App._updateRateDraft(${i}, 'label', this.value)">
+          <button type="button" class="pay-rule-remove" onclick="App._removeRateRow(${i})" title="Удалить правило">✕</button>
+        </div>
+        <div class="pay-rule-row-grid">
+          <div><label>С</label><input type="time" value="${(r.start_time || "").slice(0,5)}" onchange="App._updateRateDraft(${i}, 'start_time', this.value)"></div>
+          <div><label>До</label><input type="time" value="${(r.end_time || "").slice(0,5)}" onchange="App._updateRateDraft(${i}, 'end_time', this.value)"></div>
+          <div>
+            <label>Тип</label>
+            <select onchange="App._updateRateDraft(${i}, 'rate_type', this.value)">
+              <option value="fixed" ${r.rate_type === "fixed" ? "selected" : ""}>Сумма за смену целиком</option>
+              <option value="hourly" ${r.rate_type === "hourly" ? "selected" : ""}>₽ за час</option>
+            </select>
+          </div>
+          <div><label>${r.rate_type === "hourly" ? "₽/час" : "Сумма, ₽"}</label><input type="number" min="0" value="${r.amount}" onchange="App._updateRateDraft(${i}, 'amount', this.value)"></div>
+        </div>
+      </div>
+    `).join("");
+
     openModal(`Тарифы: ${escapeHtml(pvz.name)}`, `
-      <label>Полная смена, ₽</label>
-      <input type="number" id="f_full" value="${pvz.full_shift_pay}" min="0">
-      <label>"Вечерняя" смена, ₽</label>
-      <input type="number" id="f_evening" value="${pvz.evening_pay}" min="0">
-      <label>С какого часа смена считается вечерней (0–23)</label>
-      <input type="number" id="f_threshold" value="${pvz.evening_threshold}" min="0" max="23">
-      <label>Промежуточная смена (не в открытие и не вечером), ₽/час</label>
-      <input type="number" id="f_mid" value="${pvz.mid_hourly_rate ?? 250}" min="0">
-      <label>Стандартное начало смены (это время = "полная смена")</label>
-      <input type="time" id="f_dstart" value="${pvz.default_start_time?.slice(0,5) || "09:00"}">
-      <label>Стандартный конец смены</label>
-      <input type="time" id="f_dend" value="${pvz.default_end_time?.slice(0,5) || "21:00"}">
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; line-height:1.5;">
+        «Сумма целиком» — платится, только если смена ТОЧНО совпадает с этим временем (например, вся полная смена открытие–закрытие). «₽ за час» — платится за любую часть смены, попавшую в этот промежуток, поэтому подходит и для смены на 1 час, и на 2 часа, и на любой другой кусок времени. Время смены, не попавшее ни в одно правило, считается по ставке по умолчанию внизу.
+      </div>
+      <div id="payRulesList">${rowsHtml || '<div class="center-msg">Пока нет ни одного тарифа</div>'}</div>
+      <button type="button" class="add-shift-btn" onclick="App._addRateRow()">➕ Добавить тариф</button>
+      <label style="margin-top:14px;">Ставка по умолчанию для непокрытого времени, ₽/час</label>
+      <input type="number" id="f_default_hourly" min="0" value="${pvz.mid_hourly_rate ?? 250}">
+      <label>Стандартное открытие ПВЗ <span style="font-weight:400;">(используется при массовом создании свободных смен на месяц)</span></label>
+      <input type="time" id="f_dstart" value="${(pvz.default_start_time || "09:00").slice(0,5)}">
+      <label>Стандартное закрытие</label>
+      <input type="time" id="f_dend" value="${(pvz.default_end_time || "21:00").slice(0,5)}">
     `, async () => {
-      const full_shift_pay = Number(document.getElementById("f_full").value);
-      const evening_pay = Number(document.getElementById("f_evening").value);
-      const evening_threshold = Number(document.getElementById("f_threshold").value);
-      const mid_hourly_rate = Number(document.getElementById("f_mid").value);
+      if (_rateDraft.length === 0) return toast("Добавьте хотя бы один тариф");
+      for (const r of _rateDraft) {
+        if (!r.start_time || !r.end_time) return toast("Заполните время «с» и «до» во всех тарифах");
+        if (r.start_time >= r.end_time) return toast("Время «до» должно быть позже времени «с»");
+        if (!r.amount || Number(r.amount) <= 0) return toast("Укажите сумму/ставку во всех тарифах");
+      }
+      const default_hourly = Number(document.getElementById("f_default_hourly").value) || 0;
       const default_start_time = document.getElementById("f_dstart").value;
       const default_end_time = document.getElementById("f_dend").value;
-      if (!full_shift_pay || full_shift_pay <= 0) return toast("Введите сумму за полную смену");
       try {
-        await Api.updatePvz(pvzId, { full_shift_pay, evening_pay, evening_threshold, mid_hourly_rate, default_start_time, default_end_time });
+        await Api.updatePvz(pvz.id, { mid_hourly_rate: default_hourly, default_start_time, default_end_time });
+        await Api.replacePayRules(pvz.id, _rateDraft);
         toast("✅ Тарифы обновлены");
         state.pvz = await Api.getPvzList();
+        await reloadPayRules();
         renderManagement();
         renderCalendar();
         renderProfile();
       } catch (e) { toast("🚫 " + e.message); }
     });
+  }
+
+  function _updateRateDraft(i, field, value) {
+    if (!_rateDraft[i]) return;
+    _rateDraft[i][field] = value;
+    renderRateModal();
+  }
+
+  function _addRateRow() {
+    _rateDraft.push({ start_time: "09:00", end_time: "18:00", rate_type: "hourly", amount: 200, label: "" });
+    renderRateModal();
+  }
+
+  function _removeRateRow(i) {
+    _rateDraft.splice(i, 1);
+    renderRateModal();
   }
 
   function openBonusFineModal(kind) {
@@ -1298,29 +1478,34 @@ const App = (() => {
     }
   }
 
+  function periodSuffix() {
+    return state.payPeriod === "first" ? "_1-15" : state.payPeriod === "second" ? "_16-конец" : "";
+  }
+
   function exportPayroll() {
+    const includeBF = state.payPeriod === "full";
     let csv = csvRow(["Сотрудник", "Смены", "Сумма по тарифам", "Бонусы", "Штрафы", "Итого"]);
     state.employees.filter((e) => e.is_active !== false).forEach((e) => {
-      const empShifts = state.shifts.filter((s) => s.employee_id === e.id);
+      const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
       const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
-      const bf = state.bonusesFines.filter((b) => b.employee_id === e.id);
+      const bf = includeBF ? state.bonusesFines.filter((b) => b.employee_id === e.id) : [];
       const bonusSum = bf.filter((b) => b.kind === "bonus").reduce((s, b) => s + Number(b.amount), 0);
       const fineSum = bf.filter((b) => b.kind === "fine").reduce((s, b) => s + Number(b.amount), 0);
       const total = base + bonusSum - fineSum;
       csv += csvRow([e.full_name, empShifts.length, Math.round(base), bonusSum, fineSum, Math.round(total)]);
     });
-    deliverCsv(csv, `payroll_${state.year}_${state.month + 1}.csv`);
+    deliverCsv(csv, `payroll_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
   }
 
   function exportShiftsDetailed() {
     let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
-    state.shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
+    state.shifts.filter((s) => inPayPeriod(s.shift_date, state.payPeriod)).slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
       const empName = s.employees?.full_name || "";
       const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
       csv += csvRow([s.shift_date, pvz?.name || "", empName, s.start_time?.slice(0,5), s.end_time?.slice(0,5), s.status, amount]);
     });
-    deliverCsv(csv, `смены_${state.year}_${state.month + 1}.csv`);
+    deliverCsv(csv, `смены_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
   }
 
   // экспорт произвольного (в т.ч. прошлого) месяца, не трогая текущий вид календаря
@@ -1337,7 +1522,7 @@ const App = (() => {
         const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
         csv += csvRow([s.shift_date, pvz?.name || "", empName, s.start_time?.slice(0,5), s.end_time?.slice(0,5), s.status, amount]);
       });
-      csv += "\n" + csvRow(["Бонусы/Штрафы"]);
+      csv += "\r\n" + csvRow(["Бонусы/Штрафы"]);
       csv += csvRow(["Сотрудник", "Тип", "Сумма", "Причина"]);
       bf.forEach((b) => {
         const emp = state.employees.find((e) => e.id === b.employee_id);
@@ -1403,8 +1588,9 @@ const App = (() => {
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
     openEmployeeScheduleModal, grantAccess, openChat,
     changeAvatar, _pickAvatar, openAvatarFrameModal, togglePush, saveNotificationSettings,
-    openPvzRateModal, openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
-    exportPayroll, exportShiftsDetailed, exportMonth,
+    openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
+    openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
+    exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     closeModal,
   };
 })();

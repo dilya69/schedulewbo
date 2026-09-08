@@ -89,6 +89,33 @@ const Api = (() => {
     if (error) throw error;
   }
 
+  // ---------- ГИБКИЕ ТАРИФЫ ПВЗ (по времени) ----------
+  async function getAllPayRules() {
+    const { data, error } = await client.from("pvz_pay_rules").select("*").order("sort_order");
+    if (error) throw error;
+    return data;
+  }
+
+  // полностью заменяет набор тарифов для одного ПВЗ (проще и надёжнее,
+  // чем частичные update/insert/delete по отдельности — админ всегда
+  // сохраняет весь список целиком через модалку тарифов)
+  async function replacePayRules(pvzId, rules) {
+    const { error: delErr } = await client.from("pvz_pay_rules").delete().eq("pvz_id", pvzId);
+    if (delErr) throw delErr;
+    if (!rules || rules.length === 0) return;
+    const rows = rules.map((r, i) => ({
+      pvz_id: pvzId,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      rate_type: r.rate_type,
+      amount: r.amount,
+      label: r.label || null,
+      sort_order: i,
+    }));
+    const { error: insErr } = await client.from("pvz_pay_rules").insert(rows);
+    if (insErr) throw insErr;
+  }
+
   // массово создаёт свободные смены на весь месяц для всех ПВЗ,
   // но только для тех дней/ПВЗ, где ещё вообще нет ни одной смены
   async function bulkCreateFreeMonth(year, month) {
@@ -329,6 +356,7 @@ const Api = (() => {
   return {
     login, getCurrentEmployee, isReady, sendFileToMe,
     getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
+    getAllPayRules, replacePayRules,
     getShiftsForMonth, upsertShift, deleteShift,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,

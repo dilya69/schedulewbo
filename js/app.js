@@ -15,8 +15,8 @@ const App = (() => {
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
     pvz: [],
-    pvzPayRules: {}, // { [pvz_id]: [ {start_time,end_time,rate_type,amount,label}, ... ] }
-    payPeriod: "full", // 'full' | 'first' (1–15) | 'second' (16–конец) — для просмотра ЗП по половинам месяца
+    pvzPayRules: {},   // { [pvz_id]: [ {start_time,end_time,rate_type,amount,label}, ... ] }
+    payPeriod: "full",  // 'full' | 'first' (1–15) | 'second' (16–конец) — для просмотра ЗП по половинам месяца
     shifts: [],
     employees: [],
     requests: [],
@@ -298,7 +298,7 @@ const App = (() => {
   // класс и явно перекрашиваем Telegram под текущую тему приложения.
   const THEME_COLORS = {
     light: { bg: "#eef0f3", header: "#ffffff", bottom: "#f8f9fc" },
-    dark: { bg: "#1a1a1e", header: "#2c2c2e", bottom: "#2c2c2e" },
+    dark:  { bg: "#1a1a1e", header: "#2c2c2e", bottom: "#2c2c2e" },
   };
 
   function applyTheme(theme) {
@@ -353,6 +353,7 @@ const App = (() => {
     document.getElementById("adminToggle").classList.toggle("active", state.isAdminView);
     applyAdminClass();
     renderCalendar();
+    renderRequests();
     if (!state.isAdminView) {
       const active = document.querySelector(".tab-content.active");
       if (active?.id === "tab5") switchTab("tab1");
@@ -920,7 +921,10 @@ const App = (() => {
     const badge = document.getElementById("requestsBadge");
     const rejectAllBtn = document.getElementById("rejectAllBtn");
     if (!container) return;
-    if (!state.employee.is_admin || state.demo) { if (badge) badge.style.display = "none"; return; }
+    // бейдж с числом заявок — админский индикатор: показываем его только
+    // когда человек реально админ И сейчас смотрит в админском режиме
+    // (не в режиме предпросмотра "как обычный сотрудник")
+    if (!state.employee.is_admin || !state.isAdminView || state.demo) { if (badge) badge.style.display = "none"; return; }
 
     if (state.requests.length === 0) {
       container.innerHTML = `<div class="center-msg">Нет активных заявок</div>`;

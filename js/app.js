@@ -7,6 +7,40 @@ const App = (() => {
   const AVATAR_COLORS = ["#007aff","#8e44ad","#e67e22","#e91e63","#8bc34a","#2e7d32","#ff9500","#34c759"];
   const MAX_NAMES_PER_DAY = 2;
 
+  // ---------------- ТЕМЫ ----------------
+  const THEMES = [
+    { id: "sand",        name: "Песочно-коричневая", dark: false },
+    { id: "mint",        name: "Мятно-зелёная",      dark: false },
+    { id: "indigo",      name: "Индиго",             dark: false },
+    { id: "lime",        name: "Графит + лайм",      dark: false },
+    { id: "lavender",    name: "Лавандовая",         dark: false },
+    { id: "dark-coal",   name: "Угольно-оранжевая",  dark: true  },
+    { id: "dark-ocean",  name: "Тёмная бирюза",      dark: true  },
+    { id: "dark-violet", name: "Тёмный фиолет",      dark: true  },
+    { id: "dark-forest", name: "Тёмно-зелёная",      dark: true  },
+    { id: "dark-neon",   name: "Тёмно-розовая",      dark: true  },
+  ];
+
+  const THEME_PREVIEW = {
+    "sand":        { bg: "#f3ece1", card: "#fffdf9", accent: "#a0522d" },
+    "mint":        { bg: "#eaf4ec", card: "#ffffff", accent: "#2e8b57" },
+    "indigo":      { bg: "#eaecf7", card: "#ffffff", accent: "#3f51b5" },
+    "lime":        { bg: "#eef0f1", card: "#ffffff", accent: "#84cc16" },
+    "lavender":    { bg: "#f1edfa", card: "#ffffff", accent: "#7c5cff" },
+    "dark-coal":   { bg: "#1a1410", card: "#241c16", accent: "#ff8c1a" },
+    "dark-ocean":  { bg: "#0c1a1c", card: "#132528", accent: "#2dd4bf" },
+    "dark-violet": { bg: "#14101f", card: "#1e1830", accent: "#a78bfa" },
+    "dark-forest": { bg: "#0e1a12", card: "#16261b", accent: "#4ade80" },
+    "dark-neon":   { bg: "#1a0e15", card: "#26141f", accent: "#f472b6" },
+  };
+
+  const DEFAULT_THEME = "sand";
+
+  const THEME_COLORS = {
+    light: { bg: "#eef0f3", header: "#ffffff", bottom: "#f8f9fc" },
+    dark:  { bg: "#1a1a1e", header: "#2c2c2e", bottom: "#2c2c2e" },
+  };
+
   let state = {
     demo: false,
     employee: null,
@@ -15,8 +49,8 @@ const App = (() => {
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
     pvz: [],
-    pvzPayRules: {},   // { [pvz_id]: [ {start_time,end_time,rate_type,amount,label}, ... ] }
-    payPeriod: "full",  // 'full' | 'first' (1–15) | 'second' (16–конец) — для просмотра ЗП по половинам месяца
+    pvzPayRules: {},
+    payPeriod: "full",
     shifts: [],
     employees: [],
     requests: [],
@@ -32,9 +66,7 @@ const App = (() => {
       state.demo = !!result.demo;
       state.employee = result.employee || demoEmployee();
 
-      // tg.WebApp к этому моменту уже точно готов (ready()/expand() вызваны в Api.login) —
-      // самое надёжное место, чтобы перекрасить нативный Telegram под тему приложения
-      syncTelegramChrome(document.body.classList.contains("dark-theme") ? "dark" : "light");
+      syncTelegramChrome(isDarkTheme(getCurrentTheme()) ? "dark" : "light");
 
       if (state.demo) toast("⚠️ Демо-режим: нет соединения с Supabase, данные не сохраняются");
 
@@ -65,7 +97,6 @@ const App = (() => {
     await reloadPayRules();
     await reloadShifts();
     state.employees = await Api.getEmployees();
-    // бонусы/штрафы видит только администратор — обычному сотруднику их даже не запрашиваем
     state.bonusesFines = state.employee.is_admin ? await Api.getBonusesFines(state.year, state.month) : [];
     state.myRequests = await Api.getMyPendingRequests();
     if (state.employee.is_admin) {
@@ -143,26 +174,52 @@ const App = (() => {
     return `rgba(${r},${g},${b},${alpha})`;
   }
 
-  // Сумма за смену: если задана custom_amount — используется она.
-  // Иначе считается по гибким тарифам ПВЗ (state.pvzPayRules).
-  //
-  // Логика: ставка выбирается по ВРЕМЕНИ НАЧАЛА смены и применяется
-  // целиком ко всей продолжительности смены (а не складывается по кускам
-  // пересечения с разными правилами — раньше было именно так, и это было
-  // ошибкой: смена 9–17, которая одновременно попадала в правила "9–13",
-  // "9–15" и "9–17", считалась по всем трём сразу, а сумма улетала в космос).
-  //
-  // Правило типа "fixed" применяется, только если смена ТОЧНО совпадает по
-  // времени начала И конца — это отдельная, более высокоприоритетная сумма
-  // за смену целиком (например "полная смена — 3000 ₽" или "с 13 до 22 —
-  // 2200 ₽ фикс"), не зависящая от количества часов.
-  //
-  // Правило типа "hourly" — это диапазон ВРЕМЕНИ НАЧАЛА смены (не времени
-  // суток само по себе): если смена стартовала внутри этого диапазона,
-  // вся её продолжительность оплачивается по указанной ставке в час. Если
-  // подходит несколько правил сразу (диапазоны заданы с пересечением,
-  // например "13–21" и "17–21" одновременно) — побеждает самое узкое
-  // (наиболее точное) из них.
+  // ---------------- ТЕМА ----------------
+  function getCurrentTheme() {
+    return localStorage.getItem("theme") || DEFAULT_THEME;
+  }
+
+  function isDarkTheme(themeId) {
+    const t = THEMES.find(x => x.id === themeId);
+    return t ? t.dark : false;
+  }
+
+  function applyTheme(themeId) {
+    const allClasses = THEMES.map(t => `theme-${t.id}`);
+    document.body.classList.remove(...allClasses, "light-theme", "dark-theme");
+    const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+    document.body.classList.add(`theme-${theme.id}`);
+    localStorage.setItem("theme", theme.id);
+    syncTelegramChrome(theme.dark ? "dark" : "light");
+  }
+
+  function setTheme(themeId) {
+    applyTheme(themeId);
+    if (document.getElementById("modalOverlay").classList.contains("show")) {
+      openThemePickerModal();
+    }
+  }
+
+  function syncTelegramChrome(theme) {
+    document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
+    const tg = window.Telegram?.WebApp;
+    if (!tg) return;
+    const c = THEME_COLORS[theme] || THEME_COLORS.light;
+    try {
+      tg.setHeaderColor?.(c.header);
+      tg.setBackgroundColor?.(c.bg);
+      tg.setBottomBarColor?.(c.bottom);
+    } catch (e) {}
+  }
+
+  (function initTheme() {
+    const themeId = localStorage.getItem("theme") || DEFAULT_THEME;
+    const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+    document.body.classList.add(`theme-${theme.id}`);
+    document.documentElement.style.colorScheme = theme.dark ? "dark" : "light";
+  })();
+
+  // ---------------- СМЕНА / СТАВКА ----------------
   function shiftAmount(shift, pvz) {
     if (shift.custom_amount !== undefined && shift.custom_amount !== null && shift.custom_amount !== "") {
       return Number(shift.custom_amount);
@@ -180,14 +237,9 @@ const App = (() => {
     if (e0 <= s0) return 0;
     const hours = (e0 - s0) / 60;
 
-    // 1) точное совпадение с "фиксированной суммой" — наивысший приоритет,
-    // не зависит от часов, действует на смену целиком
     const exact = rules.find((r) => r.rate_type === "fixed" && toMin(r.start_time) === s0 && toMin(r.end_time) === e0);
     if (exact) return Number(exact.amount);
 
-    // 2) почасовая ставка — выбираем ОДНО правило по времени начала смены
-    // (не суммируем несколько пересекающихся!); при пересечении диапазонов
-    // побеждает самый узкий (самый точный) из подходящих
     const candidates = rules
       .filter((r) => r.rate_type === "hourly")
       .map((r) => ({ ...r, _rs: toMin(r.start_time), _re: toMin(r.end_time) }))
@@ -198,12 +250,9 @@ const App = (() => {
       return hours * Number(candidates[0].amount);
     }
 
-    // 3) начало смены не попало ни в одно правило — ставка по умолчанию
     return hours * Number(pvz.mid_hourly_rate || 0);
   }
 
-  // старая схема (полная/вечерняя/почасовая), используется только как запасной
-  // вариант, если у ПВЗ почему-то ещё нет ни одного тарифа в pvzPayRules
   function legacyShiftAmount(shift, pvz) {
     const startStr = (shift.start_time || "").slice(0, 5);
     const endStr = (shift.end_time || "").slice(0, 5);
@@ -216,7 +265,6 @@ const App = (() => {
     return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 0);
   }
 
-  // ---------------- ПЕРИОД ВЫПЛАТЫ ЗП (весь месяц / 1–15 / 16–конец) ----------------
   function inPayPeriod(dateStr, period) {
     if (!period || period === "full") return true;
     const day = Number(String(dateStr).slice(8, 10));
@@ -236,8 +284,6 @@ const App = (() => {
     return `<div class="period-toggle">${opt("full", "Весь месяц")}${opt("first", "1–15")}${opt("second", "16–конец")}</div>`;
   }
 
-  // ищет у сотрудника другую смену в этот же день, пересекающуюся по времени
-  // (чтобы не поставить одного и того же человека в два места одновременно)
   function findConflict(employeeId, date, start, end, excludeShiftId) {
     if (!employeeId || !date || !start || !end) return null;
     return state.shifts.find((s) => {
@@ -258,13 +304,6 @@ const App = (() => {
   }
 
   // ---------------- CSV ----------------
-  // Разделитель — табуляция, перевод строки — \r\n. Кодировка файла (важнее
-  // самого разделителя!) переводится в UTF-16LE с BOM на стороне edge-функции
-  // send-file — это "родной" юникод-формат самого Excel, и именно в этой
-  // связке (UTF-16LE + таб) Excel распознаёт кириллицу и режет по столбцам
-  // без сбоев на любой версии, включая мобильную — в отличие от UTF-8,
-  // который часть Excel-клиентов читает как Windows-1251 (кракозябры),
-  // независимо от BOM или разделителя.
   function csvField(v) {
     const s = String(v ?? "");
     if (/["\t\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
@@ -274,7 +313,6 @@ const App = (() => {
     return fields.map(csvField).join("\t") + "\r\n";
   }
 
-  // ---------------- ЭКСПОРТ ФАЙЛОВ (через Telegram, не через <a download>) ----------------
   async function deliverCsv(csv, filename) {
     if (state.demo) { toast("В демо-режиме экспорт недоступен"); return; }
     try {
@@ -285,57 +323,6 @@ const App = (() => {
       toast("🚫 Не удалось отправить файл: " + e.message);
     }
   }
-
-  // ---------------- ТЕМА ----------------
-  // Раньше при переключении темы к body ДОБАВлялся класс, но старый (заданный
-  // прямо в HTML или оставшийся с прошлого раза) не убирался — из-за этого
-  // на body могли одновременно висеть и light-theme, и dark-theme. А главное:
-  // Telegram красит нативный "хром" вокруг приложения (шапку, фон,
-  // системные элементы вроде <select> и <input type="time">) под ТЕМУ САМОГО
-  // TELEGRAM-клиента, а не под тему нашего приложения — поэтому если в
-  // Telegram включена тёмная тема, а в приложении выбрана светлая, всё
-  // "ломается" визуально. Правим оба момента: жёстко ставим только один
-  // класс и явно перекрашиваем Telegram под текущую тему приложения.
-  const THEME_COLORS = {
-    light: { bg: "#eef0f3", header: "#ffffff", bottom: "#f8f9fc" },
-    dark:  { bg: "#1a1a1e", header: "#2c2c2e", bottom: "#2c2c2e" },
-  };
-
-  function applyTheme(theme) {
-    document.body.classList.remove("light-theme", "dark-theme");
-    document.body.classList.add(theme === "dark" ? "dark-theme" : "light-theme");
-    localStorage.setItem("theme", theme);
-    syncTelegramChrome(theme);
-  }
-
-  function toggleTheme() {
-    const isDark = document.body.classList.contains("dark-theme");
-    applyTheme(isDark ? "light" : "dark");
-  }
-
-  // принудительно синхронизирует нативные элементы Telegram (шапку, фон,
-  // цвет нижней системной полосы) и цветовую схему браузерных контролов
-  // с темой приложения — независимо от того, какая тема в самом Telegram
-  function syncTelegramChrome(theme) {
-    document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
-    const tg = window.Telegram?.WebApp;
-    if (!tg) return;
-    const c = THEME_COLORS[theme] || THEME_COLORS.light;
-    try {
-      tg.setHeaderColor?.(c.header);
-      tg.setBackgroundColor?.(c.bg);
-      tg.setBottomBarColor?.(c.bottom);
-    } catch (e) {
-      // старые версии клиента Telegram могут не поддерживать один из методов — не критично
-    }
-  }
-
-  (function initTheme() {
-    const theme = localStorage.getItem("theme") === "dark" ? "dark" : "light";
-    document.body.classList.remove("light-theme", "dark-theme");
-    document.body.classList.add(theme === "dark" ? "dark-theme" : "light-theme");
-    document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
-  })();
 
   // ---------------- ВКЛАДКИ ----------------
   function switchTab(tabId) {
@@ -504,13 +491,10 @@ const App = (() => {
               } else {
                 html += `<button class="chip-pending-dot" title="Откликнуться • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"></button>`;
               }
-            } else if (!state.isAdminView) {
+            } else {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
               html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;
-           } else {
-    const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
-    html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;
-}
+            }
           });
 
           if (dayShifts.length > MAX_NAMES_PER_DAY) {
@@ -542,7 +526,7 @@ const App = (() => {
     container.innerHTML = html;
   }
 
-  // ---------------- ОТКЛИК СОТРУДНИКА НА СВОБОДНУЮ СМЕНУ ----------------
+  // ---------------- ОТКЛИК ----------------
   function openApplyModal(shiftId) {
     const shift = state.shifts.find((s) => s.id === shiftId);
     if (!shift) return;
@@ -594,8 +578,7 @@ const App = (() => {
     document.getElementById("f_apply_time_wrap").style.display = mode === "custom" ? "block" : "none";
   }
 
-  // ---------------- РЕДАКТИРОВАНИЕ СМЕН (АДМИН) ----------------
-  // read-only версия для обычного сотрудника: просто посмотреть, кто работает
+  // ---------------- РЕДАКТИРОВАНИЕ СМЕН ----------------
   function openDayViewModal(pvzId, day) {
     const pvz = state.pvz.find((p) => p.id === pvzId);
     const dayShifts = shiftsForPvzAndDay(pvzId, day);
@@ -736,7 +719,7 @@ const App = (() => {
     }
   }
 
-  // ---------------- ОТКЛИКИ НА КОНКРЕТНУЮ СМЕНУ (АДМИН) ----------------
+  // ---------------- ОТКЛИКИ ----------------
   function openShiftRequestsModal(shiftId) {
     const shift = state.shifts.find((s) => s.id === shiftId);
     const list = state.requests
@@ -841,7 +824,7 @@ const App = (() => {
     }
   }
 
-  // ---------------- ПОИСК СОТРУДНИКА (переиспользуемый виджет) ----------------
+  // ---------------- ВЫБОР СОТРУДНИКА ----------------
   function renderEmpPicker(selectedId) {
     const freeItem = `<div class="emp-picker-item ${!selectedId ? "selected" : ""}" data-always="1" onclick="App._selectEmp(this,'')">
       <span class="dot" style="background:#8e8e93;"></span>🆓 Свободно (без сотрудника)
@@ -921,9 +904,6 @@ const App = (() => {
     const badge = document.getElementById("requestsBadge");
     const rejectAllBtn = document.getElementById("rejectAllBtn");
     if (!container) return;
-    // бейдж с числом заявок — админский индикатор: показываем его только
-    // когда человек реально админ И сейчас смотрит в админском режиме
-    // (не в режиме предпросмотра "как обычный сотрудник")
     if (!state.employee.is_admin || !state.isAdminView || state.demo) { if (badge) badge.style.display = "none"; return; }
 
     if (state.requests.length === 0) {
@@ -1190,9 +1170,6 @@ const App = (() => {
 
     let rows = pendingRows.concat(confirmedRows);
 
-    // Бонусы и штрафы сотруднику не показываются нигде в его профиле —
-    // их видит только администратор, в разделе «Управление».
-
     incomeContainer.innerHTML = periodToggleHtml() + (rows.join("") || `<div class="center-msg">Пока нет данных за выбранный период</div>`);
     document.getElementById("profileTotal").textContent = `${Math.round(total).toLocaleString("ru-RU")} ₽`;
 
@@ -1202,6 +1179,35 @@ const App = (() => {
       document.getElementById("repeatMinutes").value = state.notif.repeat_minutes ?? 15;
       document.getElementById("pushSwitch").classList.toggle("active", state.notif.push_enabled !== false);
     }
+  }
+
+  // ---------------- ВЫБОР ТЕМЫ ----------------
+  function openThemePickerModal() {
+    const current = getCurrentTheme();
+    const tile = (t) => {
+      const c = THEME_PREVIEW[t.id];
+      const active = current === t.id;
+      return `
+        <button type="button" class="theme-tile ${active ? "active" : ""}"
+                onclick="App.setTheme('${t.id}')">
+          <div class="theme-swatch" style="background:${c.bg};">
+            <span class="dot-a" style="background:${c.accent};"></span>
+            <span class="bar" style="background:${c.card};"></span>
+            <span class="dot-a" style="background:${c.accent};"></span>
+          </div>
+          <span class="theme-name">${escapeHtml(t.name)}</span>
+        </button>`;
+    };
+
+    const lightThemes = THEMES.filter(t => !t.dark);
+    const darkThemes  = THEMES.filter(t => t.dark);
+
+    openModal("🎨 Тема приложения", `
+      <div class="theme-section-title">☀️ Светлые</div>
+      <div class="theme-grid">${lightThemes.map(tile).join("")}</div>
+      <div class="theme-section-title">🌙 Тёмные</div>
+      <div class="theme-grid">${darkThemes.map(tile).join("")}</div>
+    `, null);
   }
 
   function openAvatarFrameModal() {
@@ -1276,7 +1282,7 @@ const App = (() => {
     } catch (e) { toast("🚫 " + e.message); }
   }
 
-  // ---------------- УПРАВЛЕНИЕ (АДМИН) ----------------
+  // ---------------- УПРАВЛЕНИЕ ----------------
   function renderManagement() {
     const listEl = document.getElementById("financeEmployeeList");
     if (!listEl) return;
@@ -1285,10 +1291,6 @@ const App = (() => {
     renderPurgeWarning();
 
     let fund = 0, totalShiftsAll = 0;
-
-    // бонусы/штрафы привязаны к месяцу целиком (не к конкретному дню), поэтому
-    // учитываем их только при просмотре "за весь месяц" — при делении на
-    // половины они не дублируются и не теряются, а видны только в полном виде
     const includeBF = state.payPeriod === "full";
 
     const rows = state.employees.filter((e) => e.is_active !== false).map((e) => {
@@ -1334,9 +1336,7 @@ const App = (() => {
       </div>`).join("");
   }
 
-  // ---------------- ТАРИФЫ ПВЗ (гибкие правила по времени) ----------------
-  // Черновик правил открытой модалки тарифов — редактируется построчно
-  // (добавить/убрать/поменять) и сохраняется целиком одной кнопкой.
+  // ---------------- ТАРИФЫ ПВЗ ----------------
   let _rateDraft = [];
   let _rateDraftPvzId = null;
 
@@ -1529,7 +1529,6 @@ const App = (() => {
     deliverCsv(csv, `смены_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
   }
 
-  // экспорт произвольного (в т.ч. прошлого) месяца, не трогая текущий вид календаря
   async function exportMonth(year, month) {
     try {
       const [shifts, bf] = await Promise.all([
@@ -1571,7 +1570,7 @@ const App = (() => {
     }
   }
 
-  // ---------------- УНИВЕРСАЛЬНАЯ МОДАЛКА ----------------
+  // ---------------- МОДАЛКА ----------------
   function openModal(title, bodyHtml, onConfirm, extraAction) {
     const box = document.getElementById("modalBox");
     box.innerHTML = `
@@ -1601,7 +1600,8 @@ const App = (() => {
   });
 
   return {
-    init, toggleTheme, switchTab, toggleAdmin, changeMonth, switchMarket,
+    init, switchTab, toggleAdmin, changeMonth, switchMarket,
+    setTheme, openThemePickerModal,
     openApplyModal, _setApplyMode,
     openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,

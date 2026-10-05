@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>График ПВЗ</title>
+    <title>WBO</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -12,14 +12,18 @@
 
 <div class="app-container" id="app">
 
+    <!-- НОВАЯ ШАПКА -->
     <div class="header">
-        <h1>📋 График <span>ПВЗ</span></h1>
-        <div class="header-actions">
+        <div class="header-left">
+            <button class="admin-toggle-emoji hidden" id="adminToggle" onclick="App.toggleAdmin()" title="Режим админа">⚙️</button>
+        </div>
+        
+        <div class="header-center">
+            <h1 class="wbo-title">WBO</h1>
+        </div>
+        
+        <div class="header-right">
             <button class="theme-toggle" onclick="App.toggleTheme()" title="Сменить тему">🌓</button>
-            <div class="admin-toggle hidden" id="adminToggle" onclick="App.toggleAdmin()">
-                <span>Админ</span>
-                <div class="toggle-switch"></div>
-            </div>
         </div>
     </div>
 
@@ -37,7 +41,16 @@
                     <button onclick="App.changeMonth(1)">▶</button>
                 </div>
 
-                <div id="todaySummary" class="today-summary" style="display:none;"></div>
+                <!-- СВORAЧИВАЕМЫЙ БЛОК "СЕГОДНЯ" -->
+                <details class="today-summary" id="todaySummary" style="display:none;">
+                    <summary class="today-summary-header">
+                        <span>Сегодня</span>
+                        <span class="chevron">▼</span>
+                    </summary>
+                    <div class="today-summary-content" id="todaySummaryContent">
+                        <!-- JS будет вставлять строки сюда -->
+                    </div>
+                </details>
 
                 <div class="market-switcher" id="marketSwitcher">
                     <button class="market-btn active-wb" data-market="wb" onclick="App.switchMarket('wb')">🟣 WB</button>
@@ -228,7 +241,6 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- универсальное модальное окно для форм (добавить/редактировать) -->
 <div class="modal-overlay" id="modalOverlay">
     <div class="modal-box" id="modalBox"></div>
 </div>

@@ -29,7 +29,7 @@ const Api = (() => {
     const body = await res.json();
     if (!res.ok) {
       if (body.error === "not_whitelisted") {
-        throw new Error("Доступ не выдан. Обратитесь к администратору, чтобы вас добавили в список сотрудников.");
+        throw new Error("Диля просто немного поабракадабрит и вернёт доступ");
       }
       throw new Error(body.error || "Ошибка авторизации");
     }

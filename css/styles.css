@@ -1120,3 +1120,4 @@ span.chip-pending-dot { cursor: default; }
 @media (min-width: 421px) and (max-width: 480px) {
     .app-container { height: 92vh; }
 }
+

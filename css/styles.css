@@ -9,37 +9,219 @@ html, body {
     height: 100%;
 }
 
-body.light-theme {
-    --bg: #eef0f3;
-    --card-bg: #ffffff;
-    --text: #1c1c1e;
-    --text-secondary: #8e8e93;
-    --border: #f0f0f3;
-    --card-secondary: #f8f9fc;
-    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-    --nav-bg: #f8f9fc;
-    --input-bg: #f8f9fc;
-    --input-border: #e5e5ea;
-    --profile-bg: linear-gradient(135deg, #f8f9fc, #eef0f3);
+/* ============================================================
+   ТЕМЫ (10 шт). Каждая тема — свой набор переменных.
+   Функциональные цвета (WB/Ozon/pending/approve/reject) —
+   общие для всех тем, они не зависят от оформления.
+   ============================================================ */
+
+/* ---------- СВЕТЛЫЕ ---------- */
+
+/* 1. Песочно-коричневая */
+body.theme-sand {
+    --bg: #f3ece1;
+    --card-bg: #fffdf9;
+    --text: #3a2c1c;
+    --text-secondary: #8f7a5e;
+    --border: #e8dcc6;
+    --card-secondary: #faf4e9;
+    --shadow: 0 10px 40px rgba(160, 82, 45, 0.14);
+    --nav-bg: #faf4e9;
+    --input-bg: #faf4e9;
+    --input-border: #dcc9a8;
+    --profile-bg: linear-gradient(135deg, #faf4e9, #f3ece1);
+    --accent: #a0522d;
+    --accent-contrast: #ffffff;
+    --accent-rgb: 160, 82, 45;
     --calendar-bg-wb: rgba(142, 68, 173, 0.08);
-    --calendar-bg-ozon: rgba(0, 122, 255, 0.08);
+    --calendar-bg-ozon: rgba(160, 82, 45, 0.10);
 }
 
-body.dark-theme {
-    --bg: #1a1a1e;
-    --card-bg: #2c2c2e;
-    --text: #f0f0f3;
-    --text-secondary: #8e8e93;
-    --border: #3a3a3c;
-    --card-secondary: #3a3a3c;
-    --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-    --nav-bg: #2c2c2e;
-    --input-bg: #3a3a3c;
-    --input-border: #4a4a4c;
-    --profile-bg: linear-gradient(135deg, #3a3a3c, #2c2c2e);
-    --calendar-bg-wb: rgba(142, 68, 173, 0.15);
-    --calendar-bg-ozon: rgba(0, 122, 255, 0.15);
+/* 2. Мятно-зелёная */
+body.theme-mint {
+    --bg: #eaf4ec;
+    --card-bg: #ffffff;
+    --text: #15281c;
+    --text-secondary: #5f8069;
+    --border: #cfe6d4;
+    --card-secondary: #f2f9f4;
+    --shadow: 0 10px 40px rgba(46, 139, 87, 0.14);
+    --nav-bg: #f2f9f4;
+    --input-bg: #f2f9f4;
+    --input-border: #bcdcc4;
+    --profile-bg: linear-gradient(135deg, #f2f9f4, #eaf4ec);
+    --accent: #2e8b57;
+    --accent-contrast: #ffffff;
+    --accent-rgb: 46, 139, 87;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.08);
+    --calendar-bg-ozon: rgba(46, 139, 87, 0.10);
 }
+
+/* 3. Индиго */
+body.theme-indigo {
+    --bg: #eaecf7;
+    --card-bg: #ffffff;
+    --text: #151a33;
+    --text-secondary: #6a7290;
+    --border: #d3d8ee;
+    --card-secondary: #f2f4fc;
+    --shadow: 0 10px 40px rgba(63, 81, 181, 0.15);
+    --nav-bg: #f2f4fc;
+    --input-bg: #f2f4fc;
+    --input-border: #c3cae8;
+    --profile-bg: linear-gradient(135deg, #f2f4fc, #eaecf7);
+    --accent: #3f51b5;
+    --accent-contrast: #ffffff;
+    --accent-rgb: 63, 81, 181;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.08);
+    --calendar-bg-ozon: rgba(63, 81, 181, 0.10);
+}
+
+/* 4. Графит + лайм */
+body.theme-lime {
+    --bg: #eef0f1;
+    --card-bg: #ffffff;
+    --text: #161a1c;
+    --text-secondary: #6d7579;
+    --border: #dce1e3;
+    --card-secondary: #f4f6f7;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+    --nav-bg: #f4f6f7;
+    --input-bg: #f4f6f7;
+    --input-border: #ccd3d6;
+    --profile-bg: linear-gradient(135deg, #f4f6f7, #eef0f1);
+    --accent: #84cc16;
+    --accent-contrast: #1a2600;
+    --accent-rgb: 132, 204, 22;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.08);
+    --calendar-bg-ozon: rgba(132, 204, 22, 0.12);
+}
+
+/* 5. Лавандовая */
+body.theme-lavender {
+    --bg: #f1edfa;
+    --card-bg: #ffffff;
+    --text: #221a3a;
+    --text-secondary: #7c719a;
+    --border: #e0d8f2;
+    --card-secondary: #f7f3fd;
+    --shadow: 0 10px 40px rgba(124, 92, 255, 0.18);
+    --nav-bg: #f7f3fd;
+    --input-bg: #f7f3fd;
+    --input-border: #d2c5ec;
+    --profile-bg: linear-gradient(135deg, #f7f3fd, #f1edfa);
+    --accent: #7c5cff;
+    --accent-contrast: #ffffff;
+    --accent-rgb: 124, 92, 255;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.08);
+    --calendar-bg-ozon: rgba(124, 92, 255, 0.10);
+}
+
+/* ---------- ТЁМНЫЕ ---------- */
+
+/* 6. Угольно-оранжевая */
+body.theme-dark-coal {
+    --bg: #1a1410;
+    --card-bg: #241c16;
+    --text: #f5ede3;
+    --text-secondary: #a89279;
+    --border: #3a2e22;
+    --card-secondary: #2e2419;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    --nav-bg: #2e2419;
+    --input-bg: #2e2419;
+    --input-border: #4a3a28;
+    --profile-bg: linear-gradient(135deg, #2e2419, #241c16);
+    --accent: #ff8c1a;
+    --accent-contrast: #1a1410;
+    --accent-rgb: 255, 140, 26;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.15);
+    --calendar-bg-ozon: rgba(255, 140, 26, 0.15);
+}
+
+/* 7. Тёмная бирюза */
+body.theme-dark-ocean {
+    --bg: #0c1a1c;
+    --card-bg: #132528;
+    --text: #e3f2f1;
+    --text-secondary: #7ba5a1;
+    --border: #1f3a3d;
+    --card-secondary: #1a3033;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
+    --nav-bg: #1a3033;
+    --input-bg: #1a3033;
+    --input-border: #2c4a4e;
+    --profile-bg: linear-gradient(135deg, #1a3033, #132528);
+    --accent: #2dd4bf;
+    --accent-contrast: #0c1a1c;
+    --accent-rgb: 45, 212, 191;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.15);
+    --calendar-bg-ozon: rgba(45, 212, 191, 0.15);
+}
+
+/* 8. Тёмный фиолет */
+body.theme-dark-violet {
+    --bg: #14101f;
+    --card-bg: #1e1830;
+    --text: #ece7f7;
+    --text-secondary: #8c82a8;
+    --border: #2e2745;
+    --card-secondary: #261f3a;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    --nav-bg: #261f3a;
+    --input-bg: #261f3a;
+    --input-border: #3d3358;
+    --profile-bg: linear-gradient(135deg, #261f3a, #1e1830);
+    --accent: #a78bfa;
+    --accent-contrast: #14101f;
+    --accent-rgb: 167, 139, 250;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.20);
+    --calendar-bg-ozon: rgba(167, 139, 250, 0.15);
+}
+
+/* 9. Тёмно-зелёная */
+body.theme-dark-forest {
+    --bg: #0e1a12;
+    --card-bg: #16261b;
+    --text: #e5f0e8;
+    --text-secondary: #7fa088;
+    --border: #233a2a;
+    --card-secondary: #1c3222;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
+    --nav-bg: #1c3222;
+    --input-bg: #1c3222;
+    --input-border: #2d4a36;
+    --profile-bg: linear-gradient(135deg, #1c3222, #16261b);
+    --accent: #4ade80;
+    --accent-contrast: #0e1a12;
+    --accent-rgb: 74, 222, 128;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.15);
+    --calendar-bg-ozon: rgba(74, 222, 128, 0.15);
+}
+
+/* 10. Тёмно-розовая */
+body.theme-dark-neon {
+    --bg: #1a0e15;
+    --card-bg: #26141f;
+    --text: #f7e3ee;
+    --text-secondary: #a8809a;
+    --border: #3a1f2e;
+    --card-secondary: #301a27;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    --nav-bg: #301a27;
+    --input-bg: #301a27;
+    --input-border: #4a2838;
+    --profile-bg: linear-gradient(135deg, #301a27, #26141f);
+    --accent: #f472b6;
+    --accent-contrast: #1a0e15;
+    --accent-rgb: 244, 114, 182;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.15);
+    --calendar-bg-ozon: rgba(244, 114, 182, 0.15);
+}
+
+/* ============================================================
+   ОБЩИЕ СТИЛИ
+   ============================================================ */
 
 body {
     background: var(--bg);
@@ -100,21 +282,6 @@ body {
     flex-shrink: 0;
 }
 
-.theme-toggle {
-    background: var(--card-secondary);
-    border: none;
-    border-radius: 30px;
-    font-size: 16px;
-    cursor: pointer;
-    padding: 4px 8px;
-    transition: 0.2s;
-    color: var(--text);
-}
-
-.theme-toggle:hover {
-    transform: scale(1.05);
-}
-
 .admin-toggle {
     display: flex;
     align-items: center;
@@ -133,8 +300,8 @@ body {
 }
 
 .admin-toggle.active {
-    background: #007aff;
-    color: white;
+    background: var(--accent);
+    color: var(--accent-contrast);
 }
 
 .admin-toggle.hidden {
@@ -284,7 +451,7 @@ body {
     border-radius: 14px;
     padding: 10px 0px 8px;
     margin-bottom: 12px;
-    border-left: 3px solid #007aff;
+    border-left: 3px solid var(--accent);
     transition: all 0.2s;
 }
 
@@ -376,7 +543,7 @@ body {
 
 .day-cell .shift-free:active { transform: scale(0.9); }
 .day-cell .hours { font-size: 6px; color: var(--text-secondary); }
-.day-cell.today { border: 2px solid #007aff; }
+.day-cell.today { border: 2px solid var(--accent); }
 
 .day-cell .edit-shift-btn {
     position: absolute;
@@ -416,7 +583,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-left: 3px solid #007aff;
+    border-left: 3px solid var(--accent);
     transition: background 0.3s;
     gap: 8px;
 }
@@ -424,7 +591,7 @@ body {
 .my-shift-card .info { min-width: 0; }
 .my-shift-card .pzv-name { font-weight: 700; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .my-shift-card .date-time { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
-.my-shift-card .hours-count { font-weight: 700; font-size: 14px; color: #007aff; flex-shrink: 0; }
+.my-shift-card .hours-count { font-weight: 700; font-size: 14px; color: var(--accent); flex-shrink: 0; }
 
 .status-badge { font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: #34c75920; color: #34c759; display: inline-block; margin-top: 4px; }
 .status-badge.pending { background: #ff950020; color: #ff9500; }
@@ -458,19 +625,33 @@ body {
 .profile-header { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--profile-bg); border-radius: 20px; margin-bottom: 16px; transition: background 0.3s; }
 
 .profile-avatar {
-    width: 64px; height: 64px; border-radius: 50%; background: #007aff; color: white;
+    width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: var(--accent-contrast);
     display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700;
     flex-shrink: 0; cursor: pointer; transition: 0.15s; border: 3px solid var(--card-bg);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: relative;
 }
 
 .profile-avatar:active { transform: scale(0.95); }
-.profile-avatar .edit-avatar { position: absolute; bottom: -2px; right: -2px; background: #007aff; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--card-bg); }
+.profile-avatar .edit-avatar { position: absolute; bottom: -2px; right: -2px; background: var(--accent); color: var(--accent-contrast); border-radius: 50%; width: 20px; height: 20px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--card-bg); }
 
 .profile-info { min-width: 0; }
 .profile-info .name { font-weight: 700; font-size: 17px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .profile-info .role { font-size: 13px; color: var(--text-secondary); }
 .profile-info .tg-id { font-size: 12px; color: var(--text-secondary); font-family: monospace; }
+
+.profile-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.profile-chip-btn {
+    border: none;
+    background: var(--card-secondary);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: 0.15s;
+}
+.profile-chip-btn:active { transform: scale(0.95); }
 
 .profile-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
 .profile-stats.profile-stats-2 { grid-template-columns: 1fr 1fr; }
@@ -488,7 +669,7 @@ body {
 .profile-income-item .right.bonus { color: #34c759; }
 .profile-income-item .right.fine { color: #ff3b30; }
 
-.profile-total { background: linear-gradient(135deg, #007aff, #0055b3); border-radius: 16px; padding: 14px 16px; color: white; margin-top: 12px; }
+.profile-total { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, black)); border-radius: 16px; padding: 14px 16px; color: var(--accent-contrast); margin-top: 12px; }
 .profile-total .label { font-size: 11px; opacity: 0.8; }
 .profile-total .amount { font-size: 26px; font-weight: 800; }
 
@@ -515,18 +696,18 @@ body {
     background: var(--input-bg); color: var(--text); font-size: 13px; outline: none;
     transition: 0.2s, background 0.3s, border-color 0.3s, color 0.3s;
 }
-.search-wrap input:focus { border-color: #007aff; }
+.search-wrap input:focus { border-color: var(--accent); }
 .search-wrap::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.6; }
 
 .employee-card { display: flex; align-items: center; padding: 8px 12px; background: var(--card-secondary); border-radius: 12px; margin-bottom: 5px; border: 1px solid transparent; transition: background 0.3s; }
-.employee-card .avatar { width: 36px; height: 36px; border-radius: 50%; background: #007aff; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; margin-right: 10px; }
+.employee-card .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: var(--accent-contrast); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; margin-right: 10px; }
 .employee-card .info { flex: 1; min-width: 0; }
 .employee-card .name { font-weight: 600; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .employee-card .role { font-size: 10px; color: var(--text-secondary); }
 .employee-card .actions { display: flex; gap: 4px; flex-shrink: 0; }
 .employee-card .actions button { border: none; background: transparent; font-size: 14px; cursor: pointer; padding: 4px; border-radius: 6px; transition: 0.15s; opacity: 0.5; }
 .employee-card .actions button:hover { opacity: 1; }
-.employee-card .actions .chat-btn { color: #007aff; }
+.employee-card .actions .chat-btn { color: var(--accent); }
 .employee-card .actions .delete:hover { color: #ff3b30; }
 .employee-card .actions .edit-btn:hover { color: #ff9500; }
 
@@ -546,7 +727,7 @@ body {
 .finance-employee .left .fine-list { font-size: 10px; color: #ff3b30; margin-top: 2px; }
 .finance-employee .right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .finance-employee .right .amount { font-weight: 700; font-size: 16px; color: var(--text); }
-.finance-employee .right .edit-rate { background: #007aff; border: none; color: white; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+.finance-employee .right .edit-rate { background: var(--accent); border: none; color: var(--accent-contrast); padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; cursor: pointer; transition: 0.15s; }
 .finance-employee .right .edit-rate:hover { opacity: 0.85; }
 .finance-employee .right .market-tag { font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
 .finance-employee .right .market-tag.wb { background: #8e44ad20; color: #6c3483; }
@@ -558,7 +739,7 @@ body {
 .finance-actions .bonus-btn { background: #34c759; color: white; }
 .finance-actions .fine-btn { background: #ff3b30; color: white; }
 
-.finance-export { width: 100%; padding: 10px; background: #007aff; color: white; border: none; border-radius: 30px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.15s; margin-top: 4px; }
+.finance-export { width: 100%; padding: 10px; background: var(--accent); color: var(--accent-contrast); border: none; border-radius: 30px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.15s; margin-top: 4px; }
 .finance-export:active { transform: scale(0.96); }
 
 .pvz-tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -568,7 +749,7 @@ body {
 .bottom-nav { display: flex; background: var(--nav-bg); border-top: 1px solid var(--border); padding: 3px 6px 5px; padding-bottom: max(5px, env(safe-area-inset-bottom)); flex-shrink: 0; transition: background 0.3s, border-color 0.3s; }
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 3px 0; border: none; background: transparent; cursor: pointer; border-radius: 10px; transition: 0.15s; color: var(--text-secondary); font-size: 9px; font-weight: 500; gap: 0px; position: relative; }
 .nav-item .icon { font-size: 18px; line-height: 1.2; }
-.nav-item.active { color: #007aff; background: rgba(0, 122, 255, 0.08); }
+.nav-item.active { color: var(--accent); background: rgba(var(--accent-rgb), 0.08); }
 .nav-item:active { transform: scale(0.94); }
 .nav-item .badge { background: #ff3b30; color: white; font-size: 8px; padding: 1px 5px; border-radius: 20px; position: absolute; top: -2px; right: -6px; }
 .badge-orange { background: #ff9500 !important; }
@@ -611,11 +792,11 @@ body {
     width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--input-border);
     background: var(--input-bg); color: var(--text); font-size: 13px; outline: none;
 }
-.modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus { border-color: #007aff; }
+.modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus { border-color: var(--accent); }
 .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
 .modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 30px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .modal-actions .btn-cancel { background: var(--card-secondary); color: var(--text); }
-.modal-actions .btn-confirm { background: #007aff; color: white; }
+.modal-actions .btn-confirm { background: var(--accent); color: var(--accent-contrast); }
 .modal-actions .btn-danger { background: #ff3b30; color: white; }
 
 /* ---------- несколько смен в одной ячейке дня ---------- */
@@ -647,7 +828,7 @@ body {
 .name-chip.mine {
     box-shadow: 0 0 0 1.5px #ff6b00;
 }
-    
+
 .day-cell .chip-free {
     width: 18px;
     height: 18px;
@@ -704,7 +885,7 @@ span.chip-pending-dot { cursor: default; }
     width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--input-border);
     background: var(--input-bg); color: var(--text); font-size: 13px; outline: none; margin-bottom: 6px;
 }
-.emp-picker input:focus { border-color: #007aff; }
+.emp-picker input:focus { border-color: var(--accent); }
 .emp-picker-list { max-height: 160px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--border); }
 .emp-picker-item {
     display: flex; align-items: center; gap: 8px; padding: 7px 10px; cursor: pointer; font-size: 13px; color: var(--text);
@@ -712,11 +893,11 @@ span.chip-pending-dot { cursor: default; }
 }
 .emp-picker-item:last-child { border-bottom: none; }
 .emp-picker-item:hover { background: var(--card-secondary); }
-.emp-picker-item.selected { background: #007aff20; font-weight: 600; }
-.emp-picker-item .dot { width: 8px; height: 8px; border-radius: 50%; background: #007aff; flex-shrink: 0; }
+.emp-picker-item.selected { background: rgba(var(--accent-rgb), 0.15); font-weight: 600; }
+.emp-picker-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 .emp-picker-empty { padding: 4px 2px; }
 
-/* ---------- список смен на день (модалка редактирования) ---------- */
+/* ---------- список смен на день ---------- */
 .day-shift-row {
     display: flex; justify-content: space-between; align-items: center; gap: 8px;
     background: var(--card-secondary); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px;
@@ -731,7 +912,7 @@ span.chip-pending-dot { cursor: default; }
     color: var(--text); border-radius: 10px; font-size: 12px; cursor: pointer;
 }
 
-/* ---------- сетка кнопок ПВЗ в управлении ---------- */
+/* ---------- сетка кнопок ПВЗ ---------- */
 .pvz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .pvz-grid-item {
     position: relative;
@@ -814,9 +995,9 @@ span.chip-pending-dot { cursor: default; }
     flex: 1; padding: 7px 0; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text);
     border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer;
 }
-.pay-type-toggle button.active { background: #007aff; border-color: #007aff; color: #fff; }
+.pay-type-toggle button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
 
-/* ---------- переключатель периода ЗП: весь месяц / 1–15 / 16–конец ---------- */
+/* ---------- переключатель периода ЗП ---------- */
 .period-toggle {
     display: flex; gap: 6px; margin-bottom: 10px;
     background: var(--card-secondary); border-radius: 30px; padding: 3px;
@@ -827,10 +1008,10 @@ span.chip-pending-dot { cursor: default; }
     font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;
     background: transparent; color: var(--text-secondary);
 }
-.period-toggle button.active { background: #007aff; color: #fff; box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3); }
+.period-toggle button.active { background: var(--accent); color: var(--accent-contrast); box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.3); }
 .period-toggle button:active { transform: scale(0.96); }
 
-/* ---------- редактор гибких тарифов ПВЗ (по времени) ---------- */
+/* ---------- редактор тарифов ---------- */
 .pay-rule-row {
     background: var(--card-secondary); border-radius: 12px; padding: 10px; margin-bottom: 8px;
 }
@@ -846,6 +1027,72 @@ span.chip-pending-dot { cursor: default; }
     width: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--input-border);
     background: var(--input-bg); color: var(--text); font-size: 12px; outline: none;
 }
+
+/* ---------- плитки выбора темы ---------- */
+.theme-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 14px 0 8px;
+}
+.theme-section-title:first-child { margin-top: 0; }
+
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.theme-tile {
+    background: var(--card-secondary);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    transition: 0.15s;
+    font-family: inherit;
+}
+.theme-tile:active { transform: scale(0.96); }
+.theme-tile.active { border-color: var(--accent); }
+
+.theme-swatch {
+    width: 100%;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px;
+    box-sizing: border-box;
+}
+.theme-swatch .dot-a {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.theme-swatch .bar {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    opacity: 0.55;
+}
+
+.theme-name {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+    line-height: 1.15;
+}
+.theme-tile.active .theme-name { color: var(--accent); }
 
 @media (max-width: 420px) {
     .app-container { height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; border-radius: 0; }
@@ -867,6 +1114,7 @@ span.chip-pending-dot { cursor: default; }
     .header h1 { font-size: 14px; }
     .admin-toggle span { display: none; }
     .pvz-grid { grid-template-columns: 1fr; }
+    .theme-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (min-width: 421px) and (max-width: 480px) {

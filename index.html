@@ -8,14 +8,13 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body class="light-theme">
+<body class="theme-sand">
 
 <div class="app-container" id="app">
 
     <div class="header">
         <h1>📋 График <span>ПВЗ</span></h1>
         <div class="header-actions">
-            <button class="theme-toggle" onclick="App.toggleTheme()" title="Сменить тему">🌓</button>
             <div class="admin-toggle hidden" id="adminToggle" onclick="App.toggleAdmin()">
                 <span>Админ</span>
                 <div class="toggle-switch"></div>
@@ -103,7 +102,10 @@
                         <div class="name" id="profileName">—</div>
                         <div class="role" id="profileRole">—</div>
                         <div class="tg-id" id="profileTgId">—</div>
-                        <button class="admin-only" onclick="App.openAvatarFrameModal()" style="margin-top:6px; border:none; background:var(--card-secondary); color:var(--text); font-size:11px; padding:4px 10px; border-radius:20px; cursor:pointer;">🖼️ Рамка иконки</button>
+                        <div class="profile-buttons">
+                            <button class="profile-chip-btn" onclick="App.openThemePickerModal()">🎨 Тема приложения</button>
+                            <button class="profile-chip-btn admin-only" onclick="App.openAvatarFrameModal()">🖼️ Рамка иконки</button>
+                        </div>
                     </div>
                 </div>
 
@@ -190,14 +192,14 @@
                         <span id="financeGrandTotal">0 ₽</span>
                     </div>
                     <button class="finance-export" onclick="App.exportPayroll()">📊 Экспортировать ведомость (CSV)</button>
-                <button class="finance-export" style="background:#5856d6; margin-top:6px;" onclick="App.exportShiftsDetailed()">📄 Детальный экспорт смен за этот месяц</button>
+                    <button class="finance-export" style="background:#5856d6; margin-top:6px;" onclick="App.exportShiftsDetailed()">📄 Детальный экспорт смен за этот месяц</button>
                 </div>
 
                 <div style="margin-top:20px; border-top:2px solid var(--border); padding-top:16px;">
                     <div style="font-weight:600; font-size:14px; margin-bottom:10px; color:var(--text);">🏢 Управление ПВЗ</div>
                     <div class="pvz-grid" id="pvzTagRow"></div>
                     <div style="display:flex; gap:8px;">
-                        <button onclick="App.openAddPvzModal()" style="flex:1; padding:8px; background:#007aff; color:white; border:none; border-radius:30px; font-size:12px; font-weight:600; cursor:pointer;">➕ Добавить ПВЗ</button>
+                        <button onclick="App.openAddPvzModal()" style="flex:1; padding:8px; background:var(--accent); color:var(--accent-contrast); border:none; border-radius:30px; font-size:12px; font-weight:600; cursor:pointer;">➕ Добавить ПВЗ</button>
                     </div>
                 </div>
             </div>
@@ -228,7 +230,6 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- универсальное модальное окно для форм (добавить/редактировать) -->
 <div class="modal-overlay" id="modalOverlay">
     <div class="modal-box" id="modalBox"></div>
 </div>

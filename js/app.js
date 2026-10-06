@@ -6,6 +6,7 @@ const App = (() => {
   const WEEKDAYS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
   const AVATAR_COLORS = ["#007aff","#8e44ad","#e67e22","#e91e63","#8bc34a","#2e7d32","#ff9500","#34c759"];
   const MAX_NAMES_PER_DAY = 2;
+  const DEFAULT_FRAME_COLOR = "#8e8e93"; // серый, если пользователь ещё не выбирал
 
   // ---------------- ТЕМЫ ----------------
   const THEMES = [
@@ -219,6 +220,15 @@ const App = (() => {
     document.documentElement.style.colorScheme = theme.dark ? "dark" : "light";
   })();
 
+  // ---------------- СВОРАЧИВАЕМЫЕ БЛОКИ ----------------
+  function toggleCollapsible(id) {
+    const body = document.getElementById(id);
+    const arrow = document.getElementById(id + "Arrow");
+    if (!body) return;
+    body.classList.toggle("collapsed");
+    if (arrow) arrow.classList.toggle("collapsed");
+  }
+
   // ---------------- СМЕНА / СТАВКА ----------------
   function shiftAmount(shift, pvz) {
     if (shift.custom_amount !== undefined && shift.custom_amount !== null && shift.custom_amount !== "") {
@@ -412,8 +422,17 @@ const App = (() => {
     el.innerHTML = `<div style="font-weight:600; font-size:12px; margin-bottom:4px; color:var(--text);">📍 Сегодня работают</div>` +
       todayShifts.map((s) => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
+        const emp = state.employees.find((e) => e.id === s.employee_id);
+        const name = emp?.full_name || s.employees?.full_name || "—";
+        const tgUsername = emp?.tg_username || s.employees?.tg_username || "";
+
+        // имя кликабельно, если у сотрудника есть Telegram — откроет чат внутри Telegram
+        const nameHtml = tgUsername
+          ? `<a href="javascript:void(0)" onclick="event.stopPropagation(); App.openChat('${escapeHtml(tgUsername)}');" style="color:var(--accent); text-decoration:none; font-weight:600;">${escapeHtml(name)}</a>`
+          : `<span>${escapeHtml(name)}</span>`;
+
         return `<div class="row">
-          <span>${escapeHtml(s.employees?.full_name || "—")} — ${escapeHtml(pvz?.name || "")}</span>
+          <span>${nameHtml} — ${escapeHtml(pvz?.name || "")}</span>
           <span class="time">${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</span>
         </div>`;
       }).join("");
@@ -935,7 +954,7 @@ const App = (() => {
 
     activeContainer.innerHTML = active.map((e) => `
       <div class="employee-card" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
-        <div class="avatar" style="background:${colorForName(e.full_name)}; ${e.avatar_frame ? `box-shadow:0 0 0 2px ${e.avatar_frame};` : ""}">${e.avatar_emoji ? escapeHtml(e.avatar_emoji) : escapeHtml(e.full_name[0] || "?")}</div>
+        <div class="avatar" style="background:${colorForName(e.full_name)}; box-shadow:0 0 0 2px ${e.avatar_frame || DEFAULT_FRAME_COLOR};">${e.avatar_emoji ? escapeHtml(e.avatar_emoji) : escapeHtml(e.full_name[0] || "?")}</div>
         <div class="info">
           <div class="name">${escapeHtml(e.full_name)}</div>
           <div class="role">${escapeHtml(e.position || "Менеджер")}</div>
@@ -1126,7 +1145,7 @@ const App = (() => {
     const avatarEl = document.getElementById("profileAvatar");
     if (avatarEl) {
       avatarEl.childNodes[0].nodeValue = e.avatar_emoji || "👤";
-      avatarEl.style.boxShadow = e.avatar_frame ? `0 0 0 3px ${e.avatar_frame}` : "";
+      avatarEl.style.boxShadow = `0 0 0 3px ${e.avatar_frame || DEFAULT_FRAME_COLOR}`;
     }
     const nameEl = document.getElementById("profileName");
     if (nameEl) nameEl.textContent = e.full_name;
@@ -1181,7 +1200,7 @@ const App = (() => {
     }
   }
 
-  // ---------------- ВЫБОР ТЕМЫ ----------------
+  // ---------------- ТЕМА (модалка) ----------------
   function openThemePickerModal() {
     const current = getCurrentTheme();
     const tile = (t) => {
@@ -1210,18 +1229,32 @@ const App = (() => {
     `, null);
   }
 
+  // ---------------- РАМКА ИКОНКИ ----------------
   function openAvatarFrameModal() {
-    const current = state.employee.avatar_frame || "";
-    openModal("Рамка иконки профиля", `
-      <label style="display:flex; align-items:center; gap:8px;">
-        <input type="checkbox" id="f_frame_none" ${!current ? "checked" : ""} onchange="document.getElementById('f_frame_color').disabled=this.checked;">
-        Без рамки
-      </label>
-      <label style="margin-top:8px;">Цвет рамки</label>
-      <input type="color" id="f_frame_color" value="${current || "#ffd700"}" ${!current ? "disabled" : ""}>
+    const current = state.employee.avatar_frame || getComputedStyle(document.body).getPropertyValue("--accent").trim() || "#8e8e93";
+    const presetColors = ["#ffd700","#ff3b30","#34c759","#007aff","#8e44ad","#ff9500","#e91e63","#00bcd4","#8e8e93","#1c1c1e"];
+    openModal("🖼️ Цвет рамки иконки", `
+      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
+        Рамка отображается всегда. Выберите цвет.
+      </div>
+      <div style="display:flex; justify-content:center; margin-bottom:16px;">
+        <div id="framePreview" style="
+          width: 80px; height: 80px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 36px;
+          box-shadow: 0 0 0 4px ${current};
+          background: var(--card-secondary);
+        ">${state.employee.avatar_emoji || "👤"}</div>
+      </div>
+      <label>Цвет рамки</label>
+      <input type="color" id="f_frame_color" value="${current}"
+             oninput="document.getElementById('framePreview').style.boxShadow='0 0 0 4px '+this.value;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+        ${presetColors.map(c => `<button type="button" onclick="document.getElementById('f_frame_color').value='${c}'; document.getElementById('framePreview').style.boxShadow='0 0 0 4px ${c}';"
+                       style="width:28px;height:28px;border-radius:50%;background:${c};border:2px solid var(--border);cursor:pointer;"></button>`).join("")}
+      </div>
     `, async () => {
-      const none = document.getElementById("f_frame_none").checked;
-      const color = none ? null : document.getElementById("f_frame_color").value;
+      const color = document.getElementById("f_frame_color").value;
       try {
         await Api.updateEmployee(state.employee.id, { avatar_frame: color });
         state.employee.avatar_frame = color;
@@ -1327,13 +1360,22 @@ const App = (() => {
     document.getElementById("totalFundSub").innerHTML = `${state.employees.length} сотрудников • <span>${totalShiftsAll}</span> смен за месяц`;
     document.getElementById("financeGrandTotal").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
 
-    document.getElementById("pvzTagRow").innerHTML = state.pvz.map((p) => `
+    // ПВЗ разбиты на две колонки: WB слева, Ozon справа
+    const pvzItemHtml = (p) => `
       <div class="pvz-grid-item">
         <button class="pvz-edit-rate" onclick="App.openPvzRateModal('${p.id}')" title="Тарифы">✏️</button>
         <button class="pvz-remove" onclick="App.deletePvzConfirm('${p.id}', '${escapeHtml(p.name)}')" title="Удалить">✕</button>
         <span class="dot" style="background:${p.color};"></span>
         <span class="pvz-name">${escapeHtml(p.name)}</span>
-      </div>`).join("");
+      </div>`;
+
+    const wbList = state.pvz.filter(p => p.marketplace === "wb");
+    const ozonList = state.pvz.filter(p => p.marketplace === "ozon");
+
+    const wbEl = document.getElementById("pvzTagRowWb");
+    const ozonEl = document.getElementById("pvzTagRowOzon");
+    if (wbEl) wbEl.innerHTML = wbList.map(pvzItemHtml).join("") || `<div class="center-msg" style="padding:10px 0; font-size:11px;">Нет ПВЗ</div>`;
+    if (ozonEl) ozonEl.innerHTML = ozonList.map(pvzItemHtml).join("") || `<div class="center-msg" style="padding:10px 0; font-size:11px;">Нет ПВЗ</div>`;
   }
 
   // ---------------- ТАРИФЫ ПВЗ ----------------
@@ -1384,13 +1426,13 @@ const App = (() => {
 
     openModal(`Тарифы: ${escapeHtml(pvz.name)}`, `
       <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; line-height:1.5;">
-        «Фиксированная сумма» — платится, только если смена ТОЧНО совпадает с этим временем от и до (например «полная смена» открытие–закрытие, или любой другой конкретный промежуток целиком). «₽/час» — определяется по ВРЕМЕНИ НАЧАЛА смены: если смена стартовала внутри этого промежутка, вся её продолжительность считается по этой ставке. Если несколько правил пересекаются — побеждает самое узкое (точное). Время начала, не попавшее ни в одно правило, считается по ставке по умолчанию внизу.
+        «Фиксированная сумма» — платится, только если смена ТОЧНО совпадает с этим временем от и до. «₽/час» — определяется по ВРЕМЕНИ НАЧАЛА смены: если смена стартовала внутри этого промежутка, вся её продолжительность считается по этой ставке.
       </div>
       <div id="payRulesList">${rowsHtml || '<div class="center-msg">Пока нет ни одного тарифа</div>'}</div>
       <button type="button" class="add-shift-btn" onclick="App._addRateRow()">➕ Добавить тариф</button>
       <label style="margin-top:14px;">Ставка по умолчанию для непокрытого времени, ₽/час</label>
       <input type="number" id="f_default_hourly" min="0" value="${pvz.mid_hourly_rate ?? 250}">
-      <label>Стандартное открытие ПВЗ <span style="font-weight:400;">(используется при массовом создании свободных смен на месяц)</span></label>
+      <label>Стандартное открытие ПВЗ</label>
       <input type="time" id="f_dstart" value="${(pvz.default_start_time || "09:00").slice(0,5)}">
       <label>Стандартное закрытие</label>
       <input type="time" id="f_dend" value="${(pvz.default_end_time || "21:00").slice(0,5)}">
@@ -1591,39 +1633,6 @@ const App = (() => {
     }
   }
 
-  function renderTodaySummary() {
-    const el = document.getElementById("todaySummary");
-    if (!el) return;
-    const today = new Date();
-    const isCurrentMonth = today.getMonth() === state.month && today.getFullYear() === state.year;
-    if (state.demo || !isCurrentMonth) { el.style.display = "none"; return; }
-
-    const todayStr = dateStrFor(state.year, state.month, today.getDate());
-    const todayShifts = state.shifts
-      .filter((s) => s.shift_date === todayStr && s.employee_id)
-      .sort((a, b) => a.start_time.localeCompare(b.start_time));
-
-    if (todayShifts.length === 0) { el.style.display = "none"; return; }
-
-    el.style.display = "block";
-    el.innerHTML = `<div style="font-weight:600; font-size:12px; margin-bottom:4px; color:var(--text);">📍 Сегодня работают</div>` +
-      todayShifts.map((s) => {
-        const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-        const emp = state.employees.find((e) => e.id === s.employee_id);
-        const name = emp?.full_name || s.employees?.full_name || "—";
-        const tgUsername = emp?.tg_username || s.employees?.tg_username || "";
-
-        const nameHtml = tgUsername
-          ? `<a href="https://t.me/${escapeHtml(tgUsername)}" target="_blank" rel="noopener" style="color:var(--accent); text-decoration:none; font-weight:600;" onclick="event.stopPropagation();">${escapeHtml(name)}</a>`
-          : `<span>${escapeHtml(name)}</span>`;
-
-        return `<div class="row">
-          <span>${nameHtml} — ${escapeHtml(pvz?.name || "")}</span>
-          <span class="time">${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</span>
-        </div>`;
-      }).join("");
-}
-  
   function closeModal() {
     document.getElementById("modalOverlay").classList.remove("show");
   }
@@ -1635,6 +1644,7 @@ const App = (() => {
   return {
     init, switchTab, toggleAdmin, changeMonth, switchMarket,
     setTheme, openThemePickerModal,
+    toggleCollapsible,
     openApplyModal, _setApplyMode,
     openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
@@ -1650,5 +1660,3 @@ const App = (() => {
 })();
 
 window.addEventListener("DOMContentLoaded", () => App.init());
-
-

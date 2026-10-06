@@ -418,15 +418,16 @@ const App = (() => {
 
     if (todayShifts.length === 0) { el.style.display = "none"; return; }
 
-    el.style.display = "block";
-    el.innerHTML = `<div style="font-weight:600; font-size:12px; margin-bottom:4px; color:var(--text);">📍 Сегодня работают</div>` +
-      todayShifts.map((s) => {
+    // сворачивание — по умолчанию свёрнуто, не запоминается между перезаходами
+    if (typeof renderTodaySummary._collapsed === "undefined") renderTodaySummary._collapsed = true;
+    const isCollapsed = renderTodaySummary._collapsed;
+
+    const peopleRows = todayShifts.map((s) => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
         const emp = state.employees.find((e) => e.id === s.employee_id);
         const name = emp?.full_name || s.employees?.full_name || "—";
         const tgUsername = emp?.tg_username || s.employees?.tg_username || "";
 
-        // имя кликабельно, если у сотрудника есть Telegram — откроет чат внутри Telegram
         const nameHtml = tgUsername
           ? `<a href="javascript:void(0)" onclick="event.stopPropagation(); App.openChat('${escapeHtml(tgUsername)}');" style="color:var(--accent); text-decoration:none; font-weight:600;">${escapeHtml(name)}</a>`
           : `<span>${escapeHtml(name)}</span>`;
@@ -435,8 +436,30 @@ const App = (() => {
           <span>${nameHtml} — ${escapeHtml(pvz?.name || "")}</span>
           <span class="time">${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</span>
         </div>`;
-      }).join("");
-  }
+    }).join("");
+
+    el.style.display = "block";
+    el.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;"
+           onclick="App.toggleTodaySummary()">
+        <div style="font-weight:600; font-size:12px; color:var(--text);">
+          📍 Сегодня работают <span style="color:var(--text-secondary); font-weight:400;">(${todayShifts.length})</span>
+        </div>
+        <span class="collapsible-arrow ${isCollapsed ? "collapsed" : ""}" id="todaySummaryArrow" style="font-size:10px; color:var(--text-secondary); transition: transform 0.2s;">▼</span>
+      </div>
+      <div id="todaySummaryBody" style="margin-top:6px; ${isCollapsed ? "display:none;" : ""}">
+        ${peopleRows}
+      </div>
+    `;
+}
+
+  function toggleTodaySummary() {
+    renderTodaySummary._collapsed = !renderTodaySummary._collapsed;
+    const body = document.getElementById("todaySummaryBody");
+    const arrow = document.getElementById("todaySummaryArrow");
+    if (body) body.style.display = renderTodaySummary._collapsed ? "none" : "block";
+    if (arrow) arrow.classList.toggle("collapsed", renderTodaySummary._collapsed);
+}
 
   function renderCalendar() {
     const container = document.getElementById("calendarContainer");
@@ -1671,8 +1694,7 @@ function _pickFrameColor(color) {
   return {
     init, switchTab, toggleAdmin, changeMonth, switchMarket,
     setTheme, openThemePickerModal,
-    toggleCollapsible,
-    openApplyModal, _setApplyMode,
+    toggleCollapsible, toggleTodaySummary,    openApplyModal, _setApplyMode,
     openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
     _filterEmpPicker, _selectEmp,

@@ -1591,6 +1591,39 @@ const App = (() => {
     }
   }
 
+  function renderTodaySummary() {
+    const el = document.getElementById("todaySummary");
+    if (!el) return;
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() === state.month && today.getFullYear() === state.year;
+    if (state.demo || !isCurrentMonth) { el.style.display = "none"; return; }
+
+    const todayStr = dateStrFor(state.year, state.month, today.getDate());
+    const todayShifts = state.shifts
+      .filter((s) => s.shift_date === todayStr && s.employee_id)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+    if (todayShifts.length === 0) { el.style.display = "none"; return; }
+
+    el.style.display = "block";
+    el.innerHTML = `<div style="font-weight:600; font-size:12px; margin-bottom:4px; color:var(--text);">📍 Сегодня работают</div>` +
+      todayShifts.map((s) => {
+        const pvz = state.pvz.find((p) => p.id === s.pvz_id);
+        const emp = state.employees.find((e) => e.id === s.employee_id);
+        const name = emp?.full_name || s.employees?.full_name || "—";
+        const tgUsername = emp?.tg_username || s.employees?.tg_username || "";
+
+        const nameHtml = tgUsername
+          ? `<a href="https://t.me/${escapeHtml(tgUsername)}" target="_blank" rel="noopener" style="color:var(--accent); text-decoration:none; font-weight:600;" onclick="event.stopPropagation();">${escapeHtml(name)}</a>`
+          : `<span>${escapeHtml(name)}</span>`;
+
+        return `<div class="row">
+          <span>${nameHtml} — ${escapeHtml(pvz?.name || "")}</span>
+          <span class="time">${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</span>
+        </div>`;
+      }).join("");
+}
+  
   function closeModal() {
     document.getElementById("modalOverlay").classList.remove("show");
   }

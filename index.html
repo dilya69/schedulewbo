@@ -13,14 +13,22 @@
 <div class="app-container" id="app">
 
     <div class="header">
-        <h1>📋 График <span>ПВЗ</span></h1>
-        <div class="header-actions">
-            <div class="admin-toggle hidden" id="adminToggle" onclick="App.toggleAdmin()">
-                <span>Админ</span>
-                <div class="toggle-switch"></div>
-            </div>
+    <div class="header-left">
+        <div class="header-logo">
+            <!-- Когда добавишь фото, раскомментируй и укажи путь:
+            <img src="img/logo.jpg" alt="WBO">
+            -->
+            📋
+        </div>
+        <div class="header-title">
+            WBO
+            <span class="small">Управление сменами</span>
         </div>
     </div>
+    <div class="header-badge hidden" id="headerBadge" onclick="App.toggleAdmin()">
+        <span id="headerBadgeText">ПВЗ</span>
+    </div>
+</div>
 
     <div class="main-content" id="mainContent">
 

@@ -438,14 +438,14 @@ const App = (() => {
         </div>`;
     }).join("");
 
-    el.style.display = "block";
+        el.style.display = "block";
     el.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;"
+      <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; padding:12px 14px; background:var(--accent); color:var(--accent-contrast); border-radius:12px; box-shadow:0 4px 12px rgba(var(--accent-rgb), 0.35); font-weight:700;"
            onclick="App.toggleTodaySummary()">
-        <div style="font-weight:600; font-size:12px; color:var(--text);">
-          📍 Сегодня работают <span style="color:var(--text-secondary); font-weight:400;">(${todayShifts.length})</span>
+        <div style="font-weight:700; font-size:13px; color:var(--accent-contrast);">
+          📍 Сегодня работают <span style="opacity:0.85; font-weight:500;">(${todayShifts.length})</span>
         </div>
-        <span class="collapsible-arrow ${isCollapsed ? "collapsed" : ""}" id="todaySummaryArrow" style="font-size:10px; color:var(--text-secondary); transition: transform 0.2s;">▼</span>
+        <span class="collapsible-arrow ${isCollapsed ? "collapsed" : ""}" id="todaySummaryArrow" style="font-size:12px; color:var(--accent-contrast); transition: transform 0.2s;">▼</span>
       </div>
       <div id="todaySummaryBody" style="margin-top:6px; ${isCollapsed ? "display:none;" : ""}">
         ${peopleRows}

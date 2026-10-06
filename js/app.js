@@ -439,9 +439,9 @@ const App = (() => {
     }).join("");
 
         el.style.display = "block";
-    el.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; padding:12px 14px; background:var(--accent); color:var(--accent-contrast); border-radius:12px; box-shadow:0 4px 12px rgba(var(--accent-rgb), 0.35); font-weight:700;"
-           onclick="App.toggleTodaySummary()">
+   el.innerHTML = `
+  <div class="collapsible-header" style="margin-bottom:0;"
+       onclick="App.toggleTodaySummary()">
         <div style="font-weight:700; font-size:13px; color:var(--accent-contrast);">
           📍 Сегодня работают <span style="opacity:0.85; font-weight:500;">(${todayShifts.length})</span>
         </div>

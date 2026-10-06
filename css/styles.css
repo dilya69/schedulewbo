@@ -1184,3 +1184,67 @@ span.chip-pending-dot { cursor: default; }
 .pvz-column .pvz-grid-item .pvz-name {
     font-size: 10px;
 }
+
+/* ============================================================
+   Единый эффект нажатия/наведения для всех кнопок приложения
+   ============================================================ */
+
+/* плавный переход у всех кнопок */
+button, .nav-item, .market-btn, .theme-tile, .profile-chip-btn, .collapsible-header,
+.add-shift-btn, .bulk-free-btn, .finance-export, .grant-btn,
+.day-cell, .chip-free, .chip-pending-dot {
+    transition: filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+/* при наведении — легкое свечение (чуть ярче) */
+button:hover,
+.nav-item:hover,
+.market-btn:hover,
+.theme-tile:hover,
+.profile-chip-btn:hover,
+.collapsible-header:hover,
+.add-shift-btn:hover,
+.bulk-free-btn:hover,
+.finance-export:hover,
+.grant-btn:hover,
+.chip-free:hover,
+.chip-pending-dot:hover {
+    filter: brightness(1.1);
+}
+
+/* при нажатии — сжатие и легкое затемнение */
+button:active,
+.nav-item:active,
+.market-btn:active,
+.theme-tile:active,
+.profile-chip-btn:active,
+.collapsible-header:active,
+.add-shift-btn:active,
+.bulk-free-btn:active,
+.finance-export:active,
+.grant-btn:active,
+.chip-free:active,
+.chip-pending-dot:active {
+    transform: scale(0.97);
+    filter: brightness(0.95);
+}
+
+/* свечение у цветных кнопок (бонус, штраф, экспорт и т.д.) */
+.bonus-btn,
+.fine-btn,
+.finance-export,
+.bulk-free-btn,
+.modal-actions .btn-confirm,
+.modal-actions .btn-danger {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.bonus-btn:hover,
+.fine-btn:hover,
+.finance-export:hover,
+.bulk-free-btn:hover,
+.modal-actions .btn-confirm:hover,
+.modal-actions .btn-danger:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+    filter: brightness(1.08);
+}

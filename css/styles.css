@@ -1126,19 +1126,29 @@ span.chip-pending-dot { cursor: default; }
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
-    background: var(--card-secondary);
+    padding: 10px 12px;
+    background: rgba(var(--accent-rgb), 0.12);
+    border-left: 3px solid var(--accent);
     border-radius: 12px;
     cursor: pointer;
     margin-bottom: 8px;
     user-select: none;
-    transition: background 0.2s;
+    transition: background 0.2s, border-color 0.2s;
+}
+.collapsible-header:hover {
+    background: rgba(var(--accent-rgb), 0.18);
+}
+.collapsible-header:active { transform: scale(0.99); }
+
+/* текст внутри — цветом акцента, чтобы точно выделялся */
+.collapsible-header span:first-child {
+    color: var(--accent);
 }
 .collapsible-header:active { transform: scale(0.99); }
 
 .collapsible-arrow {
     font-size: 10px;
-    color: var(--text-secondary);
+    color: var(--accent);
     transition: transform 0.2s;
 }
 .collapsible-arrow.collapsed { transform: rotate(-90deg); }

@@ -1126,30 +1126,30 @@ span.chip-pending-dot { cursor: default; }
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 12px;
-    background: rgba(var(--accent-rgb), 0.12);
-    border-left: 3px solid var(--accent);
+    padding: 12px 14px;
+    background: var(--accent);
+    color: var(--accent-contrast);
     border-radius: 12px;
     cursor: pointer;
     margin-bottom: 8px;
     user-select: none;
-    transition: background 0.2s, border-color 0.2s;
+    transition: filter 0.15s, transform 0.1s;
+    box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.35);
+    font-weight: 700;
 }
-.collapsible-header:hover {
-    background: rgba(var(--accent-rgb), 0.18);
-}
-.collapsible-header:active { transform: scale(0.99); }
+.collapsible-header:hover { filter: brightness(1.08); }
+.collapsible-header:active { transform: scale(0.98); filter: brightness(0.95); }
 
-/* текст внутри — цветом акцента, чтобы точно выделялся */
 .collapsible-header span:first-child {
-    color: var(--accent);
+    color: var(--accent-contrast) !important;
+    font-weight: 700;
 }
-.collapsible-header:active { transform: scale(0.99); }
 
 .collapsible-arrow {
-    font-size: 10px;
-    color: var(--accent);
+    font-size: 12px;
+    color: var(--accent-contrast);
     transition: transform 0.2s;
+    opacity: 0.9;
 }
 .collapsible-arrow.collapsed { transform: rotate(-90deg); }
 

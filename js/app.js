@@ -1230,8 +1230,8 @@ const App = (() => {
   }
 
   // ---------------- РАМКА ИКОНКИ ----------------
-  function openAvatarFrameModal() {
-    const current = state.employee.avatar_frame || getComputedStyle(document.body).getPropertyValue("--accent").trim() || "#8e8e93";
+ function openAvatarFrameModal() {
+    const current = state.employee.avatar_frame || DEFAULT_FRAME_COLOR;
     const presetColors = ["#ffd700","#ff3b30","#34c759","#007aff","#8e44ad","#ff9500","#e91e63","#00bcd4","#8e8e93","#1c1c1e"];
     openModal("🖼️ Цвет рамки иконки", `
       <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
@@ -1247,14 +1247,18 @@ const App = (() => {
         ">${state.employee.avatar_emoji || "👤"}</div>
       </div>
       <label>Цвет рамки</label>
-      <input type="color" id="f_frame_color" value="${current}"
-             oninput="document.getElementById('framePreview').style.boxShadow='0 0 0 4px '+this.value;">
-      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
-        ${presetColors.map(c => `<button type="button" onclick="document.getElementById('f_frame_color').value='${c}'; document.getElementById('framePreview').style.boxShadow='0 0 0 4px ${c}';"
-                       style="width:28px;height:28px;border-radius:50%;background:${c};border:2px solid var(--border);cursor:pointer;"></button>`).join("")}
+      <div id="frameColorGrid" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; justify-content:center;">
+        ${presetColors.map(c => `
+          <button type="button"
+                  data-color="${c}"
+                  onclick="App._pickFrameColor('${c}')"
+                  style="width:36px;height:36px;border-radius:50%;background:${c};
+                         border:3px solid ${c === current ? "var(--text)" : "var(--border)"};
+                         cursor:pointer; padding:0;"></button>
+        `).join("")}
       </div>
     `, async () => {
-      const color = document.getElementById("f_frame_color").value;
+      const color = document.getElementById("f_frame_color")?.value || current;
       try {
         await Api.updateEmployee(state.employee.id, { avatar_frame: color });
         state.employee.avatar_frame = color;
@@ -1265,7 +1269,30 @@ const App = (() => {
         renderEmployees();
       } catch (e) { toast("🚫 " + e.message); }
     });
-  }
+}
+
+// выбор цвета рамки по тапу на кружочек
+function _pickFrameColor(color) {
+    // скрытый input, куда складываем выбранное — чтобы onConfirm взял значение
+    let hidden = document.getElementById("f_frame_color");
+    if (!hidden) {
+        hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.id = "f_frame_color";
+        document.getElementById("modalBox").appendChild(hidden);
+    }
+    hidden.value = color;
+
+    // перекрасить превью
+    const preview = document.getElementById("framePreview");
+    if (preview) preview.style.boxShadow = `0 0 0 4px ${color}`;
+
+    // подсветить выбранный кружок
+    document.querySelectorAll("#frameColorGrid button").forEach((btn) => {
+        const c = btn.dataset.color;
+        btn.style.border = c === color ? "3px solid var(--text)" : "3px solid var(--border)";
+    });
+}
 
   function changeAvatar() {
     const emojis = [
@@ -1651,8 +1678,7 @@ const App = (() => {
     _filterEmpPicker, _selectEmp,
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
     openEmployeeScheduleModal, grantAccess, openChat,
-    changeAvatar, _pickAvatar, openAvatarFrameModal, togglePush, saveNotificationSettings,
-    openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
+    changeAvatar, _pickAvatar, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,    openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
     openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     closeModal,

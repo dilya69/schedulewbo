@@ -76,11 +76,15 @@ const App = (() => {
       document.getElementById("bootScreen").style.display = "none";
       document.getElementById("appBody").style.display = "block";
 
-      if (state.employee.is_admin) {
-        document.getElementById("adminToggle").classList.remove("hidden");
-      }
-      applyAdminClass();
-      switchTab("tab1");
+     const badge = document.getElementById("headerBadge");
+if (state.employee.is_admin) {
+    badge.classList.remove("hidden");
+    // админ сразу в админском режиме — тумблер не нужен
+    state.isAdminView = true;
+    updateAdminBadge();
+}
+applyAdminClass();
+switchTab("tab1");
     } catch (e) {
       console.error(e);
       document.getElementById("bootScreen").innerHTML =
@@ -347,15 +351,28 @@ const App = (() => {
   function toggleAdmin() {
     if (!state.employee.is_admin) return;
     state.isAdminView = !state.isAdminView;
-    document.getElementById("adminToggle").classList.toggle("active", state.isAdminView);
+    updateAdminBadge();
     applyAdminClass();
     renderCalendar();
     renderRequests();
     if (!state.isAdminView) {
-      const active = document.querySelector(".tab-content.active");
-      if (active?.id === "tab5") switchTab("tab1");
+        const active = document.querySelector(".tab-content.active");
+        if (active?.id === "tab5") switchTab("tab1");
     }
-  }
+}
+
+function updateAdminBadge() {
+    const badge = document.getElementById("headerBadge");
+    const text = document.getElementById("headerBadgeText");
+    if (!badge || !text) return;
+    if (state.isAdminView) {
+        badge.classList.add("admin-on");
+        text.textContent = "⚙️ АДМИН";
+    } else {
+        badge.classList.remove("admin-on");
+        text.textContent = "ПВЗ";
+    }
+}
 
   function applyAdminClass() {
     document.getElementById("app").classList.toggle("admin-mode", state.isAdminView);
@@ -1692,8 +1709,7 @@ function _pickFrameColor(color) {
   });
 
   return {
-    init, switchTab, toggleAdmin, changeMonth, switchMarket,
-    setTheme, openThemePickerModal,
+init, switchTab, toggleAdmin, updateAdminBadge, changeMonth, switchMarket,    setTheme, openThemePickerModal,
     toggleCollapsible, toggleTodaySummary,    openApplyModal, _setApplyMode,
     openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,

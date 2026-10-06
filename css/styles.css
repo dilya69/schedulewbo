@@ -971,11 +971,12 @@ span.chip-pending-dot { cursor: default; }
 }
 
 .today-summary {
-    background: var(--card-secondary);
+    background: transparent;
     border-radius: 14px;
-    padding: 10px 12px;
+    padding: 0;
     margin-bottom: 10px;
 }
+
 .today-summary .row {
     display: flex;
     justify-content: space-between;

@@ -174,13 +174,13 @@
                 </div>
 
                 <!-- Зарплата по сотрудникам (сворачиваемо) -->
-                <div class="collapsible-header" onclick="App.toggleCollapsible('financeBlock')">
-                    <span style="font-weight:600; font-size:13px; color:var(--text);">💰 Зарплата по сотрудникам</span>
-                    <span class="collapsible-arrow" id="financeBlockArrow">▼</span>
-                </div>
-                <div id="financeBlock" class="collapsible-body">
-                    <div id="financeEmployeeList"></div>
-                </div>
+               <div class="collapsible-header" onclick="App.toggleCollapsible('financeBlock')">
+    <span style="font-weight:600; font-size:13px; color:var(--text);">💰 Зарплата по сотрудникам</span>
+    <span class="collapsible-arrow collapsed" id="financeBlockArrow">▼</span>
+</div>
+<div id="financeBlock" class="collapsible-body collapsed">
+    <div id="financeEmployeeList"></div>
+</div>
 
                 <button class="bulk-free-btn" onclick="App.bulkFreeMonthConfirm()">🗓️ Освободить весь текущий месяц (для откликов)</button>
                 <div style="font-size:10.5px; color:var(--text-secondary); text-align:center; margin:-4px 0 6px;">
@@ -203,11 +203,11 @@
 
                 <div style="margin-top:20px; border-top:2px solid var(--border); padding-top:16px;">
                     <!-- Управление ПВЗ (сворачиваемо) -->
-                    <div class="collapsible-header" onclick="App.toggleCollapsible('pvzBlock')">
-                        <span style="font-weight:600; font-size:14px; color:var(--text);">🏢 Управление ПВЗ</span>
-                        <span class="collapsible-arrow" id="pvzBlockArrow">▼</span>
-                    </div>
-                    <div id="pvzBlock" class="collapsible-body">
+                   <div class="collapsible-header" onclick="App.toggleCollapsible('pvzBlock')">
+    <span style="font-weight:600; font-size:14px; color:var(--text);">🏢 Управление ПВЗ</span>
+    <span class="collapsible-arrow collapsed" id="pvzBlockArrow">▼</span>
+</div>
+<div id="pvzBlock" class="collapsible-body collapsed">
                         <div class="pvz-columns">
                             <div class="pvz-column">
                                 <div class="pvz-column-title">🟣 WB</div>

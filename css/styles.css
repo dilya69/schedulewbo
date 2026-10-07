@@ -583,6 +583,9 @@ body {
 .admin-mode .admin-only.inline { display: inline-flex; }
 .admin-mode .admin-only.flex { display: flex; }
 
+/* вкладки с admin-only показываются только когда активны (иначе «Управление» торчит на всех вкладках) */
+.tab-content.admin-only:not(.active) { display: none; }
+
 .admin-panel { border-radius: 10px; padding: 8px 10px; margin-top: 6px; border: 1px dashed var(--text-secondary); transition: border-color 0.3s; }
 .admin-panel .stat-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; color: var(--text); }
 
@@ -685,7 +688,12 @@ body {
 .profile-total {
     background: var(--accent);
     background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, black));
-    /* остальное как было */.profile-total .label { font-size: 11px; opacity: 0.8; }
+    border-radius: 16px;
+    padding: 14px 16px;
+    color: var(--accent-contrast);
+    margin-top: 12px;
+}
+.profile-total .label { font-size: 11px; opacity: 0.8; }
 .profile-total .amount { font-size: 26px; font-weight: 800; }
 
 .notification-settings { background: var(--card-secondary); border-radius: 14px; padding: 14px 16px; margin-top: 12px; transition: background 0.3s; }
@@ -822,6 +830,7 @@ body {
 .modal-actions .btn-cancel { background: var(--card-secondary); color: var(--text); }
 .modal-actions .btn-confirm { background: var(--accent); color: var(--accent-contrast); }
 .modal-actions .btn-danger { background: #ff3b30; color: white; }
+.modal-actions button:disabled { opacity: 0.6; cursor: default; }
 
 /* ---------- несколько смен в одной ячейке дня ---------- */
 .day-cell .chip-row {
@@ -1170,8 +1179,6 @@ span.chip-pending-dot { cursor: default; }
     font-weight: 700;
 }
 
-.collapsible-arrow.collapsed { transform: rotate(-90deg); }
-
 .collapsible-body {
     transition: max-height 0.3s, opacity 0.2s;
     overflow: hidden;
@@ -1344,10 +1351,6 @@ button svg.lucide {
 
 /* в ячейках календаря — очень мелкие */
 .day-cell svg.lucide {
-    width: 11px;
-    height: 11px;
-    stroke-width: 2.5;
-}.day-cell svg.lucide {
     width: 11px;
     height: 11px;
     stroke-width: 2.5;

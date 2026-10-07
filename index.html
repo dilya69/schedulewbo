@@ -62,13 +62,24 @@
                 <div style="font-weight:700; font-size:16px; margin-bottom:8px; color:var(--text);">Мои смены</div>
                 <div id="myShiftsContainer"></div>
 
-                <div class="admin-only" style="margin-top:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <div style="font-weight:600; font-size:13px; color:var(--text);">📋 Заявки на смены</div>
-                        <button id="rejectAllBtn" onclick="App.rejectAllRequests()" style="display:none; border:none; background:#ff3b3020; color:#ff3b30; font-size:10px; font-weight:600; padding:4px 10px; border-radius:20px; cursor:pointer;">❌ Отклонить все</button>
-                    </div>
-                    <div id="requestsContainer"></div>
-                </div>
+             <div class="admin-only" style="margin-top:10px;">
+    <div class="collapsible-header" onclick="App.toggleCollapsible('requestsBlock')">
+        <span style="font-weight:600; font-size:13px;">
+            <i data-lucide="clipboard-check"></i> Заявки на смены
+        </span>
+        <span class="collapsible-arrow collapsed" id="requestsBlockArrow">
+            <i data-lucide="chevron-down"></i>
+        </span>
+    </div>
+    <div id="requestsBlock" class="collapsible-body collapsed">
+        <div style="display:flex; justify-content:flex-end; margin-bottom:6px;">
+            <button id="rejectAllBtn" onclick="event.stopPropagation(); App.rejectAllRequests()" style="display:none; border:none; background:#ff3b3020; color:#ff3b30; font-size:10px; font-weight:600; padding:4px 10px; border-radius:20px; cursor:pointer;">
+                <i data-lucide="x" style="width:11px;height:11px;vertical-align:-1px;"></i> Отклонить все
+            </button>
+        </div>
+        <div id="requestsContainer"></div>
+    </div>
+</div>
             </div>
 
             <!-- ВКЛАДКА 3: СОТРУДНИКИ -->

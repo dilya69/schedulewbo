@@ -461,10 +461,10 @@ function updateAdminBadge() {
    el.innerHTML = `
   <div class="collapsible-header" style="margin-bottom:0;"
        onclick="App.toggleTodaySummary()">
-        <div style="font-weight:700; font-size:13px; color:var(--accent-contrast);">
-          📍 Сегодня работают <span style="opacity:0.85; font-weight:500;">(${todayShifts.length})</span>
-        </div>
-        <span class="collapsible-arrow ${isCollapsed ? "collapsed" : ""}" id="todaySummaryArrow" style="font-size:12px; color:var(--accent-contrast); transition: transform 0.2s;">▼</span>
+      <div style="font-weight:700; font-size:13px; color:var(--accent-contrast);">
+  <i data-lucide="map-pin"></i> Сегодня работают <span style="opacity:0.85; font-weight:500;">(${todayShifts.length})</span>
+</div>
+<span class="collapsible-arrow ${isCollapsed ? "collapsed" : ""}" id="todaySummaryArrow" style="font-size:12px; color:var(--accent-contrast); transition: transform 0.2s;"><i data-lucide="chevron-down"></i></span>
       </div>
       <div id="todaySummaryBody" style="margin-top:6px; ${isCollapsed ? "display:none;" : ""}">
         ${peopleRows}
@@ -513,8 +513,8 @@ function updateAdminBadge() {
     pvzList.forEach((pvz) => {
       html += `<div class="pzv-block" style="border-left-color:${pvz.color}; background:${hexToRgba(pvz.color, 0.08)};">
         <div class="pzv-title" style="color:${pvz.color};">
-          <span>🏢 ${escapeHtml(pvz.name)}</span>
-          <span>${pvz.marketplace.toUpperCase()}</span>
+<span><i data-lucide="building-2"></i> ${escapeHtml(pvz.name)}</span>
+<span>${pvz.marketplace.toUpperCase()}</span>
         </div>
         <div class="weekdays">${WEEKDAYS.map((w) => `<span>${w}</span>`).join("")}</div>
         <div class="days-grid">`;
@@ -555,8 +555,7 @@ function updateAdminBadge() {
               }
             } else {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
-              html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;
-            }
+html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"><i data-lucide="plus" style="width:11px;height:11px;stroke:#fff;"></i></button>`;            }
           });
 
           if (dayShifts.length > MAX_NAMES_PER_DAY) {
@@ -566,8 +565,7 @@ function updateAdminBadge() {
         }
 
         if (state.isAdminView) {
-          html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.openDayShiftsModal('${pvz.id}', ${d})">✎</button>`;
-        }
+html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.openDayShiftsModal('${pvz.id}', ${d})"><i data-lucide="pencil" style="width:9px;height:9px;stroke:#fff;"></i></button>`;        }
 
         html += `</div>`;
       }
@@ -688,14 +686,13 @@ function updateAdminBadge() {
       }
       return `<div class="day-shift-row">
         <div class="left" onclick="${clickAttr}">${label} • ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div>
-        <button onclick="App.deleteShiftConfirm('${s.id}', '${pvzId}', ${day})" title="Удалить">🗑️</button>
-      </div>`;
+<button onclick="App.deleteShiftConfirm('${s.id}', '${pvzId}', ${day})" title="Удалить"><i data-lucide="trash-2"></i></button>      </div>`;
     }).join("");
 
     openModal(`${pvz ? escapeHtml(pvz.name) : "ПВЗ"} • ${day} ${MONTHS[state.month].toLowerCase()}`, `
       <div id="dayShiftsList">${rowsHtml || '<div class="center-msg">Смен пока нет</div>'}</div>
-      <button type="button" class="add-shift-btn" onclick="App.openShiftForm('${pvzId}', '${dStr}', null)">➕ Добавить смену</button>
-    `, null);
+<button type="button" class="add-shift-btn" onclick="App.openShiftForm('${pvzId}', '${dStr}', null)"><i data-lucide="plus"></i> Добавить смену</button>
+`, null);
   }
 
   function openShiftForm(pvzId, dStr, shiftId, presetEmployeeId, presetStart, resolveRequestId) {
@@ -804,9 +801,9 @@ function updateAdminBadge() {
       ? new Date(shift.shift_date + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" })
       : "";
 
-    const approveBtn = wantsCustom
-      ? `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', true)" title="Принять как просит">✅ Как просит</button>`
-      : `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', false)">✅</button>`;
+   const approveBtn = wantsCustom
+  ? `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', true)" title="Принять как просит"><i data-lucide="check"></i> Как просит</button>`
+  : `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', false)"><i data-lucide="check"></i></button>`;
 
     const pvzId = shift?.pvz_id || shift?.pvz?.id || "";
     const shiftDate = shift?.shift_date || "";
@@ -815,14 +812,14 @@ function updateAdminBadge() {
       <div class="request-card" style="margin-bottom:6px; flex-wrap:wrap;">
         <div class="info">
           <div class="name">${index ? index + ". " : ""}${escapeHtml(r.employees?.full_name || "—")}</div>
-          <div class="details">🏢 ${escapeHtml(pvzName)} • 📅 ${dateLabel}</div>
-          <div class="details">🕐 ${escapeHtml(timeLabel)}</div>
+       <div class="details"><i data-lucide="building-2"></i> ${escapeHtml(pvzName)} • <i data-lucide="calendar"></i> ${dateLabel}</div>
+<div class="details"><i data-lucide="clock"></i> ${escapeHtml(timeLabel)}</div>
         </div>
         <div class="actions">
           ${approveBtn}
           <button class="approve" style="background:#5856d6;" title="Изменить время и принять"
-            onclick="App.openShiftForm('${pvzId}', '${shiftDate}', null, '${r.employee_id}', '${(r.requested_start_time || "").slice(0,5)}', '${r.id}')">✏️</button>
-          <button class="reject" onclick="App.rejectRequest('${r.id}','${r.shift_id}')">❌</button>
+         onclick="App.openShiftForm('${pvzId}', '${shiftDate}', null, '${r.employee_id}', '${(r.requested_start_time || "").slice(0,5)}', '${r.id}')"><i data-lucide="pencil"></i></button>
+<button class="reject" onclick="App.rejectRequest('${r.id}','${r.shift_id}')"><i data-lucide="x"></i></button>
         </div>
       </div>`;
   }
@@ -889,8 +886,8 @@ function updateAdminBadge() {
   // ---------------- ВЫБОР СОТРУДНИКА ----------------
   function renderEmpPicker(selectedId) {
     const freeItem = `<div class="emp-picker-item ${!selectedId ? "selected" : ""}" data-always="1" onclick="App._selectEmp(this,'')">
-      <span class="dot" style="background:#8e8e93;"></span>🆓 Свободно (без сотрудника)
-    </div>`;
+<span class="dot" style="background:#8e8e93;"></span>Свободно (без сотрудника)
+</div>`;
     const items = state.employees
       .filter((e) => e.is_active !== false)
       .map((e) => `<div class="emp-picker-item ${selectedId === e.id ? "selected" : ""}" data-name="${escapeHtml(e.full_name.toLowerCase())}" onclick="App._selectEmp(this,'${e.id}')">
@@ -953,10 +950,9 @@ function updateAdminBadge() {
       const dateLabel = dateObj.toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" });
       return `<div class="my-shift-card" style="border-left-color:${pvzColor};">
         <div class="info">
-          <div class="pzv-name">🏢 ${escapeHtml(pvzName)}</div>
-          <div class="date-time">${dateLabel} • ${it.start.slice(0,5)}–${it.end.slice(0,5)}</div>
-          ${it.pending ? `<div class="status-badge pending">⏳ Заявка отправлена</div>` : ""}
-        </div>
+<div class="pzv-name"><i data-lucide="building-2"></i> ${escapeHtml(pvzName)}</div>
+<div class="date-time">${dateLabel} • ${it.start.slice(0,5)}–${it.end.slice(0,5)}</div>
+${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> Заявка отправлена</div>` : ""}        </div>
       </div>`;
     }).join("");
   }
@@ -1003,10 +999,10 @@ function updateAdminBadge() {
           <div class="role">${escapeHtml(e.position || "Менеджер")}</div>
         </div>
         <div class="actions">
-          ${e.tg_username ? `<button class="chat-btn" onclick="App.openChat('${e.tg_username}')" title="Чат в Telegram">💬</button>` : ""}
-          <button class="edit-btn admin-only" onclick="App.openEmployeeScheduleModal('${e.id}', '${escapeHtml(e.full_name)}')" title="График за месяц">📅</button>
-          <button class="edit-btn admin-only" onclick="App.openEditEmployeeModal('${e.id}')" title="Редактировать">✏️</button>
-          <button class="delete admin-only" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Уволить">🗑️</button>
+       ${e.tg_username ? `<button class="chat-btn" onclick="App.openChat('${e.tg_username}')" title="Чат в Telegram"><i data-lucide="message-circle"></i></button>` : ""}
+<button class="edit-btn admin-only" onclick="App.openEmployeeScheduleModal('${e.id}', '${escapeHtml(e.full_name)}')" title="График за месяц"><i data-lucide="calendar"></i></button>
+<button class="edit-btn admin-only" onclick="App.openEditEmployeeModal('${e.id}')" title="Редактировать"><i data-lucide="pencil"></i></button>
+<button class="delete admin-only" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Уволить"><i data-lucide="trash-2"></i></button>
         </div>
       </div>`).join("");
 
@@ -1021,8 +1017,8 @@ function updateAdminBadge() {
               <div class="role">${e.tg_id > 0 ? "ID: " + e.tg_id : "ждёт первого входа"}${e.tg_username ? " • @" + escapeHtml(e.tg_username) : ""}${e.terminated_at ? " • уволен" : ""}</div>
             </div>
             <div class="actions">
-              <button class="grant-btn" onclick="App.grantAccess('${e.id}', '${escapeHtml(e.full_name)}')" title="Дать доступ">✅</button>
-              <button class="delete" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Удалить совсем">🗑️</button>
+           <button class="grant-btn" onclick="App.grantAccess('${e.id}', '${escapeHtml(e.full_name)}')" title="Дать доступ"><i data-lucide="check"></i></button>
+<button class="delete" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Удалить совсем"><i data-lucide="trash-2"></i></button>
             </div>
           </div>`).join("");
       } else {
@@ -1044,7 +1040,7 @@ function updateAdminBadge() {
       const dateObj = new Date(s.shift_date + "T00:00:00");
       const dateLabel = dateObj.toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" });
       return `<div class="profile-income-item">
-        <div class="left"><div class="title">🏢 ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${dateLabel}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
+        <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${dateLabel}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
         <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>
       </div>`;
     }).join("");
@@ -1134,10 +1130,10 @@ function updateAdminBadge() {
         Данные сотрудника можно удалить через 7 дней (стандартный вариант, есть время передумать)
         либо сразу и без возврата. Рекомендуем сначала скачать его историю смен и зарплат.
       </p>
-      <button type="button" class="add-shift-btn" onclick="App.exportEmployeeHistory('${id}','${escapeHtml(name)}')">📥 Скачать данные сотрудника</button>
-      <button type="button" class="add-shift-btn" style="border-color:#ff3b30; color:#ff3b30; margin-top:6px;" onclick="App.hardDeleteNow('${id}','${escapeHtml(name)}')">⛔ Удалить сразу, без ожидания</button>
+    <button type="button" class="add-shift-btn" onclick="App.exportEmployeeHistory('${id}','${escapeHtml(name)}')"><i data-lucide="download"></i> Скачать данные сотрудника</button>
+<button type="button" class="add-shift-btn" style="border-color:#ff3b30; color:#ff3b30; margin-top:6px;" onclick="App.hardDeleteNow('${id}','${escapeHtml(name)}')"><i data-lucide="alert-octagon"></i> Удалить сразу, без ожидания</button>
     `, null, {
-      label: "🗑️ Уволить (удалить через 7 дней)",
+label: "Уволить (удалить через 7 дней)",
       action: async () => {
         try {
           await Api.deleteEmployee(id);
@@ -1195,8 +1191,7 @@ function updateAdminBadge() {
     const roleEl = document.getElementById("profileRole");
     if (roleEl) roleEl.textContent = e.position || "Сотрудник";
     const tgEl = document.getElementById("profileTgId");
-    if (tgEl) tgEl.textContent = e.tg_username ? `🆔 @${e.tg_username}` : `🆔 ${e.tg_id}`;
-
+if (tgEl) tgEl.textContent = e.tg_username ? `@${e.tg_username}` : `${e.tg_id}`;
     if (state.demo) return;
 
     const myShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
@@ -1212,7 +1207,7 @@ function updateAdminBadge() {
       const start = r.requested_start_time || s.start_time;
       const end = r.requested_end_time || s.end_time;
       return `<div class="profile-income-item">
-        <div class="left"><div class="title">⏳ ${escapeHtml(s.pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${start.slice(0,5)}–${end.slice(0,5)} • заявка на рассмотрении</div></div>
+        <div class="left"><div class="title"><i data-lucide="clock"></i> ${escapeHtml(s.pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${start.slice(0,5)}–${end.slice(0,5)} • заявка на рассмотрении</div></div>
         <div class="right" style="color:var(--text-secondary); font-weight:500;">—</div>
       </div>`;
     });
@@ -1225,7 +1220,7 @@ function updateAdminBadge() {
         const amount = Math.round(shiftAmount(s, pvz));
         total += amount;
         return `<div class="profile-income-item">
-          <div class="left"><div class="title">🏢 ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
+          <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
           <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>
         </div>`;
       });
@@ -1264,10 +1259,10 @@ function updateAdminBadge() {
     const lightThemes = THEMES.filter(t => !t.dark);
     const darkThemes  = THEMES.filter(t => t.dark);
 
-    openModal("🎨 Тема приложения", `
-      <div class="theme-section-title">☀️ Светлые</div>
+openModal("Тема приложения", `
+<div class="theme-section-title">Светлые</div>
       <div class="theme-grid">${lightThemes.map(tile).join("")}</div>
-      <div class="theme-section-title">🌙 Тёмные</div>
+      <div class="theme-section-title">Тёмные</div>
       <div class="theme-grid">${darkThemes.map(tile).join("")}</div>
     `, null);
   }
@@ -1276,7 +1271,7 @@ function updateAdminBadge() {
  function openAvatarFrameModal() {
     const current = state.employee.avatar_frame || DEFAULT_FRAME_COLOR;
     const presetColors = ["#ffd700","#ff3b30","#34c759","#007aff","#8e44ad","#ff9500","#e91e63","#00bcd4","#8e8e93","#1c1c1e"];
-    openModal("🖼️ Цвет рамки иконки", `
+    openModal("Цвет рамки иконки", `
       <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
         Рамка отображается всегда. Выберите цвет.
       </div>
@@ -1415,8 +1410,8 @@ function _pickFrameColor(color) {
         <div class="left">
           <div class="name">${escapeHtml(e.full_name)}</div>
           <div class="details">${empShifts.length} смен • ${Math.round(base).toLocaleString("ru-RU")} ₽ по тарифам ПВЗ</div>
-          ${bonuses.map((b) => `<div class="bonus-list">✨ Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
-          ${fines.map((b) => `<div class="fine-list">⚠️ Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
+        ${bonuses.map((b) => `<div class="bonus-list">Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
+${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
         </div>
         <div class="right">
           ${[...markets].map((m) => `<span class="market-tag ${m}">${m.toUpperCase()}</span>`).join("")}
@@ -1433,8 +1428,8 @@ function _pickFrameColor(color) {
     // ПВЗ разбиты на две колонки: WB слева, Ozon справа
     const pvzItemHtml = (p) => `
       <div class="pvz-grid-item">
-        <button class="pvz-edit-rate" onclick="App.openPvzRateModal('${p.id}')" title="Тарифы">✏️</button>
-        <button class="pvz-remove" onclick="App.deletePvzConfirm('${p.id}', '${escapeHtml(p.name)}')" title="Удалить">✕</button>
+    <button class="pvz-edit-rate" onclick="App.openPvzRateModal('${p.id}')" title="Тарифы"><i data-lucide="pencil"></i></button>
+<button class="pvz-remove" onclick="App.deletePvzConfirm('${p.id}', '${escapeHtml(p.name)}')" title="Удалить"><i data-lucide="x"></i></button>
         <span class="dot" style="background:${p.color};"></span>
         <span class="pvz-name">${escapeHtml(p.name)}</span>
       </div>`;
@@ -1477,8 +1472,8 @@ function _pickFrameColor(color) {
       <div class="pay-rule-row">
         <div class="pay-rule-row-top">
           <input type="text" placeholder="Название (напр. Утро, Вечер)" value="${escapeHtml(r.label || "")}" onchange="App._updateRateDraft(${i}, 'label', this.value)">
-          <button type="button" class="pay-rule-remove" onclick="App._removeRateRow(${i})" title="Удалить правило">✕</button>
-        </div>
+<button type="button" class="pay-rule-remove" onclick="App._removeRateRow(${i})" title="Удалить правило"><i data-lucide="x"></i></button>
+</div>
         <div class="pay-rule-row-grid">
           <div><label>С</label><input type="time" value="${(r.start_time || "").slice(0,5)}" onchange="App._updateRateDraft(${i}, 'start_time', this.value)"></div>
           <div><label>До</label><input type="time" value="${(r.end_time || "").slice(0,5)}" onchange="App._updateRateDraft(${i}, 'end_time', this.value)"></div>
@@ -1499,8 +1494,8 @@ function _pickFrameColor(color) {
         «Фиксированная сумма» — платится, только если смена ТОЧНО совпадает с этим временем от и до. «₽/час» — определяется по ВРЕМЕНИ НАЧАЛА смены: если смена стартовала внутри этого промежутка, вся её продолжительность считается по этой ставке.
       </div>
       <div id="payRulesList">${rowsHtml || '<div class="center-msg">Пока нет ни одного тарифа</div>'}</div>
-      <button type="button" class="add-shift-btn" onclick="App._addRateRow()">➕ Добавить тариф</button>
-      <label style="margin-top:14px;">Ставка по умолчанию для непокрытого времени, ₽/час</label>
+<button type="button" class="add-shift-btn" onclick="App._addRateRow()"><i data-lucide="plus"></i> Добавить тариф</button>
+<label style="margin-top:14px;">Ставка по умолчанию для непокрытого времени, ₽/час</label>
       <input type="number" id="f_default_hourly" min="0" value="${pvz.mid_hourly_rate ?? 250}">
       <label>Стандартное открытие ПВЗ</label>
       <input type="time" id="f_dstart" value="${(pvz.default_start_time || "09:00").slice(0,5)}">
@@ -1547,8 +1542,8 @@ function _pickFrameColor(color) {
 
   function openBonusFineModal(kind) {
     const empOptions = state.employees.map((e) => `<option value="${e.id}">${escapeHtml(e.full_name)}</option>`).join("");
-    openModal(kind === "bonus" ? "➕ Начислить бонус" : "⚠️ Оформить штраф", `
-      <label>Сотрудник</label><select id="f_employee">${empOptions}</select>
+openModal(kind === "bonus" ? "Начислить бонус" : "Оформить штраф", `
+<label>Сотрудник</label><select id="f_employee">${empOptions}</select>
       <label>Сумма, ₽</label><input type="number" id="f_amount" min="1" placeholder="1000">
       <label>Причина</label><input type="text" id="f_reason" placeholder="${kind === "bonus" ? "Качество работы" : "Опоздание"}">
     `, async () => {
@@ -1675,8 +1670,8 @@ function _pickFrameColor(color) {
     if (day >= daysInMonth - 5) {
       const daysLeft = daysInMonth - day + 1;
       el.style.display = "block";
-      el.innerHTML = `⚠️ Через ${daysLeft} дн. (в начале нового месяца) будут удалены смены и финансы за ${MONTHS[now.getMonth()].toLowerCase()}.
-        <button type="button" onclick="App.exportMonth(${now.getFullYear()}, ${now.getMonth()})">📥 Скачать за ${MONTHS[now.getMonth()].toLowerCase()}</button>`;
+    el.innerHTML = `<i data-lucide="alert-triangle"></i> Через ${daysLeft} дн. (в начале нового месяца) будут удалены смены и финансы за ${MONTHS[now.getMonth()].toLowerCase()}.
+  <button type="button" onclick="App.exportMonth(${now.getFullYear()}, ${now.getMonth()})"><i data-lucide="download"></i> Скачать за ${MONTHS[now.getMonth()].toLowerCase()}</button>`;
     } else {
       el.style.display = "none";
     }

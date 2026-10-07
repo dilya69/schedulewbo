@@ -556,9 +556,11 @@ function updateAdminBadge() {
               } else {
                 html += `<button class="chip-pending-dot" title="Откликнуться • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"></button>`;
               }
-            } else {
+                  } else {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
-html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;          });
+              html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;
+            }
+          });
 
           if (dayShifts.length > MAX_NAMES_PER_DAY) {
             html += `<span class="chip-more">+${dayShifts.length - MAX_NAMES_PER_DAY}</span>`;

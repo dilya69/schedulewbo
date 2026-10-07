@@ -682,8 +682,10 @@ body {
 .profile-income-item .right.bonus { color: #34c759; }
 .profile-income-item .right.fine { color: #ff3b30; }
 
-.profile-total { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, black)); border-radius: 16px; padding: 14px 16px; color: var(--accent-contrast); margin-top: 12px; }
-.profile-total .label { font-size: 11px; opacity: 0.8; }
+.profile-total {
+    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, black));
+    /* остальное как было */.profile-total .label { font-size: 11px; opacity: 0.8; }
 .profile-total .amount { font-size: 26px; font-weight: 800; }
 
 .notification-settings { background: var(--card-secondary); border-radius: 14px; padding: 14px 16px; margin-top: 12px; transition: background 0.3s; }

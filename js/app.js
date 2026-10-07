@@ -60,6 +60,10 @@ const App = (() => {
     notif: null,
   };
 
+  function refreshIcons() {
+    if (window.lucide) lucide.createIcons();
+  }
+
   // ---------------- ИНИЦИАЛИЗАЦИЯ ----------------
   async function init() {
     try {
@@ -76,15 +80,18 @@ const App = (() => {
       document.getElementById("bootScreen").style.display = "none";
       document.getElementById("appBody").style.display = "block";
 
-     const badge = document.getElementById("headerBadge");
-if (state.employee.is_admin) {
-    badge.classList.remove("hidden");
-    // админ сразу в админском режиме — тумблер не нужен
-    state.isAdminView = true;
-    updateAdminBadge();
-}
-applyAdminClass();
-switchTab("tab1");
+      const badge = document.getElementById("headerBadge");
+      if (state.employee.is_admin) {
+        badge.classList.remove("hidden");
+        // админ сразу в админском режиме
+        state.isAdminView = true;
+        updateAdminBadge();
+      }
+      applyAdminClass();
+      switchTab("tab1");
+      renderCalendar();
+      renderRequests();
+      refreshIcons();
     } catch (e) {
       console.error(e);
       document.getElementById("bootScreen").innerHTML =
@@ -138,7 +145,7 @@ switchTab("tab1");
     renderEmployees();
     renderProfile();
     renderManagement();
-     if (window.lucide) lucide.createIcons(); 
+    refreshIcons();
   }
 
   // ---------------- УТИЛИТЫ ----------------
@@ -152,6 +159,11 @@ switchTab("tab1");
 
   function escapeHtml(s) {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  // username Telegram — только латиница, цифры и _ (защита от поломки onclick)
+  function safeUser(u) {
+    return String(u ?? "").replace(/[^A-Za-z0-9_]/g, "");
   }
 
   function pad2(n) { return String(n).padStart(2, "0"); }
@@ -221,6 +233,7 @@ switchTab("tab1");
   (function initTheme() {
     const themeId = localStorage.getItem("theme") || DEFAULT_THEME;
     const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+    document.body.classList.remove(...THEMES.map(t => `theme-${t.id}`));
     document.body.classList.add(`theme-${theme.id}`);
     document.documentElement.style.colorScheme = theme.dark ? "dark" : "light";
   })();
@@ -292,6 +305,7 @@ switchTab("tab1");
     state.payPeriod = period;
     renderProfile();
     renderManagement();
+    refreshIcons();
   }
 
   function periodToggleHtml() {
@@ -301,11 +315,12 @@ switchTab("tab1");
 
   function findConflict(employeeId, date, start, end, excludeShiftId) {
     if (!employeeId || !date || !start || !end) return null;
+    const st = String(start).slice(0, 5), en = String(end).slice(0, 5);
     return state.shifts.find((s) => {
       if (s.employee_id !== employeeId) return false;
       if (s.shift_date !== date) return false;
       if (excludeShiftId && s.id === excludeShiftId) return false;
-      return start < s.end_time && s.start_time < end;
+      return st < s.end_time.slice(0, 5) && s.start_time.slice(0, 5) < en;
     }) || null;
   }
 
@@ -357,24 +372,25 @@ switchTab("tab1");
     renderCalendar();
     renderRequests();
     if (!state.isAdminView) {
-        const active = document.querySelector(".tab-content.active");
-        if (active?.id === "tab5") switchTab("tab1");
+      const active = document.querySelector(".tab-content.active");
+      if (active?.id === "tab5") switchTab("tab1");
     }
-}
+    refreshIcons();
+  }
 
-function updateAdminBadge() {
+  function updateAdminBadge() {
     const badge = document.getElementById("headerBadge");
     const text = document.getElementById("headerBadgeText");
     if (!badge || !text) return;
     if (state.isAdminView) {
-        badge.classList.add("admin-on");
-        text.innerHTML = `<i data-lucide="shield-check"></i> АДМИН`;
+      badge.classList.add("admin-on");
+      text.innerHTML = `<i data-lucide="shield-check"></i> АДМИН`;
     } else {
-        badge.classList.remove("admin-on");
-        text.innerHTML = `<i data-lucide="shield-check"></i> ПВЗ`;
+      badge.classList.remove("admin-on");
+      text.innerHTML = `<i data-lucide="shield-check"></i> ПВЗ`;
     }
-    if (window.lucide) lucide.createIcons();
-}
+    refreshIcons();
+  }
 
   function applyAdminClass() {
     document.getElementById("app").classList.toggle("admin-mode", state.isAdminView);
@@ -385,14 +401,28 @@ function updateAdminBadge() {
     state.month += delta;
     if (state.month > 11) { state.month = 0; state.year++; }
     if (state.month < 0) { state.month = 11; state.year--; }
-    await reloadShifts();
-    state.bonusesFines = (state.demo || !state.employee.is_admin) ? [] : await Api.getBonusesFines(state.year, state.month);
+    const req = (changeMonth._n = (changeMonth._n || 0) + 1);
     updateMonthLabel();
+
+    if (!state.demo) {
+      try {
+        const shifts = await Api.getShiftsForMonth(state.year, state.month);
+        const bf = state.employee.is_admin ? await Api.getBonusesFines(state.year, state.month) : [];
+        if (req !== changeMonth._n) return; // пока грузили, нажали ещё раз — этот ответ устарел
+        state.shifts = shifts;
+        state.bonusesFines = bf;
+      } catch (e) {
+        if (req === changeMonth._n) toast("🚫 " + e.message);
+        return;
+      }
+    }
+
     renderCalendar();
     renderMyShifts();
     renderRequests();
     renderProfile();
     renderManagement();
+    refreshIcons();
   }
 
   function updateMonthLabel() {
@@ -437,41 +467,39 @@ function updateAdminBadge() {
 
     if (todayShifts.length === 0) { el.style.display = "none"; return; }
 
-    // сворачивание — по умолчанию свёрнуто, не запоминается между перезаходами
+    // по умолчанию свёрнуто, не запоминается между перезаходами
     if (typeof renderTodaySummary._collapsed === "undefined") renderTodaySummary._collapsed = true;
     const isCollapsed = renderTodaySummary._collapsed;
 
     const peopleRows = todayShifts.map((s) => {
-        const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-        const emp = state.employees.find((e) => e.id === s.employee_id);
-        const name = emp?.full_name || s.employees?.full_name || "—";
-        const tgUsername = emp?.tg_username || s.employees?.tg_username || "";
+      const pvz = state.pvz.find((p) => p.id === s.pvz_id);
+      const emp = state.employees.find((e) => e.id === s.employee_id);
+      const name = emp?.full_name || s.employees?.full_name || "—";
+      const tgUsername = safeUser(emp?.tg_username || s.employees?.tg_username || "");
 
-        const nameHtml = tgUsername
-          ? `<a href="javascript:void(0)" onclick="event.stopPropagation(); App.openChat('${escapeHtml(tgUsername)}');" style="color:var(--accent); text-decoration:none; font-weight:600;">${escapeHtml(name)}</a>`
-          : `<span>${escapeHtml(name)}</span>`;
+      const nameHtml = tgUsername
+        ? `<a href="javascript:void(0)" onclick="event.stopPropagation(); App.openChat('${tgUsername}');" style="color:var(--accent); text-decoration:none; font-weight:600;">${escapeHtml(name)}</a>`
+        : `<span>${escapeHtml(name)}</span>`;
 
-        return `<div class="row">
-          <span>${nameHtml} — ${escapeHtml(pvz?.name || "")}</span>
-          <span class="time">${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</span>
-        </div>`;
+      return `<div class="row">
+        <span>${nameHtml} — ${escapeHtml(pvz?.name || "")}</span>
+        <span class="time">${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</span>
+      </div>`;
     }).join("");
 
-        el.style.display = "block";
-   el.innerHTML = `
-  <div class="collapsible-header" style="margin-bottom:0;"
-       onclick="App.toggleTodaySummary()">
-      <div style="font-weight:700; font-size:13px; color:var(--accent-contrast);">
-  <i data-lucide="map-pin"></i> Сегодня работают <span style="opacity:0.85; font-weight:500;">(${todayShifts.length})</span>
-</div>
-<span class="collapsible-arrow ${isCollapsed ? "collapsed" : ""}" id="todaySummaryArrow" style="font-size:12px; color:var(--accent-contrast); transition: transform 0.2s;"><i data-lucide="chevron-down"></i></span>
+    el.style.display = "block";
+    el.innerHTML = `
+      <div class="collapsible-header" style="margin-bottom:0;" onclick="App.toggleTodaySummary()">
+        <div style="font-weight:700; font-size:13px; color:var(--accent-contrast);">
+          <i data-lucide="map-pin"></i> Сегодня работают <span style="opacity:0.85; font-weight:500;">(${todayShifts.length})</span>
+        </div>
+        <span class="collapsible-arrow ${isCollapsed ? "collapsed" : ""}" id="todaySummaryArrow" style="font-size:12px; color:var(--accent-contrast); transition: transform 0.2s;"><i data-lucide="chevron-down"></i></span>
       </div>
       <div id="todaySummaryBody" style="margin-top:6px; ${isCollapsed ? "display:none;" : ""}">
         ${peopleRows}
       </div>
     `;
-    if (window.lucide) lucide.createIcons();
-}
+  }
 
   function toggleTodaySummary() {
     renderTodaySummary._collapsed = !renderTodaySummary._collapsed;
@@ -479,7 +507,7 @@ function updateAdminBadge() {
     const arrow = document.getElementById("todaySummaryArrow");
     if (body) body.style.display = renderTodaySummary._collapsed ? "none" : "block";
     if (arrow) arrow.classList.toggle("collapsed", renderTodaySummary._collapsed);
-}
+  }
 
   function renderCalendar() {
     const container = document.getElementById("calendarContainer");
@@ -492,6 +520,7 @@ function updateAdminBadge() {
 
     if (state.demo) {
       container.innerHTML = `<div class="center-msg">Подключите Supabase (config.js), чтобы увидеть реальный график.</div>`;
+      refreshIcons();
       return;
     }
 
@@ -513,8 +542,8 @@ function updateAdminBadge() {
     pvzList.forEach((pvz) => {
       html += `<div class="pzv-block" style="border-left-color:${pvz.color}; background:${hexToRgba(pvz.color, 0.08)};">
         <div class="pzv-title" style="color:${pvz.color};">
-<span><i data-lucide="building-2"></i> ${escapeHtml(pvz.name)}</span>
-<span>${pvz.marketplace.toUpperCase()}</span>
+          <span><i data-lucide="building-2"></i> ${escapeHtml(pvz.name)}</span>
+          <span>${pvz.marketplace.toUpperCase()}</span>
         </div>
         <div class="weekdays">${WEEKDAYS.map((w) => `<span>${w}</span>`).join("")}</div>
         <div class="days-grid">`;
@@ -527,6 +556,14 @@ function updateAdminBadge() {
         const dayShifts = shiftsForPvzAndDay(pvz.id, d);
         const isToday = isCurrentMonth && d === today.getDate();
 
+        // статистика считается по ВСЕМ сменам дня, а не только по видимым
+        dayShifts.forEach((s) => {
+          if (s.employee_id) {
+            totalShifts++;
+            totalAmount += shiftAmount(s, pvz);
+          }
+        });
+
         const cellClick = state.isAdminView
           ? `App.openDayShiftsModal('${pvz.id}', ${d})`
           : `App.openDayViewModal('${pvz.id}', ${d})`;
@@ -538,8 +575,6 @@ function updateAdminBadge() {
 
           visible.forEach((shift) => {
             if (shift.employee_id) {
-              totalShifts++;
-              totalAmount += shiftAmount(shift, pvz);
               const isMine = shift.employee_id === state.employee.id;
               const empName = shift.employees?.full_name || "?";
               const bg = colorForName(empName);
@@ -555,7 +590,8 @@ function updateAdminBadge() {
               }
             } else {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
-html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"><i data-lucide="plus" style="width:11px;height:11px;stroke:#fff;"></i></button>`;            }
+              html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"><i data-lucide="plus" style="width:11px;height:11px;stroke:#fff;"></i></button>`;
+            }
           });
 
           if (dayShifts.length > MAX_NAMES_PER_DAY) {
@@ -565,7 +601,8 @@ html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.s
         }
 
         if (state.isAdminView) {
-html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.openDayShiftsModal('${pvz.id}', ${d})"><i data-lucide="pencil" style="width:9px;height:9px;stroke:#fff;"></i></button>`;        }
+          html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.openDayShiftsModal('${pvz.id}', ${d})"><i data-lucide="pencil" style="width:9px;height:9px;stroke:#fff;"></i></button>`;
+        }
 
         html += `</div>`;
       }
@@ -584,13 +621,13 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
 
     html += `</div>`;
     container.innerHTML = html;
+    refreshIcons();
   }
 
   // ---------------- ОТКЛИК ----------------
   function openApplyModal(shiftId) {
     const shift = state.shifts.find((s) => s.id === shiftId);
     if (!shift) return;
-    const pvz = state.pvz.find((p) => p.id === shift.pvz_id);
     const fullLabel = `Полная смена (${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)})`;
 
     openModal("Откликнуться на смену", `
@@ -612,6 +649,10 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       const applyStart = mode === "custom" ? document.getElementById("f_apply_start").value : shift.start_time;
       const applyEnd = mode === "custom" ? document.getElementById("f_apply_end").value : shift.end_time;
 
+      if (mode === "custom" && (!applyStart || !applyEnd || applyStart >= applyEnd)) {
+        return toast("Начало должно быть раньше конца");
+      }
+
       if (!confirmConflictOrCancel(state.employee.id, shift.shift_date, applyStart, applyEnd, shiftId, "откликнуться")) return;
 
       try {
@@ -625,6 +666,7 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
         await reloadRequests();
         renderCalendar();
         renderMyShifts();
+        closeModal();
       } catch (e) {
         toast("🚫 " + e.message);
       }
@@ -660,7 +702,7 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       </div>`;
     }).join("");
 
-    openModal(`${pvz ? escapeHtml(pvz.name) : "ПВЗ"} • ${day} ${MONTHS[state.month].toLowerCase()}`, `
+    openModal(`${pvz ? pvz.name : "ПВЗ"} • ${day} ${MONTHS[state.month].toLowerCase()}`, `
       <div style="font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text);">Смены в этот день</div>
       ${rowsHtml || '<div class="center-msg">В этот день смен нет</div>'}
     `, null);
@@ -686,24 +728,26 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       }
       return `<div class="day-shift-row">
         <div class="left" onclick="${clickAttr}">${label} • ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div>
-<button onclick="App.deleteShiftConfirm('${s.id}', '${pvzId}', ${day})" title="Удалить"><i data-lucide="trash-2"></i></button>      </div>`;
+        <button onclick="App.deleteShiftConfirm('${s.id}', '${pvzId}', ${day})" title="Удалить"><i data-lucide="trash-2"></i></button>
+      </div>`;
     }).join("");
 
-    openModal(`${pvz ? escapeHtml(pvz.name) : "ПВЗ"} • ${day} ${MONTHS[state.month].toLowerCase()}`, `
+    openModal(`${pvz ? pvz.name : "ПВЗ"} • ${day} ${MONTHS[state.month].toLowerCase()}`, `
       <div id="dayShiftsList">${rowsHtml || '<div class="center-msg">Смен пока нет</div>'}</div>
-<button type="button" class="add-shift-btn" onclick="App.openShiftForm('${pvzId}', '${dStr}', null)"><i data-lucide="plus"></i> Добавить смену</button>
-`, null);
+      <button type="button" class="add-shift-btn" onclick="App.openShiftForm('${pvzId}', '${dStr}', null)"><i data-lucide="plus"></i> Добавить смену</button>
+    `, null);
   }
 
   function openShiftForm(pvzId, dStr, shiftId, presetEmployeeId, presetStart, resolveRequestId) {
     const shift = shiftId ? state.shifts.find((s) => s.id === shiftId) : null;
     const pvz = state.pvz.find((p) => p.id === pvzId);
-    const [year, month, day] = dStr.split("-").map(Number);
+    const [, , day] = dStr.split("-").map(Number);
 
     const startVal = shift?.start_time?.slice(0,5) || presetStart || pvz?.default_start_time?.slice(0,5) || "09:00";
     const endVal = shift?.end_time?.slice(0,5) || pvz?.default_end_time?.slice(0,5) || "21:00";
     const autoAmount = Math.round(shiftAmount({ start_time: startVal, end_time: endVal, custom_amount: null }, pvz));
-    const currentAmount = shift?.custom_amount != null ? Math.round(shift.custom_amount) : autoAmount;
+    const hasCustom = shift?.custom_amount != null;
+    const currentAmount = hasCustom ? Math.round(shift.custom_amount) : autoAmount;
 
     openModal(shiftId ? "Редактировать смену" : "Новая смена", `
       <label>Сотрудник</label>
@@ -713,7 +757,7 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       <label>Конец</label>
       <input type="time" id="f_end" value="${endVal}" oninput="App._recalcAmount('${pvzId}')">
       <label>Ставка за смену, ₽</label>
-      <input type="number" id="f_amount" value="${currentAmount}" min="0" oninput="this.dataset.touched='1'">
+      <input type="number" id="f_amount" value="${currentAmount}" min="0" ${hasCustom ? 'data-touched="1"' : ""} oninput="this.dataset.touched='1'">
       <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">По умолчанию для этого времени: <span id="f_amount_auto">${autoAmount}</span> ₽</div>
     `, async () => {
       const employeeId = document.getElementById("f_emp_hidden").value || null;
@@ -722,6 +766,7 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       const amountInput = document.getElementById("f_amount");
       const custom_amount = amountInput.dataset.touched === "1" ? Number(amountInput.value) : null;
 
+      if (!start || !end || start >= end) return toast("Начало должно быть раньше конца");
       if (employeeId && !confirmConflictOrCancel(employeeId, dStr, start, end, shiftId, "назначить")) return;
 
       try {
@@ -736,7 +781,7 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
         await reloadRequests();
         renderCalendar();
         renderRequests();
-        if (!resolveRequestId) openDayShiftsModal(pvzId, day);
+        if (resolveRequestId) closeModal(); else openDayShiftsModal(pvzId, day);
       } catch (e) {
         toast("🚫 " + e.message);
       }
@@ -801,9 +846,9 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       ? new Date(shift.shift_date + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" })
       : "";
 
-   const approveBtn = wantsCustom
-  ? `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', true)" title="Принять как просит"><i data-lucide="check"></i> Как просит</button>`
-  : `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', false)"><i data-lucide="check"></i></button>`;
+    const approveBtn = wantsCustom
+      ? `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', true)" title="Принять как просит"><i data-lucide="check"></i> Как просит</button>`
+      : `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', false)"><i data-lucide="check"></i></button>`;
 
     const pvzId = shift?.pvz_id || shift?.pvz?.id || "";
     const shiftDate = shift?.shift_date || "";
@@ -812,14 +857,14 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       <div class="request-card" style="margin-bottom:6px; flex-wrap:wrap;">
         <div class="info">
           <div class="name">${index ? index + ". " : ""}${escapeHtml(r.employees?.full_name || "—")}</div>
-       <div class="details"><i data-lucide="building-2"></i> ${escapeHtml(pvzName)} • <i data-lucide="calendar"></i> ${dateLabel}</div>
-<div class="details"><i data-lucide="clock"></i> ${escapeHtml(timeLabel)}</div>
+          <div class="details"><i data-lucide="building-2"></i> ${escapeHtml(pvzName)} • <i data-lucide="calendar"></i> ${dateLabel}</div>
+          <div class="details"><i data-lucide="clock"></i> ${escapeHtml(timeLabel)}</div>
         </div>
         <div class="actions">
           ${approveBtn}
           <button class="approve" style="background:#5856d6;" title="Изменить время и принять"
-         onclick="App.openShiftForm('${pvzId}', '${shiftDate}', null, '${r.employee_id}', '${(r.requested_start_time || "").slice(0,5)}', '${r.id}')"><i data-lucide="pencil"></i></button>
-<button class="reject" onclick="App.rejectRequest('${r.id}','${r.shift_id}')"><i data-lucide="x"></i></button>
+            onclick="App.openShiftForm('${pvzId}', '${shiftDate}', null, '${r.employee_id}', '${(r.requested_start_time || "").slice(0,5)}', '${r.id}')"><i data-lucide="pencil"></i></button>
+          <button class="reject" onclick="App.rejectRequest('${r.id}','${r.shift_id}')"><i data-lucide="x"></i></button>
         </div>
       </div>`;
   }
@@ -919,13 +964,19 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
   }
 
   // ---------------- МОИ СМЕНЫ / ЗАЯВКИ ----------------
+  // заявки только выбранного месяца
+  function myRequestsForMonth() {
+    const ym = `${state.year}-${pad2(state.month + 1)}`;
+    return state.myRequests.filter((r) => r.shifts && String(r.shifts.shift_date).slice(0, 7) === ym);
+  }
+
   function renderMyShifts() {
     const container = document.getElementById("myShiftsContainer");
     if (!container) return;
     if (state.demo) { container.innerHTML = `<div class="center-msg">Нет данных</div>`; return; }
 
     const mineConfirmed = state.shifts.filter((s) => s.employee_id === state.employee.id);
-    const minePending = state.myRequests.filter((r) => r.shifts);
+    const minePending = myRequestsForMonth();
 
     const items = [
       ...mineConfirmed.map((s) => ({ pending: false, date: s.shift_date, start: s.start_time, end: s.end_time, pvzId: s.pvz_id })),
@@ -950,11 +1001,13 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       const dateLabel = dateObj.toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" });
       return `<div class="my-shift-card" style="border-left-color:${pvzColor};">
         <div class="info">
-<div class="pzv-name"><i data-lucide="building-2"></i> ${escapeHtml(pvzName)}</div>
-<div class="date-time">${dateLabel} • ${it.start.slice(0,5)}–${it.end.slice(0,5)}</div>
-${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> Заявка отправлена</div>` : ""}        </div>
+          <div class="pzv-name"><i data-lucide="building-2"></i> ${escapeHtml(pvzName)}</div>
+          <div class="date-time">${dateLabel} • ${it.start.slice(0,5)}–${it.end.slice(0,5)}</div>
+          ${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> Заявка отправлена</div>` : ""}
+        </div>
       </div>`;
     }).join("");
+    refreshIcons();
   }
 
   function renderRequests() {
@@ -974,6 +1027,7 @@ ${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> З
       if (rejectAllBtn) rejectAllBtn.style.display = "block";
       container.innerHTML = state.requests.map((r) => renderRequestRow(r, null)).join("");
     }
+    refreshIcons();
   }
 
   // ---------------- СОТРУДНИКИ ----------------
@@ -999,16 +1053,16 @@ ${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> З
           <div class="role">${escapeHtml(e.position || "Менеджер")}</div>
         </div>
         <div class="actions">
-       ${e.tg_username ? `<button class="chat-btn" onclick="App.openChat('${e.tg_username}')" title="Чат в Telegram"><i data-lucide="message-circle"></i></button>` : ""}
-<button class="edit-btn admin-only" onclick="App.openEmployeeScheduleModal('${e.id}', '${escapeHtml(e.full_name)}')" title="График за месяц"><i data-lucide="calendar"></i></button>
-<button class="edit-btn admin-only" onclick="App.openEditEmployeeModal('${e.id}')" title="Редактировать"><i data-lucide="pencil"></i></button>
-<button class="delete admin-only" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Уволить"><i data-lucide="trash-2"></i></button>
+          ${safeUser(e.tg_username) ? `<button class="chat-btn" onclick="App.openChat('${safeUser(e.tg_username)}')" title="Чат в Telegram"><i data-lucide="message-circle"></i></button>` : ""}
+          <button class="edit-btn admin-only" onclick="App.openEmployeeScheduleModal('${e.id}')" title="График за месяц"><i data-lucide="calendar"></i></button>
+          <button class="edit-btn admin-only" onclick="App.openEditEmployeeModal('${e.id}')" title="Редактировать"><i data-lucide="pencil"></i></button>
+          <button class="delete admin-only" onclick="App.openDeleteEmployeeModal('${e.id}')" title="Уволить"><i data-lucide="trash-2"></i></button>
         </div>
       </div>`).join("");
 
     if (pendingSection) {
       if (state.employee.is_admin && pending.length > 0) {
-        pendingSection.style.display = "block";
+        pendingSection.style.display = ""; // видимость решает CSS (.admin-only)
         pendingContainer.innerHTML = pending.map((e) => `
           <div class="employee-card pending-card" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgid="${e.tg_id > 0 ? e.tg_id : ""}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
             <div class="avatar" style="background:#8e8e93;">${e.avatar_emoji ? escapeHtml(e.avatar_emoji) : escapeHtml(e.full_name[0] || "?")}</div>
@@ -1017,17 +1071,19 @@ ${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> З
               <div class="role">${e.tg_id > 0 ? "ID: " + e.tg_id : "ждёт первого входа"}${e.tg_username ? " • @" + escapeHtml(e.tg_username) : ""}${e.terminated_at ? " • уволен" : ""}</div>
             </div>
             <div class="actions">
-           <button class="grant-btn" onclick="App.grantAccess('${e.id}', '${escapeHtml(e.full_name)}')" title="Дать доступ"><i data-lucide="check"></i></button>
-<button class="delete" onclick="App.openDeleteEmployeeModal('${e.id}', '${escapeHtml(e.full_name)}')" title="Удалить совсем"><i data-lucide="trash-2"></i></button>
+              <button class="grant-btn" onclick="App.grantAccess('${e.id}')" title="Дать доступ"><i data-lucide="check"></i></button>
+              <button class="delete" onclick="App.openDeleteEmployeeModal('${e.id}')" title="Удалить совсем"><i data-lucide="trash-2"></i></button>
             </div>
           </div>`).join("");
       } else {
         pendingSection.style.display = "none";
       }
     }
+    refreshIcons();
   }
 
-  function openEmployeeScheduleModal(employeeId, name) {
+  function openEmployeeScheduleModal(employeeId) {
+    const name = state.employees.find((e) => e.id === employeeId)?.full_name || "";
     const shifts = state.shifts
       .filter((s) => s.employee_id === employeeId)
       .sort((a, b) => a.shift_date.localeCompare(b.shift_date));
@@ -1045,13 +1101,14 @@ ${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> З
       </div>`;
     }).join("");
 
-    openModal(`График: ${escapeHtml(name)} — ${MONTHS[state.month]} ${state.year}`, `
+    openModal(`График: ${name} — ${MONTHS[state.month]} ${state.year}`, `
       ${rows || '<div class="center-msg">В этом месяце смен нет</div>'}
       ${shifts.length ? `<div style="display:flex; justify-content:space-between; font-weight:700; font-size:14px; padding:10px 0 2px; color:var(--text); border-top:1px solid var(--border); margin-top:6px;"><span>${shifts.length} смен, итого</span><span>${Math.round(total).toLocaleString("ru-RU")} ₽</span></div>` : ""}
     `, null);
   }
 
-  async function grantAccess(id, name) {
+  async function grantAccess(id) {
+    const name = state.employees.find((e) => e.id === id)?.full_name || "";
     try {
       await Api.updateEmployee(id, { is_active: true });
       toast(`✅ Доступ выдан: ${name}`);
@@ -1088,13 +1145,14 @@ ${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> З
       const full_name = document.getElementById("f_name").value.trim();
       if (!full_name) return toast("Введите имя");
       const position = document.getElementById("f_position").value.trim();
-      const tg_username = document.getElementById("f_username").value.trim() || null;
+      const tg_username = document.getElementById("f_username").value.trim().replace(/^@/, "") || null;
       try {
         await Api.addEmployee({ full_name, position, tg_username });
         toast("✅ Сотрудник добавлен");
         state.employees = await Api.getEmployees();
         renderEmployees();
         renderManagement();
+        closeModal();
       } catch (e) { toast("🚫 " + e.message); }
     });
   }
@@ -1102,7 +1160,7 @@ ${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> З
   function openEditEmployeeModal(id) {
     const emp = state.employees.find((e) => e.id === id);
     if (!emp) return;
-    openModal(`Редактировать: ${escapeHtml(emp.full_name)}`, `
+    openModal(`Редактировать: ${emp.full_name}`, `
       <label>ФИО</label><input type="text" id="f_name" value="${escapeHtml(emp.full_name)}">
       <label>Должность</label><input type="text" id="f_position" value="${escapeHtml(emp.position || "")}">
       <label>Активен (доступ в приложение)</label>
@@ -1110,30 +1168,41 @@ ${it.pending ? `<div class="status-badge pending"><i data-lucide="clock"></i> З
       <label>Администратор</label>
       <select id="f_admin"><option value="false" ${!emp.is_admin ? "selected" : ""}>Нет</option><option value="true" ${emp.is_admin ? "selected" : ""}>Да</option></select>
     `, async () => {
+      const newName = document.getElementById("f_name").value.trim();
+      const newActive = document.getElementById("f_active").value === "true";
+      const newAdmin = document.getElementById("f_admin").value === "true";
+      if (!newName) return toast("Введите имя");
+      if (id === state.employee.id && (!newAdmin || !newActive)) {
+        return toast("Нельзя снять права или доступ у самого себя");
+      }
       try {
         await Api.updateEmployee(id, {
-          full_name: document.getElementById("f_name").value.trim(),
+          full_name: newName,
           position: document.getElementById("f_position").value.trim(),
-          is_active: document.getElementById("f_active").value === "true",
-          is_admin: document.getElementById("f_admin").value === "true",
+          is_active: newActive,
+          is_admin: newAdmin,
         });
         toast("✅ Изменения сохранены");
         state.employees = await Api.getEmployees();
         renderEmployees();
+        renderManagement();
+        closeModal();
       } catch (e) { toast("🚫 " + e.message); }
     });
   }
 
-  function openDeleteEmployeeModal(id, name) {
-    openModal(`Уволить: ${escapeHtml(name)}`, `
+  function openDeleteEmployeeModal(id) {
+    if (id === state.employee.id) return toast("Нельзя уволить самого себя");
+    const name = state.employees.find((e) => e.id === id)?.full_name || "";
+    openModal(`Уволить: ${name}`, `
       <p style="font-size:13px; color:var(--text); line-height:1.5; margin-bottom:10px;">
         Данные сотрудника можно удалить через 7 дней (стандартный вариант, есть время передумать)
         либо сразу и без возврата. Рекомендуем сначала скачать его историю смен и зарплат.
       </p>
-    <button type="button" class="add-shift-btn" onclick="App.exportEmployeeHistory('${id}','${escapeHtml(name)}')"><i data-lucide="download"></i> Скачать данные сотрудника</button>
-<button type="button" class="add-shift-btn" style="border-color:#ff3b30; color:#ff3b30; margin-top:6px;" onclick="App.hardDeleteNow('${id}','${escapeHtml(name)}')"><i data-lucide="alert-octagon"></i> Удалить сразу, без ожидания</button>
+      <button type="button" class="add-shift-btn" onclick="App.exportEmployeeHistory('${id}')"><i data-lucide="download"></i> Скачать данные сотрудника</button>
+      <button type="button" class="add-shift-btn" style="border-color:#ff3b30; color:#ff3b30; margin-top:6px;" onclick="App.hardDeleteNow('${id}')"><i data-lucide="alert-octagon"></i> Удалить сразу, без ожидания</button>
     `, null, {
-label: "Уволить (удалить через 7 дней)",
+      label: "Уволить (удалить через 7 дней)",
       action: async () => {
         try {
           await Api.deleteEmployee(id);
@@ -1146,7 +1215,8 @@ label: "Уволить (удалить через 7 дней)",
     });
   }
 
-  async function hardDeleteNow(id, name) {
+  async function hardDeleteNow(id) {
+    const name = state.employees.find((e) => e.id === id)?.full_name || "";
     if (!confirm(`Удалить «${name}» ПОЛНОСТЬЮ И НЕМЕДЛЕННО? Отменить это будет нельзя.`)) return;
     try {
       await Api.hardDeleteEmployee(id);
@@ -1158,24 +1228,31 @@ label: "Уволить (удалить через 7 дней)",
     } catch (e) { toast("🚫 " + e.message); }
   }
 
-  async function exportEmployeeHistory(employeeId, name) {
-    const data = await Api.getEmployeeFullHistory(employeeId);
-    let csv = csvRow(["Тип", "Дата/Месяц", "ПВЗ", "Начало", "Конец", "Сумма", "Причина"]);
-    data.shifts.forEach((s) => {
-      const pvz = s.pvz || state.pvz.find((p) => p.id === s.pvz_id);
-      const amount = Math.round(shiftAmount(s, pvz));
-      csv += csvRow(["Смена", s.shift_date, pvz?.name || "", s.start_time?.slice(0,5) || "", s.end_time?.slice(0,5) || "", amount, ""]);
-    });
-    data.bonusesFines.forEach((b) => {
-      csv += csvRow([b.kind === "bonus" ? "Бонус" : "Штраф", b.period_month, "", "", "", b.amount, b.reason || ""]);
-    });
-    await deliverCsv(csv, `${name.replace(/\s+/g, "_")}_история.csv`);
+  async function exportEmployeeHistory(employeeId) {
+    try {
+      const name = state.employees.find((e) => e.id === employeeId)?.full_name || "employee";
+      const data = await Api.getEmployeeFullHistory(employeeId);
+      let csv = csvRow(["Тип", "Дата/Месяц", "ПВЗ", "Начало", "Конец", "Сумма", "Причина"]);
+      data.shifts.forEach((s) => {
+        const pvz = s.pvz || state.pvz.find((p) => p.id === s.pvz_id);
+        const amount = Math.round(shiftAmount(s, pvz));
+        csv += csvRow(["Смена", s.shift_date, pvz?.name || "", s.start_time?.slice(0,5) || "", s.end_time?.slice(0,5) || "", amount, ""]);
+      });
+      data.bonusesFines.forEach((b) => {
+        csv += csvRow([b.kind === "bonus" ? "Бонус" : "Штраф", b.period_month, "", "", "", b.amount, b.reason || ""]);
+      });
+      await deliverCsv(csv, `${name.replace(/\s+/g, "_")}_история.csv`);
+    } catch (e) {
+      toast("🚫 " + e.message);
+    }
   }
 
   function openChat(username) {
+    const u = safeUser(username);
+    if (!u) return;
     const tg = window.Telegram?.WebApp;
-    if (tg?.openTelegramLink) tg.openTelegramLink(`https://t.me/${username}`);
-    else window.open(`https://t.me/${username}`, "_blank");
+    if (tg?.openTelegramLink) tg.openTelegramLink(`https://t.me/${u}`);
+    else window.open(`https://t.me/${u}`, "_blank");
   }
 
   // ---------------- ПРОФИЛЬ ----------------
@@ -1191,7 +1268,7 @@ label: "Уволить (удалить через 7 дней)",
     const roleEl = document.getElementById("profileRole");
     if (roleEl) roleEl.textContent = e.position || "Сотрудник";
     const tgEl = document.getElementById("profileTgId");
-if (tgEl) tgEl.textContent = e.tg_username ? `@${e.tg_username}` : `${e.tg_id}`;
+    if (tgEl) tgEl.textContent = e.tg_username ? `@${e.tg_username}` : `${e.tg_id}`;
     if (state.demo) return;
 
     const myShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
@@ -1202,15 +1279,17 @@ if (tgEl) tgEl.textContent = e.tg_username ? `@${e.tg_username}` : `${e.tg_id}`;
     const incomeContainer = document.getElementById("incomeContainer");
     let total = 0;
 
-    const pendingRows = state.myRequests.filter((r) => r.shifts).map((r) => {
-      const s = r.shifts;
-      const start = r.requested_start_time || s.start_time;
-      const end = r.requested_end_time || s.end_time;
-      return `<div class="profile-income-item">
-        <div class="left"><div class="title"><i data-lucide="clock"></i> ${escapeHtml(s.pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${start.slice(0,5)}–${end.slice(0,5)} • заявка на рассмотрении</div></div>
-        <div class="right" style="color:var(--text-secondary); font-weight:500;">—</div>
-      </div>`;
-    });
+    const pendingRows = myRequestsForMonth()
+      .filter((r) => inPayPeriod(r.shifts.shift_date, state.payPeriod))
+      .map((r) => {
+        const s = r.shifts;
+        const start = r.requested_start_time || s.start_time;
+        const end = r.requested_end_time || s.end_time;
+        return `<div class="profile-income-item">
+          <div class="left"><div class="title"><i data-lucide="clock"></i> ${escapeHtml(s.pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${start.slice(0,5)}–${end.slice(0,5)} • заявка на рассмотрении</div></div>
+          <div class="right" style="color:var(--text-secondary); font-weight:500;">—</div>
+        </div>`;
+      });
 
     const confirmedRows = myShifts
       .slice()
@@ -1225,7 +1304,7 @@ if (tgEl) tgEl.textContent = e.tg_username ? `@${e.tg_username}` : `${e.tg_id}`;
         </div>`;
       });
 
-    let rows = pendingRows.concat(confirmedRows);
+    const rows = pendingRows.concat(confirmedRows);
 
     incomeContainer.innerHTML = periodToggleHtml() + (rows.join("") || `<div class="center-msg">Пока нет данных за выбранный период</div>`);
     document.getElementById("profileTotal").textContent = `${Math.round(total).toLocaleString("ru-RU")} ₽`;
@@ -1236,6 +1315,7 @@ if (tgEl) tgEl.textContent = e.tg_username ? `@${e.tg_username}` : `${e.tg_id}`;
       document.getElementById("repeatMinutes").value = state.notif.repeat_minutes ?? 15;
       document.getElementById("pushSwitch").classList.toggle("active", state.notif.push_enabled !== false);
     }
+    refreshIcons();
   }
 
   // ---------------- ТЕМА (модалка) ----------------
@@ -1259,8 +1339,8 @@ if (tgEl) tgEl.textContent = e.tg_username ? `@${e.tg_username}` : `${e.tg_id}`;
     const lightThemes = THEMES.filter(t => !t.dark);
     const darkThemes  = THEMES.filter(t => t.dark);
 
-openModal("Тема приложения", `
-<div class="theme-section-title">Светлые</div>
+    openModal("Тема приложения", `
+      <div class="theme-section-title">Светлые</div>
       <div class="theme-grid">${lightThemes.map(tile).join("")}</div>
       <div class="theme-section-title">Тёмные</div>
       <div class="theme-grid">${darkThemes.map(tile).join("")}</div>
@@ -1268,7 +1348,7 @@ openModal("Тема приложения", `
   }
 
   // ---------------- РАМКА ИКОНКИ ----------------
- function openAvatarFrameModal() {
+  function openAvatarFrameModal() {
     const current = state.employee.avatar_frame || DEFAULT_FRAME_COLOR;
     const presetColors = ["#ffd700","#ff3b30","#34c759","#007aff","#8e44ad","#ff9500","#e91e63","#00bcd4","#8e8e93","#1c1c1e"];
     openModal("Цвет рамки иконки", `
@@ -1305,32 +1385,30 @@ openModal("Тема приложения", `
         toast("✅ Рамка обновлена");
         renderProfile();
         renderEmployees();
+        closeModal();
       } catch (e) { toast("🚫 " + e.message); }
     });
-}
+  }
 
-// выбор цвета рамки по тапу на кружочек
-function _pickFrameColor(color) {
-    // скрытый input, куда складываем выбранное — чтобы onConfirm взял значение
+  // выбор цвета рамки по тапу на кружочек
+  function _pickFrameColor(color) {
     let hidden = document.getElementById("f_frame_color");
     if (!hidden) {
-        hidden = document.createElement("input");
-        hidden.type = "hidden";
-        hidden.id = "f_frame_color";
-        document.getElementById("modalBox").appendChild(hidden);
+      hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.id = "f_frame_color";
+      document.getElementById("modalBox").appendChild(hidden);
     }
     hidden.value = color;
 
-    // перекрасить превью
     const preview = document.getElementById("framePreview");
     if (preview) preview.style.boxShadow = `0 0 0 4px ${color}`;
 
-    // подсветить выбранный кружок
     document.querySelectorAll("#frameColorGrid button").forEach((btn) => {
-        const c = btn.dataset.color;
-        btn.style.border = c === color ? "3px solid var(--text)" : "3px solid var(--border)";
+      const c = btn.dataset.color;
+      btn.style.border = c === color ? "3px solid var(--text)" : "3px solid var(--border)";
     });
-}
+  }
 
   function changeAvatar() {
     const emojis = [
@@ -1390,8 +1468,9 @@ function _pickFrameColor(color) {
 
     let fund = 0, totalShiftsAll = 0;
     const includeBF = state.payPeriod === "full";
+    const activeEmployees = state.employees.filter((e) => e.is_active !== false);
 
-    const rows = state.employees.filter((e) => e.is_active !== false).map((e) => {
+    const rows = activeEmployees.map((e) => {
       const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
       const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
       const bf = includeBF ? state.bonusesFines.filter((b) => b.employee_id === e.id) : [];
@@ -1410,8 +1489,8 @@ function _pickFrameColor(color) {
         <div class="left">
           <div class="name">${escapeHtml(e.full_name)}</div>
           <div class="details">${empShifts.length} смен • ${Math.round(base).toLocaleString("ru-RU")} ₽ по тарифам ПВЗ</div>
-        ${bonuses.map((b) => `<div class="bonus-list">Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
-${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
+          ${bonuses.map((b) => `<div class="bonus-list">Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
+          ${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
         </div>
         <div class="right">
           ${[...markets].map((m) => `<span class="market-tag ${m}">${m.toUpperCase()}</span>`).join("")}
@@ -1422,14 +1501,14 @@ ${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reaso
 
     listEl.innerHTML = periodToggleHtml() + (rows || `<div class="center-msg">Нет сотрудников</div>`);
     document.getElementById("totalFund").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
-    document.getElementById("totalFundSub").innerHTML = `${state.employees.length} сотрудников • <span>${totalShiftsAll}</span> смен за месяц`;
+    document.getElementById("totalFundSub").innerHTML = `${activeEmployees.length} сотрудников • <span>${totalShiftsAll}</span> смен за месяц`;
     document.getElementById("financeGrandTotal").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
 
     // ПВЗ разбиты на две колонки: WB слева, Ozon справа
     const pvzItemHtml = (p) => `
       <div class="pvz-grid-item">
-    <button class="pvz-edit-rate" onclick="App.openPvzRateModal('${p.id}')" title="Тарифы"><i data-lucide="pencil"></i></button>
-<button class="pvz-remove" onclick="App.deletePvzConfirm('${p.id}', '${escapeHtml(p.name)}')" title="Удалить"><i data-lucide="x"></i></button>
+        <button class="pvz-edit-rate" onclick="App.openPvzRateModal('${p.id}')" title="Тарифы"><i data-lucide="pencil"></i></button>
+        <button class="pvz-remove" onclick="App.deletePvzConfirm('${p.id}')" title="Удалить"><i data-lucide="x"></i></button>
         <span class="dot" style="background:${p.color};"></span>
         <span class="pvz-name">${escapeHtml(p.name)}</span>
       </div>`;
@@ -1441,16 +1520,25 @@ ${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reaso
     const ozonEl = document.getElementById("pvzTagRowOzon");
     if (wbEl) wbEl.innerHTML = wbList.map(pvzItemHtml).join("") || `<div class="center-msg" style="padding:10px 0; font-size:11px;">Нет ПВЗ</div>`;
     if (ozonEl) ozonEl.innerHTML = ozonList.map(pvzItemHtml).join("") || `<div class="center-msg" style="padding:10px 0; font-size:11px;">Нет ПВЗ</div>`;
+    refreshIcons();
   }
 
   // ---------------- ТАРИФЫ ПВЗ ----------------
   let _rateDraft = [];
   let _rateDraftPvzId = null;
+  let _rateExtra = null; // нижние поля окна тарифов (чтобы не терялись при перерисовке)
+
+  function _saveRateExtra() {
+    const g = (id) => document.getElementById(id)?.value;
+    if (g("f_default_hourly") === undefined) return;
+    _rateExtra = { hourly: g("f_default_hourly"), start: g("f_dstart"), end: g("f_dend") };
+  }
 
   function openPvzRateModal(pvzId) {
     const pvz = state.pvz.find((p) => p.id === pvzId);
     if (!pvz) return;
     _rateDraftPvzId = pvzId;
+    _rateExtra = null;
     const existing = state.pvzPayRules[pvzId] || [];
     _rateDraft = existing.length
       ? existing.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((r) => ({ ...r }))
@@ -1472,8 +1560,8 @@ ${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reaso
       <div class="pay-rule-row">
         <div class="pay-rule-row-top">
           <input type="text" placeholder="Название (напр. Утро, Вечер)" value="${escapeHtml(r.label || "")}" onchange="App._updateRateDraft(${i}, 'label', this.value)">
-<button type="button" class="pay-rule-remove" onclick="App._removeRateRow(${i})" title="Удалить правило"><i data-lucide="x"></i></button>
-</div>
+          <button type="button" class="pay-rule-remove" onclick="App._removeRateRow(${i})" title="Удалить правило"><i data-lucide="x"></i></button>
+        </div>
         <div class="pay-rule-row-grid">
           <div><label>С</label><input type="time" value="${(r.start_time || "").slice(0,5)}" onchange="App._updateRateDraft(${i}, 'start_time', this.value)"></div>
           <div><label>До</label><input type="time" value="${(r.end_time || "").slice(0,5)}" onchange="App._updateRateDraft(${i}, 'end_time', this.value)"></div>
@@ -1489,18 +1577,22 @@ ${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reaso
       </div>
     `).join("");
 
-    openModal(`Тарифы: ${escapeHtml(pvz.name)}`, `
+    const hourlyVal = _rateExtra?.hourly ?? pvz.mid_hourly_rate ?? 250;
+    const startVal = _rateExtra?.start ?? (pvz.default_start_time || "09:00").slice(0,5);
+    const endVal = _rateExtra?.end ?? (pvz.default_end_time || "21:00").slice(0,5);
+
+    openModal(`Тарифы: ${pvz.name}`, `
       <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; line-height:1.5;">
         «Фиксированная сумма» — платится, только если смена ТОЧНО совпадает с этим временем от и до. «₽/час» — определяется по ВРЕМЕНИ НАЧАЛА смены: если смена стартовала внутри этого промежутка, вся её продолжительность считается по этой ставке.
       </div>
       <div id="payRulesList">${rowsHtml || '<div class="center-msg">Пока нет ни одного тарифа</div>'}</div>
-<button type="button" class="add-shift-btn" onclick="App._addRateRow()"><i data-lucide="plus"></i> Добавить тариф</button>
-<label style="margin-top:14px;">Ставка по умолчанию для непокрытого времени, ₽/час</label>
-      <input type="number" id="f_default_hourly" min="0" value="${pvz.mid_hourly_rate ?? 250}">
+      <button type="button" class="add-shift-btn" onclick="App._addRateRow()"><i data-lucide="plus"></i> Добавить тариф</button>
+      <label style="margin-top:14px;">Ставка по умолчанию для непокрытого времени, ₽/час</label>
+      <input type="number" id="f_default_hourly" min="0" value="${hourlyVal}">
       <label>Стандартное открытие ПВЗ</label>
-      <input type="time" id="f_dstart" value="${(pvz.default_start_time || "09:00").slice(0,5)}">
+      <input type="time" id="f_dstart" value="${startVal}">
       <label>Стандартное закрытие</label>
-      <input type="time" id="f_dend" value="${(pvz.default_end_time || "21:00").slice(0,5)}">
+      <input type="time" id="f_dend" value="${endVal}">
     `, async () => {
       if (_rateDraft.length === 0) return toast("Добавьте хотя бы один тариф");
       for (const r of _rateDraft) {
@@ -1520,6 +1612,7 @@ ${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reaso
         renderManagement();
         renderCalendar();
         renderProfile();
+        closeModal();
       } catch (e) { toast("🚫 " + e.message); }
     });
   }
@@ -1527,29 +1620,38 @@ ${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reaso
   function _updateRateDraft(i, field, value) {
     if (!_rateDraft[i]) return;
     _rateDraft[i][field] = value;
-    renderRateModal();
+    // перерисовка нужна только когда меняется подпись поля («Сумма» / «₽/час»)
+    if (field === "rate_type") {
+      _saveRateExtra();
+      renderRateModal();
+    }
   }
 
   function _addRateRow() {
+    _saveRateExtra();
     _rateDraft.push({ start_time: "09:00", end_time: "18:00", rate_type: "hourly", amount: 200, label: "" });
     renderRateModal();
   }
 
   function _removeRateRow(i) {
+    _saveRateExtra();
     _rateDraft.splice(i, 1);
     renderRateModal();
   }
 
   function openBonusFineModal(kind) {
-    const empOptions = state.employees.map((e) => `<option value="${e.id}">${escapeHtml(e.full_name)}</option>`).join("");
-openModal(kind === "bonus" ? "Начислить бонус" : "Оформить штраф", `
-<label>Сотрудник</label><select id="f_employee">${empOptions}</select>
+    const empOptions = state.employees
+      .filter((e) => e.is_active !== false)
+      .map((e) => `<option value="${e.id}">${escapeHtml(e.full_name)}</option>`).join("");
+    openModal(kind === "bonus" ? "Начислить бонус" : "Оформить штраф", `
+      <label>Сотрудник</label><select id="f_employee">${empOptions}</select>
       <label>Сумма, ₽</label><input type="number" id="f_amount" min="1" placeholder="1000">
       <label>Причина</label><input type="text" id="f_reason" placeholder="${kind === "bonus" ? "Качество работы" : "Опоздание"}">
     `, async () => {
       const employeeId = document.getElementById("f_employee").value;
       const amount = Number(document.getElementById("f_amount").value);
       const reason = document.getElementById("f_reason").value.trim();
+      if (!employeeId) return toast("Выберите сотрудника");
       if (!amount || amount <= 0) return toast("Введите корректную сумму");
       try {
         await Api.addBonusFine(employeeId, kind, amount, reason);
@@ -1557,6 +1659,7 @@ openModal(kind === "bonus" ? "Начислить бонус" : "Оформить
         state.bonusesFines = await Api.getBonusesFines(state.year, state.month);
         renderManagement();
         renderProfile();
+        closeModal();
       } catch (e) { toast("🚫 " + e.message); }
     });
   }
@@ -1578,11 +1681,13 @@ openModal(kind === "bonus" ? "Начислить бонус" : "Оформить
         state.pvz = await Api.getPvzList();
         renderManagement();
         renderCalendar();
+        closeModal();
       } catch (e) { toast("🚫 " + e.message); }
     });
   }
 
-  async function deletePvzConfirm(id, name) {
+  async function deletePvzConfirm(id) {
+    const name = state.pvz.find((p) => p.id === id)?.name || "";
     if (!confirm(`Удалить ПВЗ «${name}»? Смены сохранятся в истории.`)) return;
     try {
       await Api.deletePvz(id);
@@ -1670,7 +1775,7 @@ openModal(kind === "bonus" ? "Начислить бонус" : "Оформить
     if (day >= daysInMonth - 5) {
       const daysLeft = daysInMonth - day + 1;
       el.style.display = "block";
-    el.innerHTML = `<i data-lucide="alert-triangle"></i> Через ${daysLeft} дн. (в начале нового месяца) будут удалены смены и финансы за ${MONTHS[now.getMonth()].toLowerCase()}.
+      el.innerHTML = `<i data-lucide="alert-triangle"></i> Через ${daysLeft} дн. (в начале нового месяца) будут удалены смены и финансы за ${MONTHS[now.getMonth()].toLowerCase()}.
   <button type="button" onclick="App.exportMonth(${now.getFullYear()}, ${now.getMonth()})"><i data-lucide="download"></i> Скачать за ${MONTHS[now.getMonth()].toLowerCase()}</button>`;
     } else {
       el.style.display = "none";
@@ -1691,12 +1796,17 @@ openModal(kind === "bonus" ? "Начислить бонус" : "Оформить
     `;
     document.getElementById("modalOverlay").classList.add("show");
     if (onConfirm) {
-      document.getElementById("modalConfirmBtn").onclick = async () => { await onConfirm(); };
+      document.getElementById("modalConfirmBtn").onclick = async (ev) => {
+        const btn = ev.currentTarget;
+        if (btn.disabled) return; // защита от двойного нажатия
+        btn.disabled = true;
+        try { await onConfirm(); } finally { btn.disabled = false; }
+      };
     }
     if (extraAction) {
       document.getElementById("modalExtraBtn").onclick = async () => { await extraAction.action(); closeModal(); };
     }
-    if (window.lucide) lucide.createIcons();  
+    refreshIcons();
   }
 
   function closeModal() {
@@ -1708,14 +1818,17 @@ openModal(kind === "bonus" ? "Начислить бонус" : "Оформить
   });
 
   return {
-init, switchTab, toggleAdmin, updateAdminBadge, changeMonth, switchMarket,    setTheme, openThemePickerModal,
-    toggleCollapsible, toggleTodaySummary,    openApplyModal, _setApplyMode,
+    init, switchTab, toggleAdmin, updateAdminBadge, changeMonth, switchMarket,
+    setTheme, openThemePickerModal,
+    toggleCollapsible, toggleTodaySummary,
+    openApplyModal, _setApplyMode,
     openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
     _filterEmpPicker, _selectEmp,
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
     openEmployeeScheduleModal, grantAccess, openChat,
-    changeAvatar, _pickAvatar, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,    openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
+    changeAvatar, _pickAvatar, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
+    openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
     openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     closeModal,

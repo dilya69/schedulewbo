@@ -710,8 +710,17 @@ body {
     transition: 0.2s, background 0.3s, border-color 0.3s, color 0.3s;
 }
 .search-wrap input:focus { border-color: var(--accent); }
-.search-wrap::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.6; }
-
+.search-wrap::before { content: ''; }
+.search-wrap svg.lucide {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    stroke: var(--text-secondary);
+    pointer-events: none;
+}
 .employee-card { display: flex; align-items: center; padding: 8px 12px; background: var(--card-secondary); border-radius: 12px; margin-bottom: 5px; border: 1px solid transparent; transition: background 0.3s; }
 .employee-card .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: var(--accent-contrast); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; margin-right: 10px; }
 .employee-card .info { flex: 1; min-width: 0; }

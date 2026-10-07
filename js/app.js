@@ -582,8 +582,9 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       html += `</div>`;
     });
 
-    html += `</div>`;
-    container.innerHTML = html;
+      html += `</div>`;
+  container.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
   }
 
   // ---------------- ОТКЛИК ----------------

@@ -558,8 +558,7 @@ function updateAdminBadge() {
               }
             } else {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
-html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"><i data-lucide="plus" style="width:11px;height:11px;stroke:#fff;"></i></button>`;            }
-          });
+html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;          });
 
           if (dayShifts.length > MAX_NAMES_PER_DAY) {
             html += `<span class="chip-more">+${dayShifts.length - MAX_NAMES_PER_DAY}</span>`;
@@ -568,8 +567,8 @@ html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.s
         }
 
         if (state.isAdminView) {
-html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.openDayShiftsModal('${pvz.id}', ${d})"><i data-lucide="pencil" style="width:9px;height:9px;stroke:#fff;"></i></button>`;        }
-
+html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.openDayShiftsModal('${pvz.id}', ${d})">✎</button>`;
+        }
         html += `</div>`;
       }
 

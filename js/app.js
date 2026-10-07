@@ -138,6 +138,7 @@ switchTab("tab1");
     renderEmployees();
     renderProfile();
     renderManagement();
+     if (window.lucide) lucide.createIcons(); 
   }
 
   // ---------------- УТИЛИТЫ ----------------
@@ -468,6 +469,7 @@ function updateAdminBadge() {
         ${peopleRows}
       </div>
     `;
+    if (window.lucide) lucide.createIcons();
 }
 
   function toggleTodaySummary() {
@@ -1698,6 +1700,7 @@ function _pickFrameColor(color) {
     if (extraAction) {
       document.getElementById("modalExtraBtn").onclick = async () => { await extraAction.action(); closeModal(); };
     }
+    if (window.lucide) lucide.createIcons();  
   }
 
   function closeModal() {

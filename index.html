@@ -56,12 +56,11 @@
             <!-- ВКЛАДКА 2: СМЕНЫ -->
             <div id="tab2" class="tab-content">
                 <div class="month-nav">
-                    <button onclick="App.changeMonth(-1)">◀</button>
+<button onclick="App.changeMonth(-1)"><i data-lucide="chevron-left"></i></button>
                     <div class="month-label" id="monthLabel2">—</div>
-                    <button onclick="App.changeMonth(1)">▶</button>
+<button onclick="App.changeMonth(1)"><i data-lucide="chevron-right"></i></button>
                 </div>
-                <div style="font-weight:700; font-size:16px; margin-bottom:8px; color:var(--text);">Мои смены</div>
-                <div id="myShiftsContainer"></div>
+<div style="font-weight:700; font-size:16px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;"><i data-lucide="calendar-days"></i> Мои смены</div>                <div id="myShiftsContainer"></div>
 
              <div class="admin-only" style="margin-top:10px;">
     <div class="collapsible-header" onclick="App.toggleCollapsible('requestsBlock')">
@@ -86,8 +85,7 @@
             <!-- ВКЛАДКА 3: СОТРУДНИКИ -->
             <div id="tab3" class="tab-content">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <div style="font-weight:700; font-size:16px; color:var(--text);">Сотрудники</div>
-                    <div style="font-size:11px; color:var(--text-secondary);" id="employeeCount"></div>
+<div style="font-weight:700; font-size:16px; color:var(--text); display:flex; align-items:center; gap:6px;"><i data-lucide="users"></i> Сотрудники</div>                    <div style="font-size:11px; color:var(--text-secondary);" id="employeeCount"></div>
                 </div>
 
                 <div class="search-wrap">
@@ -95,17 +93,15 @@
                 </div>
 
                 <div id="employeeList"></div>
-                <div id="noResults" class="no-results" style="display:none;">👤 Сотрудников не найдено</div>
-
+<div id="noResults" class="no-results" style="display:none;"><i data-lucide="user"></i> Сотрудников не найдено</div>
                 <div id="pendingEmployeeSection" class="admin-only" style="display:none; margin-top:16px;">
-                    <div style="font-weight:600; font-size:13px; margin-bottom:6px; color:#ff9500;">🆕 Новые / ожидают доступа</div>
-                    <div id="pendingEmployeeList"></div>
+<div style="font-weight:600; font-size:13px; margin-bottom:6px; color:#ff9500; display:flex; align-items:center; gap:6px;"><i data-lucide="user-plus"></i> Новые / ожидают доступа</div>                    <div id="pendingEmployeeList"></div>
                 </div>
 
                 <div class="admin-only" style="margin-top:10px;">
-                    <button onclick="App.openAddEmployeeModal()" style="width:100%; padding:10px; background:#34c759; color:white; border:none; border-radius:30px; font-size:13px; font-weight:600; cursor:pointer;">
-                        ➕ Добавить сотрудника
-                    </button>
+                 <button onclick="App.openAddEmployeeModal()" style="width:100%; padding:10px; background:#34c759; color:white; border:none; border-radius:30px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+    <i data-lucide="user-plus"></i> Добавить сотрудника
+</button>
                 </div>
             </div>
 
@@ -114,15 +110,14 @@
                 <div class="profile-header">
                     <div class="profile-avatar" id="profileAvatar" onclick="App.changeAvatar()">
                         👤
-                        <div class="edit-avatar">✎</div>
-                    </div>
+<div class="edit-avatar"><i data-lucide="pencil" style="width:10px;height:10px;stroke:#fff;"></i></div>                    </div>
                     <div class="profile-info">
                         <div class="name" id="profileName">—</div>
                         <div class="role" id="profileRole">—</div>
                         <div class="tg-id" id="profileTgId">—</div>
                         <div class="profile-buttons">
-                            <button class="profile-chip-btn" onclick="App.openThemePickerModal()">🎨 Тема</button>
-                            <button class="profile-chip-btn" onclick="App.openAvatarFrameModal()">🖼️ Рамка</button>
+                          <button class="profile-chip-btn" onclick="App.openThemePickerModal()"><i data-lucide="palette"></i> Тема</button>
+<button class="profile-chip-btn" onclick="App.openAvatarFrameModal()"><i data-lucide="frame"></i> Рамка</button>
                         </div>
                     </div>
                 </div>
@@ -132,17 +127,16 @@
                     <div class="profile-stat"><div class="number" id="statHours">0</div><div class="label">Часов</div></div>
                 </div>
 
-                <div class="profile-income-title">💰 Доход за месяц</div>
+<div class="profile-income-title"><i data-lucide="wallet"></i> Доход за месяц</div>
                 <div id="incomeContainer"></div>
 
                 <div class="profile-total">
-                    <div class="label">Итого за месяц</div>
+<div class="label"><i data-lucide="wallet"></i> Итого за месяц</div> 
                     <div class="amount" id="profileTotal">0 ₽</div>
                 </div>
 
                 <div class="notification-settings">
-                    <div style="font-weight:600; font-size:14px; margin-bottom:8px; color:var(--text);">🔔 Уведомления</div>
-
+<div style="font-weight:600; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;"><i data-lucide="bell"></i> Уведомления</div>
                     <div class="setting-row">
                         <div><div class="label">Напоминать о смене</div><div class="desc">За какое время?</div></div>
                         <select id="remindMinutes" onchange="App.saveNotificationSettings()">
@@ -181,33 +175,30 @@
 
             <!-- ВКЛАДКА 5: УПРАВЛЕНИЕ -->
             <div id="tab5" class="tab-content admin-only">
-                <div style="font-weight:700; font-size:16px; margin-bottom:4px; color:var(--text);">⚙️ Управление</div>
-                <div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px;" id="adminMonthLabel"></div>
+<div style="font-weight:700; font-size:16px; margin-bottom:4px; color:var(--text); display:flex; align-items:center; gap:6px;"><i data-lucide="settings"></i> Управление</div>                <div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px;" id="adminMonthLabel"></div>
                 <div id="purgeWarning" class="purge-warning" style="display:none;"></div>
 
                 <div class="finance-summary">
-                    <div class="total-label">💰 Фонд оплаты труда</div>
+<div class="total-label"><i data-lucide="wallet"></i> Фонд оплаты труда</div>
                     <div class="total-amount" id="totalFund">0 ₽</div>
                     <div class="total-sub" id="totalFundSub"></div>
                 </div>
 
                 <!-- Зарплата по сотрудникам (сворачиваемо) -->
                <div class="collapsible-header" onclick="App.toggleCollapsible('financeBlock')">
-    <span style="font-weight:600; font-size:13px; color:var(--text);">💰 Зарплата по сотрудникам</span>
-    <span class="collapsible-arrow collapsed" id="financeBlockArrow">▼</span>
-</div>
+<span style="font-weight:600; font-size:13px; color:var(--text);"><i data-lucide="wallet"></i> Зарплата по сотрудникам</span>    <span class="collapsible-arrow collapsed" id="financeBlockArrow"><i data-lucide="chevron-down"></i></span>
 <div id="financeBlock" class="collapsible-body collapsed">
     <div id="financeEmployeeList"></div>
 </div>
 
-                <button class="bulk-free-btn" onclick="App.bulkFreeMonthConfirm()">🗓️ Освободить весь текущий месяц (для откликов)</button>
-                <div style="font-size:10.5px; color:var(--text-secondary); text-align:center; margin:-4px 0 6px;">
-                    ⚠️ 1 числа каждого месяца данные о прошлом месяце удаляются автоматически — не забудьте экспортировать нужное заранее
-                </div>
+<button class="bulk-free-btn" onclick="App.bulkFreeMonthConfirm()"><i data-lucide="calendar-days"></i> Освободить весь текущий месяц (для откликов)</button>      
+                <div style="font-size:10.5px; color:var(--text-secondary); text-align:center; margin:-4px 0 6px; display:flex; align-items:center; justify-content:center; gap:4px;">
+    <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> 1 числа каждого месяца данные о прошлом месяце удаляются автоматически
+</div>
 
                 <div class="finance-actions">
-                    <button class="bonus-btn" onclick="App.openBonusFineModal('bonus')">➕ Бонус</button>
-                    <button class="fine-btn" onclick="App.openBonusFineModal('fine')">⚠️ Штраф</button>
+                  <button class="bonus-btn" onclick="App.openBonusFineModal('bonus')"><i data-lucide="plus-circle"></i> Бонус</button>
+<button class="fine-btn" onclick="App.openBonusFineModal('fine')"><i data-lucide="alert-circle"></i> Штраф</button>
                 </div>
 
                 <div style="margin-top:8px; border-top:2px solid var(--border); padding-top:10px;">
@@ -215,15 +206,14 @@
                         <span>ИТОГО</span>
                         <span id="financeGrandTotal">0 ₽</span>
                     </div>
-                    <button class="finance-export" onclick="App.exportPayroll()">📊 Экспортировать ведомость (CSV)</button>
-                    <button class="finance-export" style="background:#5856d6; margin-top:6px;" onclick="App.exportShiftsDetailed()">📄 Детальный экспорт смен за этот месяц</button>
-                </div>
+                <button class="finance-export" onclick="App.exportPayroll()"><i data-lucide="bar-chart-3"></i> Экспортировать ведомость (CSV)</button>
+<button class="finance-export" style="background:#5856d6; margin-top:6px;" onclick="App.exportShiftsDetailed()"><i data-lucide="file-text"></i> Детальный экспорт смен за этот месяц</button>
 
                 <div style="margin-top:20px; border-top:2px solid var(--border); padding-top:16px;">
                     <!-- Управление ПВЗ (сворачиваемо) -->
                    <div class="collapsible-header" onclick="App.toggleCollapsible('pvzBlock')">
-    <span style="font-weight:600; font-size:14px; color:var(--text);">🏢 Управление ПВЗ</span>
-    <span class="collapsible-arrow collapsed" id="pvzBlockArrow">▼</span>
+  <span style="font-weight:600; font-size:14px; color:var(--text);"><i data-lucide="building-2"></i> Управление ПВЗ</span>
+<span class="collapsible-arrow collapsed" id="pvzBlockArrow"><i data-lucide="chevron-down"></i></span>
 </div>
 <div id="pvzBlock" class="collapsible-body collapsed">
                         <div class="pvz-columns">
@@ -236,8 +226,7 @@
                                 <div id="pvzTagRowOzon"></div>
                             </div>
                         </div>
-                        <button onclick="App.openAddPvzModal()" style="width:100%; margin-top:10px; padding:8px; background:var(--accent); color:var(--accent-contrast); border:none; border-radius:30px; font-size:12px; font-weight:600; cursor:pointer;">➕ Добавить ПВЗ</button>
-                    </div>
+<button onclick="App.openAddPvzModal()" style="width:100%; margin-top:10px; padding:8px; background:var(--accent); color:var(--accent-contrast); border:none; border-radius:30px; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="plus"></i> Добавить ПВЗ</button>                    </div>
                 </div>
             </div>
 

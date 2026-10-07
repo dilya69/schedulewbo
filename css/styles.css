@@ -1345,6 +1345,26 @@ button svg.lucide {
     width: 11px;
     height: 11px;
     stroke-width: 2.5;
+}.day-cell svg.lucide {
+    width: 11px;
+    height: 11px;
+    stroke-width: 2.5;
+}
+
+/* белая иконка внутри зелёного круга (свободная смена) */
+.day-cell .chip-free svg.lucide {
+    width: 11px !important;
+    height: 11px !important;
+    stroke: #ffffff !important;
+    stroke-width: 3 !important;
+}
+
+/* белая иконка внутри оранжевого круга (карандаш) */
+.day-cell .edit-shift-btn svg.lucide {
+    width: 9px !important;
+    height: 9px !important;
+    stroke: #ffffff !important;
+    stroke-width: 3 !important;
 }
 
 /* стрелка сворачиваемых блоков — поворот через transform */

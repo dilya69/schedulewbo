@@ -76,16 +76,19 @@ const App = (() => {
       document.getElementById("bootScreen").style.display = "none";
       document.getElementById("appBody").style.display = "block";
 
-     const badge = document.getElementById("headerBadge");
+  const badge = document.getElementById("headerBadge");
 if (state.employee.is_admin) {
     badge.classList.remove("hidden");
-    // админ сразу в админском режиме — тумблер не нужен
     state.isAdminView = true;
     updateAdminBadge();
 }
 applyAdminClass();
+// повторный вызов после применения класса admin-mode,
+// чтобы Lucide отработал уже по видимым .edit-shift-btn
+if (window.lucide) lucide.createIcons();
 switchTab("tab1");
-    } catch (e) {
+    }
+    catch (e) {
       console.error(e);
       document.getElementById("bootScreen").innerHTML =
         `<div class="center-msg">🚫 ${escapeHtml(e.message || "Ошибка загрузки")}</div>`;

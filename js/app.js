@@ -76,19 +76,16 @@ const App = (() => {
       document.getElementById("bootScreen").style.display = "none";
       document.getElementById("appBody").style.display = "block";
 
-  const badge = document.getElementById("headerBadge");
+     const badge = document.getElementById("headerBadge");
 if (state.employee.is_admin) {
     badge.classList.remove("hidden");
+    // админ сразу в админском режиме — тумблер не нужен
     state.isAdminView = true;
     updateAdminBadge();
 }
 applyAdminClass();
-// повторный вызов после применения класса admin-mode,
-// чтобы Lucide отработал уже по видимым .edit-shift-btn
-if (window.lucide) lucide.createIcons();
 switchTab("tab1");
-    }
-    catch (e) {
+    } catch (e) {
       console.error(e);
       document.getElementById("bootScreen").innerHTML =
         `<div class="center-msg">🚫 ${escapeHtml(e.message || "Ошибка загрузки")}</div>`;
@@ -556,10 +553,9 @@ function updateAdminBadge() {
               } else {
                 html += `<button class="chip-pending-dot" title="Откликнуться • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"></button>`;
               }
-                  } else {
+            } else {
               const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
-              html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')">+</button>`;
-            }
+html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"><i data-lucide="plus" style="width:11px;height:11px;stroke:#fff;"></i></button>`;            }
           });
 
           if (dayShifts.length > MAX_NAMES_PER_DAY) {
@@ -569,8 +565,8 @@ function updateAdminBadge() {
         }
 
         if (state.isAdminView) {
-html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.openDayShiftsModal('${pvz.id}', ${d})">✎</button>`;
-        }
+html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.openDayShiftsModal('${pvz.id}', ${d})"><i data-lucide="pencil" style="width:9px;height:9px;stroke:#fff;"></i></button>`;        }
+
         html += `</div>`;
       }
 
@@ -586,9 +582,8 @@ html += `<button class="edit-shift-btn" onclick="event.stopPropagation(); App.op
       html += `</div>`;
     });
 
-      html += `</div>`;
-  container.innerHTML = html;
-  if (window.lucide) lucide.createIcons();
+    html += `</div>`;
+    container.innerHTML = html;
   }
 
   // ---------------- ОТКЛИК ----------------

@@ -1168,12 +1168,6 @@ span.chip-pending-dot { cursor: default; }
     font-weight: 700;
 }
 
-.collapsible-arrow {
-    font-size: 12px;
-    color: var(--accent-contrast);
-    transition: transform 0.2s;
-    opacity: 0.9;
-}
 .collapsible-arrow.collapsed { transform: rotate(-90deg); }
 
 .collapsible-body {

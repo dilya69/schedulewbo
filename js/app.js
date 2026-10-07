@@ -1643,7 +1643,7 @@ const App = (() => {
     const empOptions = state.employees
       .filter((e) => e.is_active !== false)
       .map((e) => `<option value="${e.id}">${escapeHtml(e.full_name)}</option>`).join("");
-    openModal(kind === "bonus" ? "Начислить бонус" : "Оформить штраф", `
+    openModal((kind === "bonus" ? "Начислить бонус" : "Оформить штраф") + ` — ${MONTHS[state.month]} ${state.year}`, `
       <label>Сотрудник</label><select id="f_employee">${empOptions}</select>
       <label>Сумма, ₽</label><input type="number" id="f_amount" min="1" placeholder="1000">
       <label>Причина</label><input type="text" id="f_reason" placeholder="${kind === "bonus" ? "Качество работы" : "Опоздание"}">
@@ -1654,7 +1654,7 @@ const App = (() => {
       if (!employeeId) return toast("Выберите сотрудника");
       if (!amount || amount <= 0) return toast("Введите корректную сумму");
       try {
-        await Api.addBonusFine(employeeId, kind, amount, reason);
+        await Api.addBonusFine(employeeId, kind, amount, reason, `${state.year}-${pad2(state.month + 1)}-01`);
         toast(kind === "bonus" ? "✅ Бонус добавлен" : "⚠️ Штраф добавлен");
         state.bonusesFines = await Api.getBonusesFines(state.year, state.month);
         renderManagement();

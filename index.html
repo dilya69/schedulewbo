@@ -24,9 +24,9 @@
             <span class="small">Управление сменами</span>
         </div>
     </div>
-    <div class="header-badge hidden" id="headerBadge" onclick="App.toggleAdmin()">
-        <span id="headerBadgeText">ПВЗ</span>
-    </div>
+  <div class="header-badge hidden" id="headerBadge" onclick="App.toggleAdmin()">
+    <span id="headerBadgeText"><i data-lucide="shield-check"></i> ПВЗ</span>
+</div>
 </div>
 
     <div class="main-content" id="mainContent">
@@ -245,23 +245,23 @@
     </div>
 
     <div class="bottom-nav" id="bottomNav">
-        <button class="nav-item active" data-tab="tab1" onclick="App.switchTab('tab1')">
-            <span class="icon">📅</span><span>Календарь</span>
-        </button>
-        <button class="nav-item" data-tab="tab2" onclick="App.switchTab('tab2')">
-            <span class="icon">📋</span><span>Смены</span>
-            <span class="badge badge-orange admin-only" id="requestsBadge" style="display:none;"></span>
-        </button>
-        <button class="nav-item" data-tab="tab3" onclick="App.switchTab('tab3')">
-            <span class="icon">👥</span><span>Сотрудники</span>
-        </button>
-        <button class="nav-item" data-tab="tab4" onclick="App.switchTab('tab4')">
-            <span class="icon">👤</span><span>Профиль</span>
-        </button>
-        <button class="nav-item admin-nav" data-tab="tab5" onclick="App.switchTab('tab5')">
-            <span class="icon">⚙️</span><span>Управление</span>
-        </button>
-    </div>
+    <button class="nav-item active" data-tab="tab1" onclick="App.switchTab('tab1')">
+        <span class="icon"><i data-lucide="calendar"></i></span><span>Календарь</span>
+    </button>
+    <button class="nav-item" data-tab="tab2" onclick="App.switchTab('tab2')">
+        <span class="icon"><i data-lucide="clipboard-list"></i></span><span>Смены</span>
+        <span class="badge badge-orange admin-only" id="requestsBadge" style="display:none;"></span>
+    </button>
+    <button class="nav-item" data-tab="tab3" onclick="App.switchTab('tab3')">
+        <span class="icon"><i data-lucide="users"></i></span><span>Сотрудники</span>
+    </button>
+    <button class="nav-item" data-tab="tab4" onclick="App.switchTab('tab4')">
+        <span class="icon"><i data-lucide="user"></i></span><span>Профиль</span>
+    </button>
+    <button class="nav-item admin-nav" data-tab="tab5" onclick="App.switchTab('tab5')">
+        <span class="icon"><i data-lucide="settings"></i></span><span>Управление</span>
+    </button>
+</div>
 
 </div>
 

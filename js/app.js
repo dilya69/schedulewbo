@@ -368,11 +368,12 @@ function updateAdminBadge() {
     if (!badge || !text) return;
     if (state.isAdminView) {
         badge.classList.add("admin-on");
-        text.textContent = "⚙️ АДМИН";
+        text.innerHTML = `<i data-lucide="shield-check"></i> АДМИН`;
     } else {
         badge.classList.remove("admin-on");
-        text.textContent = "ПВЗ";
+        text.innerHTML = `<i data-lucide="shield-check"></i> ПВЗ`;
     }
+    if (window.lucide) lucide.createIcons();
 }
 
   function applyAdminClass() {

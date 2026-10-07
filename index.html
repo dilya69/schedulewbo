@@ -88,9 +88,10 @@
 <div style="font-weight:700; font-size:16px; color:var(--text); display:flex; align-items:center; gap:6px;"><i data-lucide="users"></i> Сотрудники</div>                    <div style="font-size:11px; color:var(--text-secondary);" id="employeeCount"></div>
                 </div>
 
-                <div class="search-wrap">
-                    <input type="text" id="searchInput" placeholder="Поиск по имени или Telegram ID..." oninput="App.filterEmployees()">
-                </div>
+              <div class="search-wrap">
+    <i data-lucide="search"></i>
+    <input type="text" id="searchInput" placeholder="Поиск по имени или Telegram ID..." oninput="App.filterEmployees()">
+</div>
 
                 <div id="employeeList"></div>
 <div id="noResults" class="no-results" style="display:none;"><i data-lucide="user"></i> Сотрудников не найдено</div>

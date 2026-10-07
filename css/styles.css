@@ -1261,3 +1261,96 @@ button:active,
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
     filter: brightness(1.08);
 }
+
+/* ============================================================
+   ИКОНКИ LUCIDE
+   ============================================================ */
+
+svg.lucide {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    stroke-width: 2;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.nav-item svg.lucide {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.8;
+    margin-bottom: 2px;
+}
+
+.header-logo svg.lucide {
+    width: 22px;
+    height: 22px;
+    stroke: var(--accent);
+}
+
+.header-badge svg.lucide {
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
+    vertical-align: -2px;
+    margin-right: 3px;
+}
+
+.month-nav button svg.lucide {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+}
+
+.collapsible-header svg.lucide {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    vertical-align: -2px;
+}
+
+.pvz-title svg.lucide {
+    width: 13px;
+    height: 13px;
+    vertical-align: -1px;
+    margin-right: 3px;
+}
+
+button svg.lucide {
+    width: 14px;
+    height: 14px;
+    vertical-align: -2px;
+    margin-right: 3px;
+}
+
+.modal-box svg.lucide,
+.employee-card svg.lucide,
+.finance-employee svg.lucide,
+.profile-income-item svg.lucide,
+.today-summary svg.lucide,
+.my-shift-card svg.lucide,
+.request-card svg.lucide {
+    width: 14px;
+    height: 14px;
+    vertical-align: -2px;
+    margin-right: 4px;
+    stroke: currentColor;
+}
+
+/* в ячейках календаря — очень мелкие */
+.day-cell svg.lucide {
+    width: 11px;
+    height: 11px;
+    stroke-width: 2.5;
+}
+
+/* стрелка сворачиваемых блоков — поворот через transform */
+.collapsible-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+.collapsible-arrow.collapsed {
+    transform: rotate(-90deg);
+}

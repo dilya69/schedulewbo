@@ -208,22 +208,44 @@ const Api = (() => {
     return data;
   }
 
+  // если на исходную смену больше нет активных откликов и сотрудник не назначен —
+  // возвращаем её в «свободно» (иначе оранжевая точка «есть отклики» висит навсегда)
+  async function freeShiftIfNoPending(shiftId) {
+    if (!shiftId) return;
+    const { count, error } = await client
+      .from("shift_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("shift_id", shiftId)
+      .eq("status", "pending");
+    if (error) throw error;
+    if (!count) {
+      const { error: e2 } = await client
+        .from("shifts")
+        .update({ status: "free" })
+        .eq("id", shiftId)
+        .eq("status", "pending")
+        .is("employee_id", null);
+      if (e2) throw e2;
+    }
+  }
+
   // action: 'approve_as_is' | 'approve_with_time' | 'reject'
   async function resolveRequest({ requestId, shiftId, employeeId, action, pvzId, shiftDate, overrideStart, overrideEnd }) {
+    const nowIso = new Date().toISOString();
+
     if (action === "reject") {
-      await client.from("shift_requests").update({ status: "rejected", resolved_at: new Date().toISOString() }).eq("id", requestId);
-      const { count } = await client
+      const { error: rejErr } = await client
         .from("shift_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("shift_id", shiftId)
-        .eq("status", "pending");
-      if (!count) await client.from("shifts").update({ status: "free" }).eq("id", shiftId);
+        .update({ status: "rejected", resolved_at: nowIso })
+        .eq("id", requestId);
+      if (rejErr) throw rejErr;
+      await freeShiftIfNoPending(shiftId);
       return;
     }
 
     const { error: reqErr } = await client
       .from("shift_requests")
-      .update({ status: "approved", resolved_at: new Date().toISOString() })
+      .update({ status: "approved", resolved_at: nowIso })
       .eq("id", requestId);
     if (reqErr) throw reqErr;
 
@@ -234,13 +256,15 @@ const Api = (() => {
         employee_id: employeeId, status: "confirmed",
       });
       if (error) throw error;
+      await freeShiftIfNoPending(shiftId);
     } else {
       // approve_as_is: остальные отклики на эту же смену больше не актуальны
-      await client
+      const { error: othersErr } = await client
         .from("shift_requests")
-        .update({ status: "rejected", resolved_at: new Date().toISOString() })
+        .update({ status: "rejected", resolved_at: nowIso })
         .eq("shift_id", shiftId)
         .eq("status", "pending");
+      if (othersErr) throw othersErr;
 
       const { error: shiftErr } = await client
         .from("shifts")
@@ -250,12 +274,23 @@ const Api = (() => {
     }
   }
 
+  // путь «карандаш» (изменить время и принять): смена создаётся формой,
+  // здесь только закрываем заявку и освобождаем исходную смену, если откликов не осталось
   async function markRequestApproved(requestId) {
+    const { data: req, error: selErr } = await client
+      .from("shift_requests")
+      .select("shift_id")
+      .eq("id", requestId)
+      .maybeSingle();
+    if (selErr) throw selErr;
+
     const { error } = await client
       .from("shift_requests")
       .update({ status: "approved", resolved_at: new Date().toISOString() })
       .eq("id", requestId);
     if (error) throw error;
+
+    await freeShiftIfNoPending(req?.shift_id);
   }
 
   async function rejectAllPendingRequests() {
@@ -271,7 +306,8 @@ const Api = (() => {
     if (updErr) throw updErr;
 
     const shiftIds = [...new Set(pending.map((r) => r.shift_id))];
-    await client.from("shifts").update({ status: "free" }).in("id", shiftIds).is("employee_id", null);
+    const { error: freeErr } = await client.from("shifts").update({ status: "free" }).in("id", shiftIds).is("employee_id", null);
+    if (freeErr) throw freeErr;
     return pending.length;
   }
 
@@ -321,10 +357,14 @@ const Api = (() => {
   }
 
   // ---------- БОНУСЫ / ШТРАФЫ ----------
-  async function addBonusFine(employeeId, kind, amount, reason) {
-    const { error } = await client.from("bonuses_fines").insert({
+  // periodMonth — строка "YYYY-MM-01" (месяц, который сейчас открыт в приложении).
+  // Если не передан — месяц проставит база по умолчанию (как раньше).
+  async function addBonusFine(employeeId, kind, amount, reason, periodMonth) {
+    const row = {
       employee_id: employeeId, kind, amount, reason, created_by: currentEmployee.id,
-    });
+    };
+    if (periodMonth) row.period_month = periodMonth;
+    const { error } = await client.from("bonuses_fines").insert(row);
     if (error) throw error;
   }
 

@@ -376,3 +376,5 @@ const SheetImport = (() => {
 })();
 
 if (typeof module !== "undefined") module.exports = SheetImport;
+// для серверной функции (Deno): она подключает этот файл как обычный модуль
+if (typeof module === "undefined" && typeof globalThis !== "undefined") globalThis.SheetImport = SheetImport;

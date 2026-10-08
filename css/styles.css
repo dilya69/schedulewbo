@@ -1382,3 +1382,22 @@ button svg.lucide {
 .collapsible-arrow.collapsed {
     transform: rotate(-90deg);
 }
+
+
+/* ---------- Импорт графика из Excel ---------- */
+.bulk-free-btn.import-btn { background: #34c759; margin-top: 0; }
+.modal-box.wide { max-width: 440px; }
+.imp-hint { font-size: 11.5px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4; }
+.imp-sec { margin-top: 12px; padding: 10px; border-radius: 12px; background: var(--card-secondary); }
+.imp-sec-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.imp-sec.err { background: #ff3b3018; }
+.imp-sec.err .imp-sec-title { color: #ff3b30; }
+.imp-sec.warn { background: #ff950018; }
+.imp-sec.warn .imp-sec-title { color: #ff9500; }
+.imp-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; font-size: 12px; color: var(--text); }
+.imp-row small { color: var(--text-secondary); font-size: 10.5px; }
+.imp-line { font-size: 11.5px; color: var(--text); margin: 3px 0; line-height: 1.35; }
+.imp-sum { display: flex; flex-wrap: wrap; gap: 6px; }
+.imp-sum span { padding: 4px 10px; border-radius: 20px; background: var(--card-bg); font-size: 11.5px; font-weight: 600; color: var(--text); }
+.imp-apply { width: 100%; margin-top: 12px; padding: 11px; border: none; border-radius: 30px; background: var(--accent); color: var(--accent-contrast); font-size: 13px; font-weight: 700; cursor: pointer; }
+.imp-apply:disabled { opacity: 0.5; cursor: default; }

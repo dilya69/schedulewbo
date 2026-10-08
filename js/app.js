@@ -114,7 +114,12 @@ const App = (() => {
     if (state.employee.is_admin) {
       state.requests = await Api.getPendingRequests();
     }
-    state.notif = await Api.getNotificationSettings();
+    try {
+      state.notif = await Api.getNotificationSettings();
+    } catch (e) {
+      console.warn("Настройки уведомлений не загрузились:", e);
+      state.notif = null;
+    }
     renderAll();
   }
 

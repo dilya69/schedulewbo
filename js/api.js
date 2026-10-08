@@ -165,6 +165,35 @@ const Api = (() => {
     if (error) throw error;
   }
 
+  // применяет план импорта из Excel пакетами (чтобы не упереться в лимит размера запроса).
+  // Порядок: обновления -> новые -> удаления. Если оборвалось посередине, импорт
+  // можно запустить ещё раз: он досчитает только то, что осталось.
+  async function applySheetPlan(plan, onProgress) {
+    const CH = 150;
+    const total = plan.updates.length + plan.inserts.length + plan.deletes.length;
+    let done = 0;
+    const tick = (n) => { done += n; if (onProgress) onProgress(done, total); };
+
+    for (let i = 0; i < plan.updates.length; i += CH) {
+      const chunk = plan.updates.slice(i, i + CH);
+      const { error } = await client.from("shifts").upsert(chunk, { onConflict: "id" });
+      if (error) throw error;
+      tick(chunk.length);
+    }
+    for (let i = 0; i < plan.inserts.length; i += CH) {
+      const chunk = plan.inserts.slice(i, i + CH);
+      const { error } = await client.from("shifts").insert(chunk);
+      if (error) throw error;
+      tick(chunk.length);
+    }
+    for (let i = 0; i < plan.deletes.length; i += CH) {
+      const chunk = plan.deletes.slice(i, i + CH);
+      const { error } = await client.from("shifts").delete().in("id", chunk);
+      if (error) throw error;
+      tick(chunk.length);
+    }
+  }
+
   async function deleteShift(id) {
     const { error } = await client.from("shifts").delete().eq("id", id);
     if (error) throw error;
@@ -397,7 +426,7 @@ const Api = (() => {
     login, getCurrentEmployee, isReady, sendFileToMe,
     getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getAllPayRules, replacePayRules,
-    getShiftsForMonth, upsertShift, deleteShift,
+    getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
     addBonusFine, getBonusesFines,

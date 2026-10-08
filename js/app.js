@@ -1716,6 +1716,234 @@ const App = (() => {
     }
   }
 
+  // ---------------- ИМПОРТ ГРАФИКА ИЗ EXCEL ----------------
+  // Разбор файла и расчёт плана — в js/sheet-import.js, запись пакетами — Api.applySheetPlan.
+  // Здесь только окно: выбор файла, сопоставление ПВЗ и имён, предпросмотр, «Применить».
+  let imp = null;
+
+  function openImportModal() {
+    if (state.demo) return toast("В демо-режиме импорт недоступен");
+    if (typeof XLSX === "undefined" || typeof SheetImport === "undefined") {
+      return toast("🚫 Не загрузилась библиотека Excel. Проверьте интернет и откройте приложение заново");
+    }
+    if (state.pvz.length && !("sheet_title" in state.pvz[0])) {
+      openModal("Сначала обновите базу", `
+        <div class="imp-hint">В Supabase ещё нет колонок для импорта. Откройте <b>SQL Editor</b>, выполните файл <b>sql/migration_sheet_import.sql</b> из репозитория и перезапустите приложение.</div>
+      `, null);
+      return;
+    }
+    imp = null;
+    openModal("Импорт графика из Excel", `
+      <div class="imp-hint">Выберите файл .xlsx с графиком (из Excel или скачанный из Яндекс Таблиц). Сначала покажу, что изменится, и только потом запишу. Смены, добавленные вручную в боте, импорт не удаляет.</div>
+      <input type="file" id="impFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="App._importPick(this)">
+      <div id="impBody"></div>
+    `, null);
+    document.getElementById("modalBox").classList.add("wide");
+  }
+
+  async function _importPick(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const body = document.getElementById("impBody");
+    body.innerHTML = '<div class="imp-hint" style="margin-top:10px;">Читаю файл…</div>';
+    try {
+      const data = await file.arrayBuffer();
+
+      // год в файле не указан — берём тот, при котором все числа совпадают с днями недели
+      let best = null;
+      for (const y of [state.year, state.year + 1, state.year - 1]) {
+        const parsed = SheetImport.parseWorkbook(XLSX, data, y);
+        const errs = parsed.errors.length + parsed.blocks.reduce((n, b) => n + b.errors.length, 0);
+        if (!best || errs < best.errs) best = { parsed, year: y, errs };
+        if (errs === 0) break;
+      }
+      const { parsed, year } = best;
+      if (parsed.errors.length) {
+        body.innerHTML = `<div class="imp-sec err"><div class="imp-sec-title">Не получилось прочитать файл</div>${parsed.errors.map((e) => `<div class="imp-line">${escapeHtml(e)}</div>`).join("")}</div>`;
+        return;
+      }
+
+      const [pvz, employees, shifts] = await Promise.all([
+        Api.getPvzList(), Api.getEmployees(), Api.getShiftsForMonth(year, parsed.month - 1),
+      ]);
+      if (shifts.length && !("source" in shifts[0])) {
+        throw new Error("В таблице shifts нет колонки source — выполните sql/migration_sheet_import.sql");
+      }
+      state.pvz = pvz;
+      state.employees = employees;
+      imp = { fileName: file.name, parsed, year, shifts, mappings: { pvz: {}, emp: {} }, pvzKeys: [], pvzTitles: {}, nameKeys: [], names: {}, plan: null };
+      _importRecalc();
+    } catch (e) {
+      console.error(e);
+      body.innerHTML = `<div class="imp-sec err"><div class="imp-sec-title">Ошибка</div><div class="imp-line">${escapeHtml(e.message || String(e))}</div></div>`;
+    }
+  }
+
+  function _importRecalc() {
+    imp.plan = SheetImport.buildPlan({
+      parsed: imp.parsed, year: imp.year, month: imp.parsed.month,
+      pvzList: state.pvz, employees: state.employees, shifts: imp.shifts, mappings: imp.mappings,
+    });
+    // запоминаем всё, что когда-либо было непонятно, чтобы строки выбора не пропадали после выбора
+    for (const u of imp.plan.unmatchedPvz) {
+      if (!imp.pvzKeys.includes(u.key)) imp.pvzKeys.push(u.key);
+      imp.pvzTitles[u.key] = u.title;
+    }
+    for (const u of imp.plan.unmatchedNames) {
+      if (!imp.nameKeys.includes(u.key)) imp.nameKeys.push(u.key);
+      imp.names[u.key] = { name: u.name, count: u.count, examples: u.examples, ambiguous: u.ambiguous };
+    }
+    renderImport();
+  }
+
+  function _importSetPvz(i, val) {
+    const key = imp.pvzKeys[i];
+    if (val) imp.mappings.pvz[key] = val; else delete imp.mappings.pvz[key];
+    _importRecalc();
+  }
+
+  function _importSetEmp(i, val) {
+    const key = imp.nameKeys[i];
+    if (val) imp.mappings.emp[key] = val; else delete imp.mappings.emp[key];
+    _importRecalc();
+  }
+
+  function renderImport() {
+    const p = imp.plan;
+    const body = document.getElementById("impBody");
+    if (!body) return;
+    const empName = (id) => state.employees.find((e) => e.id === id)?.full_name || "—";
+    const pvzName = (id) => state.pvz.find((p2) => p2.id === id)?.name || "—";
+    const more = (arr, n) => (arr.length > n ? `<div class="imp-line">…и ещё ${arr.length - n}</div>` : "");
+    const lines = (arr, n, fmt) => arr.slice(0, n).map((x) => `<div class="imp-line">${fmt(x)}</div>`).join("") + more(arr, n);
+    const dm = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
+    const sec = (cls, title, inner) => `<div class="imp-sec ${cls}"><div class="imp-sec-title">${title}</div>${inner}</div>`;
+
+    let h = `<div class="imp-hint" style="margin-top:10px;">${escapeHtml(imp.fileName)} · ${escapeHtml(imp.parsed.monthName)} ${imp.year} · блоков ПВЗ: ${imp.parsed.blocks.length}</div>`;
+
+    // 1) блоки с ошибками разметки — их не трогаем
+    if (p.blockErrors.length) {
+      h += sec("err", "Блоки с ошибками (пропущены)", p.blockErrors.map((b) =>
+        `<div class="imp-line"><b>${escapeHtml(b.title)}</b>: ${escapeHtml(b.errors.slice(0, 3).join("; "))}${b.errors.length > 3 ? "…" : ""}</div>`).join(""));
+    }
+
+    // 2) какому ПВЗ приложения соответствует блок таблицы
+    if (imp.pvzKeys.length) {
+      const rows = imp.pvzKeys.map((key, i) => {
+        const cur = imp.mappings.pvz[key] || "";
+        const opts = state.pvz.map((x) => `<option value="${x.id}" ${x.id === cur ? "selected" : ""}>${x.marketplace === "ozon" ? "🔵" : "🟣"} ${escapeHtml(x.name)}</option>`).join("");
+        return `<div class="imp-row"><span>«${escapeHtml(imp.pvzTitles[key])}»</span>
+          <select onchange="App._importSetPvz(${i}, this.value)"><option value="">— выбрать ПВЗ —</option>${opts}</select></div>`;
+      }).join("");
+      h += sec(p.unmatchedPvz.length ? "warn" : "", "Какой это ПВЗ в приложении?", rows + `<div class="imp-hint">Выбор запомнится. Если не выбрать, блок будет пропущен.</div>`);
+    }
+
+    // 3) какому сотруднику соответствует имя из таблицы
+    if (imp.nameKeys.length) {
+      const active = state.employees.filter((e) => e.is_active !== false);
+      const rows = imp.nameKeys.map((key, i) => {
+        const cur = imp.mappings.emp[key] || "";
+        const info = imp.names[key];
+        const opts = active.map((e) => `<option value="${e.id}" ${e.id === cur ? "selected" : ""}>${escapeHtml(e.full_name)}</option>`).join("");
+        return `<div class="imp-row"><span><b>${escapeHtml(info.name)}</b> <small>${info.ambiguous ? "подходит нескольким · " : ""}встречается ${info.count} раз(а)${info.examples && info.examples.length ? ": " + escapeHtml(info.examples[0]) : ""}</small></span>
+          <select onchange="App._importSetEmp(${i}, this.value)"><option value="">— выбрать сотрудника —</option>${opts}<option value="__skip__" ${cur === "__skip__" ? "selected" : ""}>Не загружать эти записи</option></select></div>`;
+      }).join("");
+      h += sec(p.unmatchedNames.length ? "warn" : "", "Кто это в приложении?", rows + `<div class="imp-hint">Выбор запомнится. Дни с неопознанными именами я пропускаю и ничего в них не удаляю.</div>`);
+    }
+
+    // 4) что произойдёт
+    const s = p.stats;
+    h += sec("", "Что изменится", `<div class="imp-sum">
+      <span>➕ Создам: ${s.inserted}</span>
+      <span>✏️ Обновлю / займу свободные: ${s.claimed + s.adopt}</span>
+      <span>🗑 Удалю: ${s.deleted}</span>
+      <span>✔️ Без изменений: ${s.keep}</span></div>
+      <div class="imp-hint" style="margin-top:6px;">Записей людей: ${p.peopleEntries}, свободных («?»): ${p.freeEntries}. Блоков ПВЗ разобрано: ${p.matchedBlocks} из ${imp.parsed.blocks.length}.</div>`);
+
+    // 5) на что обратить внимание
+    if (p.conflicts.length) {
+      h += sec("err", `Один человек в двух местах сразу: ${p.conflicts.length}`, lines(p.conflicts, 8, (c) =>
+        `${escapeHtml(empName(c.empId))}, ${dm(c.date)}: ${escapeHtml(pvzName(c.a.pvzId))} ${c.a.start}–${c.a.end} и ${escapeHtml(pvzName(c.b.pvzId))} ${c.b.start}–${c.b.end}`));
+    }
+    if (p.cellErrors.length) {
+      h += sec("warn", `Непонятные ячейки: ${p.cellErrors.length}`, lines(p.cellErrors, 8, (c) =>
+        `${escapeHtml(c.block)}, ${escapeHtml(c.cell)}: «${escapeHtml(c.raw)}» — ${escapeHtml(c.error)}`) + `<div class="imp-hint">В такие дни ничего не удаляю.</div>`);
+    }
+    if (p.duplicatePeople.length) {
+      h += sec("warn", `Один человек дважды в ПВЗ за день: ${p.duplicatePeople.length}`, lines(p.duplicatePeople, 5, (d) =>
+        `${escapeHtml(d.block)}, ${dm(d.date)}: ${escapeHtml(d.name)}`));
+    }
+    if (p.bonuses.length) {
+      h += sec("", `Помечено «+» (бонус): ${p.bonuses.length}`, lines(p.bonuses, 6, (b) =>
+        `${dm(b.date)} ${escapeHtml(b.pvz)}: ${escapeHtml(b.name)}`) + `<div class="imp-hint">Смену загружу как обычную, бонус начислите вручную в «Управление → Бонус».</div>`);
+    }
+    if (p.trainings.length) {
+      h += sec("", `Обучение: ${p.trainings.length}`, lines(p.trainings, 6, (b) =>
+        `${dm(b.date)} ${escapeHtml(b.pvz)}: ${escapeHtml(b.name)}`) + `<div class="imp-hint">Смена загрузится по обычному тарифу. Платить иначе или нет — решает админ вручную («Сумма» в смене).</div>`);
+    }
+    if (p.manualExtra.length) {
+      h += sec("", `Есть в приложении, нет в таблице: ${p.manualExtra.length}`, `<div class="imp-hint">Это смены, добавленные вручную. Оставляю как есть.</div>` +
+        lines(p.manualExtra, 5, (m) => `${dm(m.date)} ${escapeHtml(m.block)}: ${escapeHtml(empName(m.empId))} ${m.start}–${m.end}`));
+    }
+    if (p.pendingKept.length) {
+      h += sec("", `Смены с откликами не трогаю: ${p.pendingKept.length}`, `<div class="imp-hint">Сначала решите по откликам во вкладке «Смены».</div>`);
+    }
+    if (p.comments.length || p.strays.length) {
+      h += sec("", "Текст в таблице вне графика", lines(p.comments.concat(p.strays), 6, (c) =>
+        `${escapeHtml(c.block)}: ${escapeHtml(c.text)}`) + `<div class="imp-hint">Импорт это не загружает, только показывает.</div>`);
+    }
+
+    // 6) применить
+    const n = p.changeCount;
+    const hasMaps = Object.keys(imp.mappings.pvz).length + Object.keys(imp.mappings.emp).filter((k) => imp.mappings.emp[k] !== "__skip__").length > 0;
+    h += `<button class="imp-apply" id="impApplyBtn" onclick="App._importApply()" ${n === 0 && !hasMaps ? "disabled" : ""}>${n ? `Применить (${n} изм.)` : (hasMaps ? "Сохранить выбор" : "Нечего менять")}</button>`;
+    body.innerHTML = h;
+    refreshIcons();
+  }
+
+  // запоминаем выбранные соответствия: название блока -> pvz.sheet_title, имя -> employees.sheet_alias
+  async function persistImportMappings() {
+    for (const [key, pvzId] of Object.entries(imp.mappings.pvz)) {
+      if (pvzId) await Api.updatePvz(pvzId, { sheet_title: imp.pvzTitles[key] });
+    }
+    const byEmp = {};
+    for (const [key, empId] of Object.entries(imp.mappings.emp)) {
+      if (!empId || empId === "__skip__") continue;
+      (byEmp[empId] ??= []).push(imp.names[key].name);
+    }
+    for (const [empId, names] of Object.entries(byEmp)) {
+      const e = state.employees.find((x) => x.id === empId);
+      const have = String(e?.sheet_alias || "").split(/[;\n]/).map((x) => x.trim()).filter(Boolean);
+      const add = names.filter((n) => !have.some((h) => SheetImport.normKey(h) === SheetImport.normKey(n)));
+      if (add.length) await Api.updateEmployee(empId, { sheet_alias: [...have, ...add].join(";") });
+    }
+  }
+
+  async function _importApply() {
+    if (!imp || !imp.plan) return;
+    const plan = imp.plan;
+    if (plan.conflicts.length && !confirm(`Найдено пересечений: ${plan.conflicts.length} (один человек в двух ПВЗ в одно время). Всё равно применить?`)) return;
+    if (plan.deletes.length && !confirm(`Будет удалено смен: ${plan.deletes.length} (их раньше принёс импорт, а в таблице их больше нет). Продолжить?`)) return;
+    const btn = document.getElementById("impApplyBtn");
+    btn.disabled = true;
+    try {
+      await persistImportMappings();
+      await Api.applySheetPlan(plan, (done, total) => { btn.textContent = `Записываю… ${done} из ${total}`; });
+      toast(plan.changeCount ? `✅ Готово: изменений ${plan.changeCount}` : "✅ Выбор сохранён");
+      imp = null;
+      closeModal();
+      state.employees = await Api.getEmployees();
+      state.pvz = await Api.getPvzList();
+      await reloadShifts();
+      renderAll();
+    } catch (e) {
+      console.error(e);
+      toast("🚫 " + (e.message || e));
+      btn.disabled = false;
+      btn.textContent = "Применить ещё раз";
+    }
+  }
+
   function periodSuffix() {
     return state.payPeriod === "first" ? "_1-15" : state.payPeriod === "second" ? "_16-конец" : "";
   }
@@ -1816,6 +2044,7 @@ const App = (() => {
 
   function closeModal() {
     document.getElementById("modalOverlay").classList.remove("show");
+    document.getElementById("modalBox").classList.remove("wide");
   }
 
   document.getElementById("modalOverlay").addEventListener("click", (e) => {
@@ -1835,6 +2064,7 @@ const App = (() => {
     changeAvatar, _pickAvatar, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
     openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
+    openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     closeModal,
   };

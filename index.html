@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="theme-sand">
 
@@ -214,6 +215,8 @@
 
                 <button class="bulk-free-btn" onclick="App.bulkFreeMonthConfirm()"><i data-lucide="calendar-days"></i> Освободить весь текущий месяц (для откликов)</button>
 
+                <button class="bulk-free-btn import-btn" onclick="App.openImportModal()"><i data-lucide="file-spreadsheet"></i> Импорт графика из Excel</button>
+
                 <div style="font-size:10.5px; color:var(--text-secondary); text-align:center; margin:-4px 0 6px; display:flex; align-items:center; justify-content:center; gap:4px;">
                     <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> 1 числа каждого месяца данные о прошлом месяце удаляются автоматически
                 </div>
@@ -288,6 +291,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
+<script src="js/sheet-import.js"></script>
 <script src="js/app.js"></script>
 <script>if (window.lucide) lucide.createIcons();</script>
 </body>

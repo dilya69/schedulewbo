@@ -1401,3 +1401,17 @@ button svg.lucide {
 .imp-sum span { padding: 4px 10px; border-radius: 20px; background: var(--card-bg); font-size: 11.5px; font-weight: 600; color: var(--text); }
 .imp-apply { width: 100%; margin-top: 12px; padding: 11px; border: none; border-radius: 30px; background: var(--accent); color: var(--accent-contrast); font-size: 13px; font-weight: 700; cursor: pointer; }
 .imp-apply:disabled { opacity: 0.5; cursor: default; }
+
+
+/* ---------- Кнопки без своего цвета берут цвет текста темы ---------- */
+button { color: inherit; }
+
+/* Вкладка «Сотрудники»: .edit-btn белый (для оранжевой кнопки в календаре),
+   на прозрачной кнопке в светлых темах иконки «график» и «карандаш» были невидимы */
+.employee-card .actions .edit-btn,
+.employee-card .actions .delete { color: var(--text); }
+.employee-card .actions .grant-btn { color: #34c759; opacity: 1; }
+
+/* закреплённые сотрудники вверху списка */
+.employee-card.pinned { border-color: rgba(var(--accent-rgb), 0.45); }
+.employee-card.pinned .name::after { content: " 📌"; font-size: 10px; }

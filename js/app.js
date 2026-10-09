@@ -1045,13 +1045,20 @@ const App = (() => {
 
     if (state.demo) { activeContainer.innerHTML = ""; return; }
 
-    const active = state.employees.filter((e) => e.is_active !== false);
+    // закреплены вверху списка (по порядку), остальные по алфавиту
+    const PINNED = ["светлана", "иван", "яна"];
+    const pinIndex = (e) => PINNED.indexOf(String(e.full_name || "").trim().toLowerCase());
+    const active = state.employees.filter((e) => e.is_active !== false).slice().sort((a, b) => {
+      const pa = pinIndex(a), pb = pinIndex(b);
+      if (pa >= 0 || pb >= 0) return (pa >= 0 ? pa : 99) - (pb >= 0 ? pb : 99);
+      return String(a.full_name).localeCompare(String(b.full_name), "ru");
+    });
     const pending = state.employees.filter((e) => e.is_active === false);
 
     if (countEl) countEl.textContent = `${active.length} чел.`;
 
     activeContainer.innerHTML = active.map((e) => `
-      <div class="employee-card" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
+      <div class="employee-card${pinIndex(e) >= 0 ? " pinned" : ""}" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
         <div class="avatar" style="background:${colorForName(e.full_name)}; box-shadow:0 0 0 2px ${e.avatar_frame || DEFAULT_FRAME_COLOR};">${e.avatar_emoji ? escapeHtml(e.avatar_emoji) : escapeHtml(e.full_name[0] || "?")}</div>
         <div class="info">
           <div class="name">${escapeHtml(e.full_name)}</div>

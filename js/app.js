@@ -1324,7 +1324,7 @@ const App = (() => {
     if (state.notif) {
       document.getElementById("remindMinutes").value = state.notif.remind_minutes ?? 120;
       document.getElementById("dailyTime").value = state.notif.daily_time?.slice(0,5) || "08:00";
-      document.getElementById("repeatMinutes").value = state.notif.repeat_minutes ?? 15;
+      document.getElementById("repeatMinutes").value = state.notif.repeat_minutes ?? 0;
       document.getElementById("pushSwitch").classList.toggle("active", state.notif.push_enabled !== false);
     }
     refreshIcons();

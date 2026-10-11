@@ -1723,6 +1723,72 @@ const App = (() => {
     }
   }
 
+  // ---------------- АВТОИМПОРТ: ССЫЛКА И «ОБНОВИТЬ СЕЙЧАС» ----------------
+  const SYNC_STATUS = { ok: "✅ Всё применено", attention: "⚠️ Нужно внимание", error: "🚫 Ошибка", skipped: "⏸ Пропущено" };
+
+  function syncStatusHtml(cfg) {
+    if (!cfg || !cfg.last_run_at) return '<div class="imp-hint">Автоимпорт ещё не запускался.</div>';
+    const when = new Date(cfg.last_run_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const cls = cfg.last_status === "error" ? "err" : cfg.last_status === "attention" ? "warn" : "";
+    return `<div class="imp-sec ${cls}"><div class="imp-sec-title">${SYNC_STATUS[cfg.last_status] || escapeHtml(cfg.last_status || "—")} · ${when}</div>
+      <div class="imp-line">${escapeHtml(cfg.last_message || "").replace(/\n/g, "<br>")}</div></div>`;
+  }
+
+  async function openSyncModal() {
+    if (state.demo) return toast("В демо-режиме недоступно");
+    let cfg;
+    try { cfg = await Api.getScheduleSync(); } catch (e) { return toast("🚫 " + e.message); }
+    if (!cfg) return toast("🚫 Нет настроек автоимпорта: выполните sql/migration_schedule_sync.sql");
+    openModal("Автоимпорт графика", `
+      <div class="imp-hint">Раз в 10 минут бот сам берёт файл по этой ссылке и обновляет смены. Раз в месяц достаточно вставить сюда новую ссылку. Доступ к файлу на Яндекс Диске должен быть «по ссылке».</div>
+      <label>Ссылка на файл (Яндекс Диск)</label>
+      <input type="url" id="syncUrl" placeholder="https://disk.yandex.ru/i/..." value="${escapeHtml(cfg.url || "")}">
+      <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+        <input type="checkbox" id="syncEnabled" ${cfg.enabled ? "checked" : ""} style="width:auto;"> Автоимпорт включён
+      </label>
+      <div id="syncStatus" style="margin-top:10px;">${syncStatusHtml(cfg)}</div>
+      <button class="imp-apply" id="syncRunBtn" onclick="App._syncRunNow()"><i data-lucide="refresh-cw"></i> Обновить сейчас</button>
+      <div class="imp-hint" style="margin-top:6px;">«Обновить сейчас» сначала сохраняет ссылку, потом сразу загружает график.</div>
+    `, async () => {
+      if (!(await _syncSave())) return;
+      toast("✅ Сохранено");
+      closeModal();
+    });
+  }
+
+  async function _syncSave() {
+    const url = document.getElementById("syncUrl").value.trim();
+    const enabled = document.getElementById("syncEnabled").checked;
+    if (enabled && !url) { toast("Вставьте ссылку или выключите автоимпорт"); return false; }
+    try { await Api.saveScheduleSync(url, enabled); return true; }
+    catch (e) { toast("🚫 " + e.message); return false; }
+  }
+
+  async function _syncRunNow() {
+    const btn = document.getElementById("syncRunBtn");
+    if (btn.disabled) return;
+    if (!(await _syncSave())) return;
+    btn.disabled = true;
+    const old = btn.innerHTML;
+    btn.textContent = "Загружаю…";
+    try {
+      await Api.runScheduleSync();
+      const cfg = await Api.getScheduleSync();
+      document.getElementById("syncStatus").innerHTML = syncStatusHtml(cfg);
+      // подтягиваем свежие смены в календарь
+      await reloadShifts();
+      renderCalendar();
+      renderManagement();
+      toast(cfg.last_status === "ok" ? "✅ График обновлён" : "Готово, смотрите статус ниже");
+    } catch (e) {
+      toast("🚫 " + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = old;
+      refreshIcons();
+    }
+  }
+
   // ---------------- ИМПОРТ ГРАФИКА ИЗ EXCEL ----------------
   // Разбор файла и расчёт плана — в js/sheet-import.js, запись пакетами — Api.applySheetPlan.
   // Здесь только окно: выбор файла, сопоставление ПВЗ и имён, предпросмотр, «Применить».
@@ -2071,7 +2137,7 @@ const App = (() => {
     changeAvatar, _pickAvatar, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
     openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
-    openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
+    openSyncModal, _syncRunNow, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     closeModal,
   };

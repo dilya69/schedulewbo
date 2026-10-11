@@ -5,4 +5,6 @@ const CONFIG = {
   // адрес Edge Function telegram-auth (тот же project ref)
   AUTH_FUNCTION_URL: "https://gwkurcwggttztchmhvzy.functions.supabase.co/telegram-auth",
    SEND_FILE_FUNCTION_URL: "https://gwkurcwggttztchmhvzy.functions.supabase.co/send-file",
+  // функция автоимпорта графика (кнопка «Обновить сейчас»)
+  SYNC_FUNCTION_URL: "https://gwkurcwggttztchmhvzy.functions.supabase.co/dynamic-endpoint",
 };

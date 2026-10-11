@@ -65,6 +65,31 @@ const Api = (() => {
     if (!res.ok || !body.ok) throw new Error(body.error || "Не удалось отправить файл");
   }
 
+  // ---------- АВТОИМПОРТ ГРАФИКА (только админ) ----------
+  async function getScheduleSync() {
+    const { data, error } = await client.from("schedule_sync").select("url, enabled, last_run_at, last_status, last_message").eq("id", 1).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  async function saveScheduleSync(url, enabled) {
+    const { error } = await client.from("schedule_sync").update({ url: url || null, enabled: !!enabled }).eq("id", 1);
+    if (error) throw error;
+  }
+
+  // запускает синхронизацию прямо сейчас; сервер проверяет, что вызвал админ
+  async function runScheduleSync() {
+    const res = await fetch(CONFIG.SYNC_FUNCTION_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}`, apikey: CONFIG.SUPABASE_ANON_KEY },
+      body: "{}",
+    });
+    let body = {};
+    try { body = await res.json(); } catch (_) { /* не JSON */ }
+    if (!res.ok) throw new Error(body.error === "forbidden" ? "Нет прав на запуск" : (body.error || `Ошибка ${res.status}`));
+    return body; // { status, message }
+  }
+
   // ---------- ПВЗ ----------
   async function getPvzList() {
     const { data, error } = await client.from("pvz").select("*").eq("is_active", true).order("sort_order");
@@ -424,7 +449,7 @@ const Api = (() => {
 
   return {
     login, getCurrentEmployee, isReady, sendFileToMe,
-    getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
+    getScheduleSync, saveScheduleSync, runScheduleSync, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getAllPayRules, replacePayRules,
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,

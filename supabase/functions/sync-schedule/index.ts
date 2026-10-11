@@ -15,8 +15,31 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 
 const MAX_DELETES = 40; // больше за один запуск автоматически не удаляем — только вручную из приложения
 const CHUNK = 150;
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-sync-secret",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 const json = (o: unknown, status = 200) =>
-  new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json" } });
+  new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json", ...CORS } });
+
+// Кто вызвал: cron (секрет) или админ из приложения (его JWT).
+// JWT проверяет сам PostgREST: спрашиваем у него auth_is_admin() с токеном вызывающего.
+async function isAdminCaller(req: Request): Promise<boolean> {
+  const auth = req.headers.get("authorization");
+  const apikey = req.headers.get("apikey") || Deno.env.get("SUPABASE_ANON_KEY");
+  if (!auth || !apikey) return false;
+  try {
+    const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/rpc/auth_is_admin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: auth, apikey },
+      body: "{}",
+    });
+    return r.ok && (await r.json()) === true;
+  } catch (_) {
+    return false;
+  }
+}
 
 // «сегодня» по Москве: год и месяц нужны, чтобы не трогать прошлые месяцы
 function moscowNow() {
@@ -71,12 +94,18 @@ async function finish(status: string, message: string, alert: string | null, pre
 }
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+
   const secret = Deno.env.get("SYNC_SECRET");
-  if (!secret || req.headers.get("x-sync-secret") !== secret) return json({ error: "forbidden" }, 403);
+  const byCron = !!secret && req.headers.get("x-sync-secret") === secret;
+  // ручной запуск («Обновить сейчас»): только админ, работает даже при выключенном автоимпорте
+  const manual = !byCron && (await isAdminCaller(req));
+  if (!byCron && !manual) return json({ error: "forbidden" }, 403);
 
   const { data: cfg, error: cfgErr } = await db.from("schedule_sync").select("*").eq("id", 1).maybeSingle();
   if (cfgErr || !cfg) return json({ error: "нет строки настроек schedule_sync" }, 500);
-  if (!cfg.enabled || !cfg.url) return json({ status: "skipped", message: "автоимпорт выключен или нет ссылки" });
+  if (!cfg.url) return json({ status: "skipped", message: "ссылка на график не задана" });
+  if (!manual && !cfg.enabled) return json({ status: "skipped", message: "автоимпорт выключен" });
   const prev: string | null = cfg.last_alert;
 
   try {

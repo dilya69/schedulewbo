@@ -58,7 +58,7 @@ async function fetchAll(table: string, build: (q: any) => any) {
   return rows;
 }
 
-async function downloadXlsx(publicUrl: string): Promise<ArrayBuffer> {
+async function downloadOnce(publicUrl: string): Promise<ArrayBuffer> {
   const api = "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=" + encodeURIComponent(publicUrl);
   const r1 = await fetch(api);
   if (!r1.ok) throw new Error(`Яндекс Диск не отдал ссылку на файл (HTTP ${r1.status}). Проверьте, что доступ по ссылке включён.`);
@@ -67,6 +67,20 @@ async function downloadXlsx(publicUrl: string): Promise<ArrayBuffer> {
   const r2 = await fetch(href);
   if (!r2.ok) throw new Error(`Не удалось скачать файл (HTTP ${r2.status})`);
   return await r2.arrayBuffer();
+}
+
+// Яндекс Диск иногда отвечает 5xx на пару секунд: пробуем до 3 раз, и только потом сдаёмся
+async function downloadXlsx(publicUrl: string): Promise<ArrayBuffer> {
+  let lastErr: unknown;
+  for (let i = 0; i < 3; i++) {
+    try { return await downloadOnce(publicUrl); }
+    catch (e) {
+      lastErr = e;
+      if (!/HTTP 5\d\d/.test(String((e as any)?.message ?? e))) throw e; // не временный сбой — повторять нет смысла
+      await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 async function notifyAdmins(text: string) {
@@ -174,6 +188,9 @@ Deno.serve(async (req) => {
     return await finish("ok", summary, null, prev);
   } catch (e) {
     const msg = String((e as any)?.message ?? e);
-    return await finish("error", "Ошибка автоимпорта: " + msg, "err:" + msg, prev);
+    // временный сбой Яндекса (5xx): админам пишем, только если прошлый запуск тоже закончился ошибкой
+    const transient = /HTTP 5\d\d/.test(msg);
+    const alert = transient && cfg.last_status !== "error" ? null : "err:" + msg;
+    return await finish("error", "Ошибка автоимпорта: " + msg, alert, prev);
   }
 });

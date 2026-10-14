@@ -1950,6 +1950,10 @@ const App = (() => {
       h += sec("", `Помечено «+» (бонус): ${p.bonuses.length}`, lines(p.bonuses, 6, (b) =>
         `${dm(b.date)} ${escapeHtml(b.pvz)}: ${escapeHtml(b.name)}`) + `<div class="imp-hint">Смену загружу как обычную, бонус начислите вручную в «Управление → Бонус».</div>`);
     }
+    if (p.tentatives.length) {
+      h += sec("", `Под вопросом («?»): ${p.tentatives.length}`, lines(p.tentatives, 8, (b) =>
+        `${dm(b.date)} ${escapeHtml(b.pvz)}: ${escapeHtml(b.name)}, ${b.start}–${b.end}`) + `<div class="imp-hint">Эти смены останутся свободными, никого не назначаю. Когда уберёте «?» в таблице, смена достанется человеку.</div>`);
+    }
     if (p.trainings.length) {
       h += sec("", `Обучение: ${p.trainings.length}`, lines(p.trainings, 6, (b) =>
         `${dm(b.date)} ${escapeHtml(b.pvz)}: ${escapeHtml(b.name)}`) + `<div class="imp-hint">Смена загрузится по обычному тарифу. Платить иначе или нет — решает админ вручную («Сумма» в смене).</div>`);

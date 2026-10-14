@@ -179,7 +179,8 @@ Deno.serve(async (req) => {
     if (plan.blockErrors.length) issues.push("Блоки с ошибками: " + plan.blockErrors.map((b: any) => b.title).join(", "));
     if (plan.cellErrors.length) issues.push("Непонятные ячейки: " + plan.cellErrors.slice(0, 5).map((c: any) => `${c.block} ${c.cell} «${c.raw}»`).join("; ") + (plan.cellErrors.length > 5 ? "…" : ""));
     if (plan.conflicts.length) issues.push(`Один человек в двух местах сразу: ${plan.conflicts.length}`);
-    const summary = `${parsed.monthName} ${year}: создано ${plan.inserts.length}, обновлено ${plan.updates.length}, удалено ${plan.deletes.length}.`;
+    const summary = `${parsed.monthName} ${year}: создано ${plan.inserts.length}, обновлено ${plan.updates.length}, удалено ${plan.deletes.length}.` +
+      (plan.tentatives.length ? ` Под вопросом (пока никому не назначены): ${plan.tentatives.length}.` : "");
 
     if (issues.length) {
       const text = summary + "\n" + issues.join("\n") + "\nСопоставьте имена и ПВЗ в приложении: Управление → Импорт графика.";

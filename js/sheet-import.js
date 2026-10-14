@@ -12,6 +12,7 @@
 //   «:)» или «-»      — в этот день смены нет
 //   «Катя+»           — плюс = бонус (импорт только напоминает о нём)
 //   «Катя обуч»       — обучение: смена по обычному тарифу, в отчёте отдельной строкой
+//   «Катя ?», «Катя с 17?», «Катя до?» — под сомнением: смена остаётся свободной, имя только в отчёте
 // ============================================================
 const SheetImport = (() => {
   const MONTHS = {
@@ -41,6 +42,17 @@ const SheetImport = (() => {
     if (!s) return { kind: "empty" };
     if (/^(:\)|:-\)|-|—|–)$/.test(s)) return { kind: "none" };
 
+    // «?» рядом с записью = под сомнением («Катя ?», «Катя с 17?», «Катя до?», «Катя с/до?», «Катя (?)»).
+    // Просто «?» в ячейке — свободная смена (никого не нашли), это разбирается ниже.
+    s = s.replace(/\(\s*\?+\s*\)/g, "?");
+    if (/^\?+$/.test(s)) s = "?";
+    let tentative = false;
+    if (s !== "?" && !/^\?\s/.test(s) && s.includes("?")) { tentative = true; s = clean(s.replace(/\?+/g, " ")); }
+    // «с» или «до» без времени («Яна до», «Катя с/до») — тоже сомнение, а не запись
+    const dangling = /\s+(?:[сc]|до)(?:\s*\/\s*(?:[сc]|до))?$/i;
+    if (dangling.test(s)) { tentative = true; s = s.replace(dangling, "").trim(); }
+    if (tentative) s = s.replace(/\s+[сc]\s+(?=до\s*\d)/i, " "); // «Катя с? до 15» -> «Катя до 15»
+
     let bonus = false, training = false;
     if (/\++$/.test(s)) { bonus = true; s = s.replace(/\++$/, "").trim(); }
     // «Матвей обуч» / «Матвей обуч.» — стажировка: оплата обычная, но админу показываем отдельно
@@ -55,7 +67,7 @@ const SheetImport = (() => {
     if ((m[2] && !from) || (m[3] && !to)) return { kind: "error", error: "не понял время" };
     if (!name) return { kind: "error", error: "нет имени" };
     if (name === "?") return { kind: "free", from, to };
-    return { kind: "person", name, key: normKey(name), from, to, bonus, training };
+    return { kind: "person", name, key: normKey(name), from, to, bonus, training, tentative };
   }
 
   // ---------- разбор книги Excel ----------
@@ -200,7 +212,7 @@ const SheetImport = (() => {
     const plan = {
       inserts: [], updates: [], deletes: [],
       stats: { keep: 0, adopt: 0, claimed: 0, inserted: 0, deleted: 0, freeKept: 0 },
-      unmatchedPvz: [], unmatchedNames: [], cellErrors: [], blockErrors: [], bonuses: [], trainings: [],
+      unmatchedPvz: [], unmatchedNames: [], cellErrors: [], blockErrors: [], bonuses: [], trainings: [], tentatives: [],
       manualExtra: [], pendingKept: [], conflicts: [], duplicatePeople: [], unsafeDays: [],
       skippedEntries: 0, matchedBlocks: 0, peopleEntries: 0, freeEntries: 0,
       comments: parsed.comments || [], strays: parsed.strays || [], pvzUsed: {},
@@ -269,6 +281,12 @@ const SheetImport = (() => {
           if (start >= end) {
             plan.cellErrors.push({ block: blk.title, cell: en.cell, raw: en.raw, error: `время ${start}–${end}: начало не раньше конца` });
             unsafe = true; continue;
+          }
+          if (en.kind === "person" && en.tentative) {
+            // под сомнением: никого не назначаем (ни напоминаний, ни оплаты), смена остаётся свободной
+            plan.tentatives.push({ pvz: pvz.name, date, name: en.name, start, end });
+            desired.push({ free: true, start, end, cell: en.cell });
+            continue;
           }
           if (en.kind === "free") { plan.freeEntries++; desired.push({ free: true, start, end, cell: en.cell }); continue; }
 

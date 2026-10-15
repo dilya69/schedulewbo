@@ -496,7 +496,7 @@ body {
     margin-bottom: 2px;
 }
 
-.days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+.days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; container-type: inline-size; }
 
 .day-cell {
     display: flex;
@@ -846,7 +846,8 @@ body {
 
 .day-cell .name-chip {
     width: 100%;
-    font-size: clamp(4px, 0.8vw, 7px);
+    /* размер от ширины самого календаря (а не окна браузера): на телефоне ~8px, на компе растёт вместе с календарём */
+    font-size: clamp(7px, 1.85cqw, 13px);
     font-weight: 800;
     color: #fff;
     border-radius: 3px;
@@ -1153,6 +1154,11 @@ span.chip-pending-dot { cursor: default; }
 
 @media (min-width: 421px) and (max-width: 480px) {
     .app-container { height: 92vh; }
+}
+
+/* на компе приложение шире, чтобы календарь и имена не были мелкими */
+@media (min-width: 700px) {
+    .app-container { max-width: 640px; }
 }
 
 /* ---------- сворачиваемые блоки ---------- */

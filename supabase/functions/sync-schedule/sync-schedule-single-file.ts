@@ -591,8 +591,8 @@ Deno.serve(async (req) => {
     return await finish("ok", summary, null, prev);
   } catch (e) {
     const msg = String((e as any)?.message ?? e);
-    // временный сбой Яндекса (5xx): админам пишем, только если прошлый запуск тоже закончился ошибкой
-    const transient = /HTTP 5\d\d/.test(msg);
+    // временный сбой (Яндекс 5xx, рассинхрон часов у Supabase и т.п.): админам пишем, только если прошлый запуск тоже закончился ошибкой
+    const transient = /HTTP 5\d\d|JWT issued at future|fetch failed|timed? ?out/i.test(msg);
     const alert = transient && cfg.last_status !== "error" ? null : "err:" + msg;
     return await finish("error", "Ошибка автоимпорта: " + msg, alert, prev);
   }

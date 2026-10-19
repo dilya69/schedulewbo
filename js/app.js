@@ -644,7 +644,7 @@ const App = (() => {
 
   // ---------------- ПОЖЕЛАНИЯ ПО ГРАФИКУ ----------------
   // Админ включает приём пожеланий на месяц тумблером; сотрудник отмечает дни
-  // (весь день / с часа / другие часы / нужен выходной) и пишет комментарий.
+  // (весь день / с пяти / другие часы / нужен выходной) и пишет комментарий.
   // days: { "5": {t:"full"}, "6": {t:"from", from:"17:00"}, "7": {t:"range", from:"12:00", to:"18:00"}, "8": {t:"off"} }
   function wishMonthKey() { return `${state.year}-${pad2(state.month + 1)}-01`; }
 
@@ -851,7 +851,7 @@ const App = (() => {
       </div>
       <div class="wish-types ${n ? "" : "off"}">
         <button type="button" onclick="App._wishApply('full')">🟢 Весь день</button>
-        <button type="button" class="${wd.mode === "from" ? "on" : ""}" onclick="App._wishSetMode('from')">🕔 С часа</button>
+        <button type="button" class="${wd.mode === "from" ? "on" : ""}" onclick="App._wishSetMode('from')">🕔 С пяти</button>
         <button type="button" class="${wd.mode === "range" ? "on" : ""}" onclick="App._wishSetMode('range')">⏱ Другие часы</button>
         <button type="button" onclick="App._wishApply('off')">🔴 Нужен выходной</button>
         <button type="button" class="clear" onclick="App._wishApply('clear')">✖ Убрать отметку</button>

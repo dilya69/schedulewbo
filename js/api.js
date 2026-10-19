@@ -429,6 +429,47 @@ const Api = (() => {
     return data;
   }
 
+  // ---------- ПОЖЕЛАНИЯ ПО ГРАФИКУ ----------
+  // month — строка "YYYY-MM-01". Сотрудник по правилам базы видит только свои записи, админ — все.
+  async function getWishMonth(month) {
+    const { data, error } = await client.from("wish_months").select("enabled").eq("month", month).maybeSingle();
+    if (error) throw error;
+    return !!data?.enabled;
+  }
+
+  async function setWishMonthEnabled(month, enabled) {
+    const { error } = await client.from("wish_months").upsert({ month, enabled: !!enabled, updated_at: new Date().toISOString() });
+    if (error) throw error;
+  }
+
+  async function getWishes(month) {
+    const { data, error } = await client
+      .from("availability_wishes")
+      .select("*, employees:employee_id(full_name)")
+      .eq("month", month)
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function saveMyWish(month, days, comment) {
+    const { error } = await client.from("availability_wishes").upsert(
+      { employee_id: currentEmployee.id, month, days, comment: comment || null, updated_at: new Date().toISOString() },
+      { onConflict: "employee_id,month" }
+    );
+    if (error) throw error;
+  }
+
+  async function deleteWish(id) {
+    const { error } = await client.from("availability_wishes").delete().eq("id", id);
+    if (error) throw error;
+  }
+
+  async function deleteAllWishes(month) {
+    const { error } = await client.from("availability_wishes").delete().eq("month", month);
+    if (error) throw error;
+  }
+
   // ---------- НАСТРОЙКИ УВЕДОМЛЕНИЙ ----------
   async function getNotificationSettings() {
     const { data, error } = await client
@@ -456,5 +497,6 @@ const Api = (() => {
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
     addBonusFine, getBonusesFines,
     getNotificationSettings, saveNotificationSettings,
+    getWishMonth, setWishMonthEnabled, getWishes, saveMyWish, deleteWish, deleteAllWishes,
   };
 })();

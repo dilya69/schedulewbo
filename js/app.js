@@ -58,6 +58,9 @@ const App = (() => {
     myRequests: [],
     bonusesFines: [],
     notif: null,
+    wishEnabled: false,
+    wishes: [],
+    wishOpen: false,
   };
 
   function refreshIcons() {
@@ -90,6 +93,7 @@ const App = (() => {
       applyAdminClass();
       switchTab("tab1");
       renderCalendar();
+      renderWishes();
       renderRequests();
       refreshIcons();
     } catch (e) {
@@ -114,6 +118,7 @@ const App = (() => {
     if (state.employee.is_admin) {
       state.requests = await Api.getPendingRequests();
     }
+    await reloadWishes();
     try {
       state.notif = await Api.getNotificationSettings();
     } catch (e) {
@@ -145,6 +150,7 @@ const App = (() => {
   function renderAll() {
     updateMonthLabel();
     renderCalendar();
+    renderWishes();
     renderMyShifts();
     renderRequests();
     renderEmployees();
@@ -375,6 +381,7 @@ const App = (() => {
     updateAdminBadge();
     applyAdminClass();
     renderCalendar();
+    renderWishes();
     renderRequests();
     if (!state.isAdminView) {
       const active = document.querySelector(".tab-content.active");
@@ -414,8 +421,12 @@ const App = (() => {
         const shifts = await Api.getShiftsForMonth(state.year, state.month);
         const bf = state.employee.is_admin ? await Api.getBonusesFines(state.year, state.month) : [];
         if (req !== changeMonth._n) return; // пока грузили, нажали ещё раз — этот ответ устарел
+        const wish = await loadWishData();
+        if (req !== changeMonth._n) return;
         state.shifts = shifts;
         state.bonusesFines = bf;
+        state.wishEnabled = wish.enabled;
+        state.wishes = wish.wishes;
       } catch (e) {
         if (req === changeMonth._n) toast("🚫 " + e.message);
         return;
@@ -423,6 +434,7 @@ const App = (() => {
     }
 
     renderCalendar();
+    renderWishes();
     renderMyShifts();
     renderRequests();
     renderProfile();
@@ -627,6 +639,294 @@ const App = (() => {
     html += `</div>`;
     container.innerHTML = html;
     refreshIcons();
+  }
+
+
+  // ---------------- ПОЖЕЛАНИЯ ПО ГРАФИКУ ----------------
+  // Админ включает приём пожеланий на месяц тумблером; сотрудник отмечает дни
+  // (весь день / с часа / другие часы / нужен выходной) и пишет комментарий.
+  // days: { "5": {t:"full"}, "6": {t:"from", from:"17:00"}, "7": {t:"range", from:"12:00", to:"18:00"}, "8": {t:"off"} }
+  function wishMonthKey() { return `${state.year}-${pad2(state.month + 1)}-01`; }
+
+  // грузит данные без записи в state (для защиты от гонки при переключении месяца);
+  // если таблицы ещё не созданы — приложение продолжает работать без пожеланий
+  async function loadWishData() {
+    const key = wishMonthKey();
+    try {
+      const [enabled, wishes] = await Promise.all([Api.getWishMonth(key), Api.getWishes(key)]);
+      return { enabled, wishes };
+    } catch (e) {
+      console.warn("Пожелания не загрузились:", e);
+      return { enabled: false, wishes: [] };
+    }
+  }
+
+  async function reloadWishes() {
+    if (state.demo) return;
+    const d = await loadWishData();
+    state.wishEnabled = d.enabled;
+    state.wishes = d.wishes;
+  }
+
+  function myWish() {
+    return state.wishes.find((w) => w.employee_id === state.employee.id) || null;
+  }
+
+  function sortedDayKeys(days) {
+    return Object.keys(days || {}).map(Number).sort((a, b) => a - b);
+  }
+
+  // сводка для карточки админа: группирует дни по типу и времени
+  function wishSummaryRows(days) {
+    const full = [], off = [], from = {}, range = [];
+    for (const d of sortedDayKeys(days)) {
+      const e = days[d];
+      if (e.t === "full") full.push(d);
+      else if (e.t === "off") off.push(d);
+      else if (e.t === "from") (from[e.from] ??= []).push(d);
+      else if (e.t === "range") range.push(`${d} (${e.from}–${e.to})`);
+    }
+    const rows = [];
+    if (full.length) rows.push({ icon: "🟢", label: "Полные дни", value: full.join(", ") });
+    Object.keys(from).sort().forEach((t) => rows.push({ icon: "🕔", label: `С ${t}`, value: from[t].join(", ") }));
+    if (range.length) rows.push({ icon: "⏱", label: "Другие часы", value: range.join(", ") });
+    if (off.length) rows.push({ icon: "🔴", label: "Нужен выходной", value: off.join(", ") });
+    return rows;
+  }
+
+  function renderWishes() {
+    const c = document.getElementById("wishesContainer");
+    if (!c) return;
+    if (state.demo || !state.employee) { c.innerHTML = ""; return; }
+
+    const monthName = MONTHS[state.month];
+
+    // ----- админ: сворачиваемый блок с тумблером и списком -----
+    if (state.employee.is_admin && state.isAdminView) {
+      const cards = state.wishes.map((w) => {
+        const rows = wishSummaryRows(w.days).map((r) =>
+          `<div class="wish-row"><span class="wish-ico">${r.icon}</span><span><b>${escapeHtml(r.label)}:</b> ${escapeHtml(r.value)}</span></div>`
+        ).join("");
+        return `<div class="wish-card">
+          <div class="wish-card-head">
+            <div class="wish-name">${escapeHtml(w.employees?.full_name || "Сотрудник")}</div>
+            <button class="wish-del" onclick="App.deleteWishConfirm('${w.id}')"><i data-lucide="trash-2"></i> Удалить</button>
+          </div>
+          ${rows || `<div class="wish-row" style="color:var(--text-secondary);">Дни не отмечены</div>`}
+          ${w.comment ? `<div class="wish-comment">💬 ${escapeHtml(w.comment)}</div>` : ""}
+        </div>`;
+      }).join("");
+
+      c.innerHTML = `<div class="wish-admin">
+        <div class="collapsible-header" onclick="App.toggleWishBlock()">
+          <span><i data-lucide="message-square"></i> Пожелания по графику${state.wishes.length ? ` · ${state.wishes.length}` : ""}</span>
+          <span class="collapsible-arrow ${state.wishOpen ? "" : "collapsed"}"><i data-lucide="chevron-down"></i></span>
+        </div>
+        <div class="collapsible-body ${state.wishOpen ? "" : "collapsed"}">
+          <div class="wish-switch-row">
+            <div>
+              <div style="font-weight:600; font-size:13px;">Приём пожеланий на ${escapeHtml(monthName)}</div>
+              <div style="font-size:11px; color:var(--text-secondary);">${state.wishEnabled ? "Включён — сотрудники могут отправлять и менять" : "Выключен — сотрудники видят кнопку, но отправить не могут"}</div>
+            </div>
+            <div class="switch-small ${state.wishEnabled ? "active" : ""}" onclick="App.toggleWishMonth()"></div>
+          </div>
+          ${cards || `<div class="center-msg">Пожеланий на ${escapeHtml(monthName)} пока нет</div>`}
+          ${state.wishes.length > 1 ? `<button class="wish-clear-all" onclick="App.deleteAllWishesConfirm()"><i data-lucide="trash-2"></i> Очистить всё за ${escapeHtml(monthName)}</button>` : ""}
+        </div>
+      </div>`;
+      refreshIcons();
+      return;
+    }
+
+    // ----- сотрудник: кнопка всегда на месте, но работает только при включённом приёме -----
+    const mine = myWish();
+    const cnt = mine ? sortedDayKeys(mine.days).length : 0;
+    let sub;
+    if (!state.wishEnabled) sub = "Приём пока закрыт — откроется, когда админ начнёт составлять график";
+    else if (mine) sub = `Отправлено: ${cnt ? cnt + " дн." : "комментарий"} · нажмите, чтобы изменить`;
+    else sub = `Отметьте, когда можете работать в ${monthName.toLowerCase().replace(/ь$/, "е").replace(/й$/, "е").replace(/т$/, "те")}`;
+    c.innerHTML = `<button class="wish-open-btn ${state.wishEnabled ? "" : "disabled"}" onclick="App.openWishModal()">
+      <span class="wish-open-ico">📝</span>
+      <span class="wish-open-text"><b>Пожелания по графику</b><small>${escapeHtml(sub)}</small></span>
+      <i data-lucide="${state.wishEnabled ? "chevron-right" : "lock"}"></i>
+    </button>`;
+    refreshIcons();
+  }
+
+  function toggleWishBlock() {
+    state.wishOpen = !state.wishOpen;
+    renderWishes();
+  }
+
+  async function toggleWishMonth() {
+    const next = !state.wishEnabled;
+    try {
+      await Api.setWishMonthEnabled(wishMonthKey(), next);
+      state.wishEnabled = next;
+      toast(next ? "✅ Приём пожеланий включён" : "⏸ Приём пожеланий выключен");
+      renderWishes();
+    } catch (e) {
+      toast("🚫 " + e.message);
+    }
+  }
+
+  async function deleteWishConfirm(id) {
+    const w = state.wishes.find((x) => x.id === id);
+    if (!confirm(`Удалить пожелания: ${w?.employees?.full_name || "сотрудник"}?`)) return;
+    try {
+      await Api.deleteWish(id);
+      state.wishes = state.wishes.filter((x) => x.id !== id);
+      toast("🗑️ Удалено");
+      renderWishes();
+    } catch (e) {
+      toast("🚫 " + e.message);
+    }
+  }
+
+  async function deleteAllWishesConfirm() {
+    if (!confirm(`Удалить ВСЕ пожелания за ${MONTHS[state.month]} (${state.wishes.length} шт.)?`)) return;
+    try {
+      await Api.deleteAllWishes(wishMonthKey());
+      state.wishes = [];
+      toast("🗑️ Все пожелания удалены");
+      renderWishes();
+    } catch (e) {
+      toast("🚫 " + e.message);
+    }
+  }
+
+  // ----- окно сотрудника -----
+  let wd = null; // черновик: { days, comment, selected:Set, mode, fromTime, rangeFrom, rangeTo }
+
+  function openWishModal() {
+    if (!state.wishEnabled) return toast("Приём пожеланий сейчас закрыт — его включает админ");
+    const mine = myWish();
+    wd = {
+      days: JSON.parse(JSON.stringify(mine?.days || {})),
+      comment: mine?.comment || "",
+      selected: new Set(),
+      mode: null,
+      fromTime: "17:00", rangeFrom: "12:00", rangeTo: "18:00",
+    };
+    document.getElementById("modalBox").classList.add("wide");
+    openModal(`Пожелания · ${MONTHS[state.month]}`, `<div id="wishModalBody"></div>`, _wishSave);
+    renderWishModal();
+  }
+
+  function renderWishModal() {
+    const body = document.getElementById("wishModalBody");
+    if (!body || !wd) return;
+    const daysInMonth = new Date(state.year, state.month + 1, 0).getDate();
+    const firstDay = new Date(state.year, state.month, 1).getDay();
+    const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+    const MARK = { full: "🟢", from: "🕔", range: "⏱", off: "🔴" };
+
+    let grid = WEEKDAYS.map((w) => `<span class="wish-wd">${w}</span>`).join("");
+    for (let i = 0; i < startOffset; i++) grid += `<span></span>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const e = wd.days[d];
+      const sel = wd.selected.has(d);
+      grid += `<button type="button" class="wish-day ${sel ? "sel" : ""} ${e ? "t-" + e.t : ""}" onclick="App._wishToggleDay(${d})">
+        <span class="n">${d}</span><span class="m">${e ? MARK[e.t] : ""}</span>
+        ${e && (e.t === "from" || e.t === "range") ? `<span class="tm">${e.t === "from" ? "с " + e.from.slice(0, 2).replace(/^0/, "") : e.from.slice(0, 2).replace(/^0/, "") + "–" + e.to.slice(0, 2).replace(/^0/, "")}</span>` : ""}
+      </button>`;
+    }
+
+    const n = wd.selected.size;
+    const timeRow = wd.mode === "from"
+      ? `<div class="wish-time-row"><span>с</span><input type="time" value="${wd.fromTime}" oninput="App._wishField('fromTime', this.value)"><button type="button" class="wish-apply" onclick="App._wishApply('from')">Применить</button></div>`
+      : wd.mode === "range"
+      ? `<div class="wish-time-row"><input type="time" value="${wd.rangeFrom}" oninput="App._wishField('rangeFrom', this.value)"><span>–</span><input type="time" value="${wd.rangeTo}" oninput="App._wishField('rangeTo', this.value)"><button type="button" class="wish-apply" onclick="App._wishApply('range')">Применить</button></div>`
+      : "";
+
+    body.innerHTML = `
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Нажмите на дни (можно несколько), затем выберите, как вам удобно.</div>
+      <div class="wish-grid">${grid}</div>
+      <div class="wish-sel-row">
+        <span>Выбрано: <b>${n}</b></span>
+        <span>
+          <a onclick="App._wishSelectAll()">все дни</a>
+          ${n ? ` · <a onclick="App._wishClearSel()">сбросить выбор</a>` : ""}
+        </span>
+      </div>
+      <div class="wish-types ${n ? "" : "off"}">
+        <button type="button" onclick="App._wishApply('full')">🟢 Весь день</button>
+        <button type="button" class="${wd.mode === "from" ? "on" : ""}" onclick="App._wishSetMode('from')">🕔 С часа</button>
+        <button type="button" class="${wd.mode === "range" ? "on" : ""}" onclick="App._wishSetMode('range')">⏱ Другие часы</button>
+        <button type="button" onclick="App._wishApply('off')">🔴 Нужен выходной</button>
+        <button type="button" class="clear" onclick="App._wishApply('clear')">✖ Убрать отметку</button>
+      </div>
+      ${timeRow}
+      <label>Комментарий / пожелание</label>
+      <textarea rows="3" maxlength="500" placeholder="Например: не больше двух смен подряд" oninput="App._wishField('comment', this.value)">${escapeHtml(wd.comment)}</textarea>
+    `;
+  }
+
+  function _wishToggleDay(d) {
+    if (!wd) return;
+    if (wd.selected.has(d)) wd.selected.delete(d); else wd.selected.add(d);
+    renderWishModal();
+  }
+
+  function _wishSelectAll() {
+    if (!wd) return;
+    const n = new Date(state.year, state.month + 1, 0).getDate();
+    for (let d = 1; d <= n; d++) wd.selected.add(d);
+    renderWishModal();
+  }
+
+  function _wishClearSel() {
+    if (!wd) return;
+    wd.selected.clear();
+    renderWishModal();
+  }
+
+  function _wishField(name, value) {
+    if (wd) wd[name] = value; // без перерисовки, чтобы не сбивать ввод
+  }
+
+  function _wishSetMode(mode) {
+    if (!wd) return;
+    if (!wd.selected.size) return toast("Сначала выберите дни");
+    wd.mode = wd.mode === mode ? null : mode;
+    renderWishModal();
+  }
+
+  function _wishApply(type) {
+    if (!wd) return;
+    if (!wd.selected.size) return toast("Сначала выберите дни");
+    let entry = null;
+    if (type === "full") entry = { t: "full" };
+    else if (type === "off") entry = { t: "off" };
+    else if (type === "from") {
+      if (!wd.fromTime) return toast("Укажите час");
+      entry = { t: "from", from: wd.fromTime };
+    } else if (type === "range") {
+      if (!wd.rangeFrom || !wd.rangeTo || wd.rangeFrom >= wd.rangeTo) return toast("Начало должно быть раньше конца");
+      entry = { t: "range", from: wd.rangeFrom, to: wd.rangeTo };
+    }
+    for (const d of wd.selected) {
+      if (type === "clear") delete wd.days[d];
+      else wd.days[d] = { ...entry };
+    }
+    wd.selected.clear();
+    wd.mode = null;
+    renderWishModal();
+  }
+
+  async function _wishSave() {
+    if (!wd) return;
+    const comment = (wd.comment || "").trim();
+    if (!Object.keys(wd.days).length && !comment) return toast("Отметьте дни или напишите комментарий");
+    try {
+      await Api.saveMyWish(wishMonthKey(), wd.days, comment);
+      toast("✅ Пожелания отправлены");
+      await reloadWishes();
+      renderWishes();
+      closeModal();
+    } catch (e) {
+      toast("🚫 " + (e.code === "42501" ? "Приём пожеланий уже закрыт" : e.message));
+    }
   }
 
   // ---------------- ОТКЛИК ----------------
@@ -2132,6 +2432,8 @@ const App = (() => {
     init, switchTab, toggleAdmin, updateAdminBadge, changeMonth, switchMarket,
     setTheme, openThemePickerModal,
     toggleCollapsible, toggleTodaySummary,
+    openWishModal, toggleWishBlock, toggleWishMonth, deleteWishConfirm, deleteAllWishesConfirm,
+    _wishToggleDay, _wishSelectAll, _wishClearSel, _wishField, _wishSetMode, _wishApply,
     openApplyModal, _setApplyMode,
     openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,

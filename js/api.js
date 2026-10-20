@@ -66,14 +66,31 @@ const Api = (() => {
   }
 
   // ---------- АВТОИМПОРТ ГРАФИКА (только админ) ----------
-  async function getScheduleSync() {
-    const { data, error } = await client.from("schedule_sync").select("url, enabled, last_run_at, last_status, last_message").eq("id", 1).maybeSingle();
+  // Несколько ссылок: например, текущий месяц и следующий одновременно.
+  async function getSyncLinks() {
+    const { data, error } = await client
+      .from("schedule_sync_links")
+      .select("id, url, enabled, last_month, last_run_at, last_status, last_message")
+      .order("created_at", { ascending: true });
     if (error) throw error;
-    return data;
+    return data || [];
   }
 
-  async function saveScheduleSync(url, enabled) {
-    const { error } = await client.from("schedule_sync").update({ url: url || null, enabled: !!enabled }).eq("id", 1);
+  async function addSyncLink(url) {
+    const { error } = await client.from("schedule_sync_links").insert({ url, enabled: true });
+    if (error) {
+      if (error.code === "23505") throw new Error("Такая ссылка уже добавлена");
+      throw error;
+    }
+  }
+
+  async function setSyncLinkEnabled(id, enabled) {
+    const { error } = await client.from("schedule_sync_links").update({ enabled: !!enabled }).eq("id", id);
+    if (error) throw error;
+  }
+
+  async function deleteSyncLink(id) {
+    const { error } = await client.from("schedule_sync_links").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -490,7 +507,7 @@ const Api = (() => {
 
   return {
     login, getCurrentEmployee, isReady, sendFileToMe,
-    getScheduleSync, saveScheduleSync, runScheduleSync, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
+    getSyncLinks, addSyncLink, setSyncLinkEnabled, deleteSyncLink, runScheduleSync, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getAllPayRules, replacePayRules,
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,

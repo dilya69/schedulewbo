@@ -2025,68 +2025,127 @@ const App = (() => {
 
   // ---------------- АВТОИМПОРТ: ССЫЛКА И «ОБНОВИТЬ СЕЙЧАС» ----------------
   const SYNC_STATUS = { ok: "✅ Всё применено", attention: "⚠️ Нужно внимание", error: "🚫 Ошибка", skipped: "⏸ Пропущено" };
+  let syncLinks = [];
 
-  function syncStatusHtml(cfg) {
-    if (!cfg || !cfg.last_run_at) return '<div class="imp-hint">Автоимпорт ещё не запускался.</div>';
-    const when = new Date(cfg.last_run_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    const cls = cfg.last_status === "error" ? "err" : cfg.last_status === "attention" ? "warn" : "";
-    return `<div class="imp-sec ${cls}"><div class="imp-sec-title">${SYNC_STATUS[cfg.last_status] || escapeHtml(cfg.last_status || "—")} · ${when}</div>
-      <div class="imp-line">${escapeHtml(cfg.last_message || "").replace(/\n/g, "<br>")}</div></div>`;
+  function syncLinkTitle(l) {
+    return l.last_month || "Месяц определится при первом запуске";
+  }
+
+  function syncLinkShort(url) {
+    try {
+      const u = new URL(url);
+      const path = (u.pathname + u.search).replace(/^\//, "");
+      return u.hostname + "/" + (path.length > 22 ? path.slice(0, 22) + "…" : path);
+    } catch (_) { return url; }
+  }
+
+  function syncStatusHtml(l) {
+    if (!l || !l.last_run_at) return '<div class="imp-hint" style="margin:6px 0 0;">Ещё не запускалась.</div>';
+    const when = new Date(l.last_run_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const cls = l.last_status === "error" ? "err" : l.last_status === "attention" ? "warn" : "";
+    return `<div class="imp-sec ${cls}" style="margin-top:8px;"><div class="imp-sec-title">${SYNC_STATUS[l.last_status] || escapeHtml(l.last_status || "—")} · ${when}</div>
+      <div class="imp-line">${escapeHtml(l.last_message || "").replace(/\n/g, "<br>")}</div></div>`;
+  }
+
+  function renderSyncModal() {
+    const box = document.getElementById("syncModalBody");
+    if (!box) return;
+    const cards = syncLinks.map((l) => `
+      <div style="border:1px solid var(--border); border-radius:14px; padding:10px; margin-bottom:8px; background:var(--card-bg); ${l.enabled ? "" : "opacity:0.6;"}">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:700; font-size:14px; color:var(--text);">${escapeHtml(syncLinkTitle(l))}</div>
+            <div style="font-size:11px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(syncLinkShort(l.url))}</div>
+          </div>
+          <div class="switch-small ${l.enabled ? "active" : ""}" title="${l.enabled ? "Включена" : "Выключена"}" onclick="App._syncToggle('${l.id}')"></div>
+          <button type="button" title="Удалить ссылку" onclick="App._syncDelete('${l.id}')" style="border:none; background:#ff3b3020; color:#ff3b30; width:30px; height:30px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+        </div>
+        ${l.enabled ? syncStatusHtml(l) : '<div class="imp-hint" style="margin:6px 0 0;">Выключена: бот её не обновляет.</div>'}
+      </div>`).join("");
+
+    box.innerHTML = `
+      <div class="imp-hint">Раз в 10 минут бот сам берёт файлы по этим ссылкам и обновляет смены. Месяц бот определяет по названию в файле, поэтому можно держать ссылки на текущий и на следующий месяц одновременно. Поддерживаются Яндекс Диск, OneDrive и SharePoint; доступ к файлу должен быть открыт «всем, у кого есть ссылка».</div>
+      ${cards || '<div class="center-msg">Ссылок пока нет. Добавьте первую ниже.</div>'}
+      <label>Добавить ссылку</label>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <input type="url" id="syncNewUrl" placeholder="Ссылка на файл: Яндекс Диск, OneDrive или SharePoint" style="flex:1; min-width:0; margin:0;">
+        <button type="button" id="syncAddBtn" onclick="App._syncAdd()" style="border:none; border-radius:20px; padding:10px 14px; background:var(--accent); color:var(--accent-contrast); font-weight:700; font-size:12px; cursor:pointer;">Добавить</button>
+      </div>
+      <button class="imp-apply" id="syncRunBtn" onclick="App._syncRunNow()"><i data-lucide="refresh-cw"></i> Обновить сейчас</button>
+      <div class="imp-hint" style="margin-top:6px;">«Обновить сейчас» сразу загружает все включённые ссылки. Когда месяц закончился, его ссылку можно удалить: бот и так не трогает прошлые месяцы.</div>`;
+    refreshIcons();
   }
 
   async function openSyncModal() {
     if (state.demo) return toast("В демо-режиме недоступно");
-    let cfg;
-    try { cfg = await Api.getScheduleSync(); } catch (e) { return toast("🚫 " + e.message); }
-    if (!cfg) return toast("🚫 Нет настроек автоимпорта: выполните sql/migration_schedule_sync.sql");
-    openModal("Автоимпорт графика", `
-      <div class="imp-hint">Раз в 10 минут бот сам берёт файл по этой ссылке и обновляет смены. Раз в месяц достаточно вставить сюда новую ссылку. Поддерживаются Яндекс Диск, OneDrive и SharePoint. Доступ к файлу должен быть открыт «всем, у кого есть ссылка» (без входа в аккаунт).</div>
-      <label>Ссылка на файл</label>
-      <input type="url" id="syncUrl" placeholder="Ссылка на файл: Яндекс Диск, OneDrive или SharePoint" value="${escapeHtml(cfg.url || "")}">
-      <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
-        <input type="checkbox" id="syncEnabled" ${cfg.enabled ? "checked" : ""} style="width:auto;"> Автоимпорт включён
-      </label>
-      <div id="syncStatus" style="margin-top:10px;">${syncStatusHtml(cfg)}</div>
-      <button class="imp-apply" id="syncRunBtn" onclick="App._syncRunNow()"><i data-lucide="refresh-cw"></i> Обновить сейчас</button>
-      <div class="imp-hint" style="margin-top:6px;">«Обновить сейчас» сначала сохраняет ссылку, потом сразу загружает график.</div>
-    `, async () => {
-      if (!(await _syncSave())) return;
-      toast("✅ Сохранено");
-      closeModal();
-    });
+    try { syncLinks = await Api.getSyncLinks(); }
+    catch (e) { return toast("🚫 Нет списка ссылок: выполните sql/migration_schedule_sync_links.sql (" + e.message + ")"); }
+    openModal("Автоимпорт графика", `<div id="syncModalBody"></div>`);
+    renderSyncModal();
   }
 
-  async function _syncSave() {
-    const url = document.getElementById("syncUrl").value.trim();
-    const enabled = document.getElementById("syncEnabled").checked;
-    if (enabled && !url) { toast("Вставьте ссылку или выключите автоимпорт"); return false; }
-    try { await Api.saveScheduleSync(url, enabled); return true; }
-    catch (e) { toast("🚫 " + e.message); return false; }
+  async function _syncReload() {
+    syncLinks = await Api.getSyncLinks();
+    renderSyncModal();
+  }
+
+  async function _syncAdd() {
+    const input = document.getElementById("syncNewUrl");
+    const btn = document.getElementById("syncAddBtn");
+    const url = (input?.value || "").trim();
+    if (!url) return toast("Вставьте ссылку на файл");
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      await Api.addSyncLink(url);
+      await _syncReload();
+      toast("✅ Ссылка добавлена. Нажмите «Обновить сейчас» или подождите до 10 минут");
+    } catch (e) {
+      toast("🚫 " + e.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function _syncToggle(id) {
+    const l = syncLinks.find((x) => x.id === id);
+    if (!l) return;
+    try {
+      await Api.setSyncLinkEnabled(id, !l.enabled);
+      await _syncReload();
+    } catch (e) { toast("🚫 " + e.message); }
+  }
+
+  async function _syncDelete(id) {
+    const l = syncLinks.find((x) => x.id === id);
+    if (!l) return;
+    if (!confirm(`Удалить ссылку (${syncLinkTitle(l)})? Смены в боте останутся как есть, просто перестанут обновляться из этого файла.`)) return;
+    try {
+      await Api.deleteSyncLink(id);
+      await _syncReload();
+      toast("🗑️ Ссылка удалена");
+    } catch (e) { toast("🚫 " + e.message); }
   }
 
   async function _syncRunNow() {
     const btn = document.getElementById("syncRunBtn");
     if (btn.disabled) return;
-    if (!(await _syncSave())) return;
+    if (!syncLinks.some((l) => l.enabled)) return toast("Нет включённых ссылок");
     btn.disabled = true;
-    const old = btn.innerHTML;
     btn.textContent = "Загружаю…";
+    let result = null;
     try {
-      await Api.runScheduleSync();
-      const cfg = await Api.getScheduleSync();
-      document.getElementById("syncStatus").innerHTML = syncStatusHtml(cfg);
+      result = await Api.runScheduleSync();
       // подтягиваем свежие смены в календарь
       await reloadShifts();
       renderCalendar();
       renderManagement();
-      toast(cfg.last_status === "ok" ? "✅ График обновлён" : "Готово, смотрите статус ниже");
     } catch (e) {
       toast("🚫 " + e.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = old;
-      refreshIcons();
     }
+    try { await _syncReload(); } catch (_) { /* окно могли закрыть */ }
+    const again = document.getElementById("syncRunBtn");
+    if (again) { again.disabled = false; again.innerHTML = '<i data-lucide="refresh-cw"></i> Обновить сейчас'; refreshIcons(); }
+    if (result) toast(result.status === "ok" ? "✅ График обновлён" : "Готово, смотрите статус у каждой ссылки");
   }
 
   // ---------------- ИМПОРТ ГРАФИКА ИЗ EXCEL ----------------
@@ -2443,7 +2502,7 @@ const App = (() => {
     changeAvatar, _pickAvatar, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
     openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
-    openSyncModal, _syncRunNow, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
+    openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     closeModal,
   };

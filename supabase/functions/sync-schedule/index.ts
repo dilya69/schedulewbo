@@ -58,26 +58,102 @@ async function fetchAll(table: string, build: (q: any) => any) {
   return rows;
 }
 
-async function downloadOnce(publicUrl: string): Promise<ArrayBuffer> {
+// сетевые сбои (сброс соединения, таймаут, DNS) и 5xx Яндекса: временные, их стоит повторить
+const TRANSIENT_RE = /HTTP 5\d\d|HTTP 429|error sending request|connection (reset|closed|error)|SendRequest|fetch failed|timed? ?out|aborted|network/i;
+
+async function fetchRetry(url: string, tries = 3): Promise<Response> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (r.status >= 500 || r.status === 429) throw new Error(`HTTP ${r.status}`);
+      return r;
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) await new Promise((res) => setTimeout(res, 1500 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+async function downloadYandex(publicUrl: string): Promise<ArrayBuffer> {
   const api = "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=" + encodeURIComponent(publicUrl);
-  const r1 = await fetch(api);
+  const r1 = await fetchRetry(api);
   if (!r1.ok) throw new Error(`Яндекс Диск не отдал ссылку на файл (HTTP ${r1.status}). Проверьте, что доступ по ссылке включён.`);
   const { href } = await r1.json();
   if (!href) throw new Error("Яндекс Диск не вернул адрес скачивания");
-  const r2 = await fetch(href);
+  const r2 = await fetchRetry(href);
   if (!r2.ok) throw new Error(`Не удалось скачать файл (HTTP ${r2.status})`);
   return await r2.arrayBuffer();
 }
 
-// Яндекс Диск иногда отвечает 5xx на пару секунд: пробуем до 3 раз, и только потом сдаёмся
+// ---------- какой облачный сервис в ссылке ----------
+function detectProvider(raw: string): "yandex" | "onedrive" | "sharepoint" | "unknown" {
+  let host = "";
+  try { host = new URL(raw.trim()).hostname.toLowerCase(); } catch { return "unknown"; }
+  if (/(^|\.)(disk\.yandex\.[a-z.]+|yadi\.sk)$/.test(host)) return "yandex";
+  if (host === "1drv.ms" || host === "onedrive.live.com" || host === "photos.onedrive.com") return "onedrive";
+  if (/\.sharepoint\.(com|de|cn)$/.test(host)) return "sharepoint";
+  return "unknown";
+}
+
+function toBase64Url(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+// вместо файла сервис мог вернуть страницу входа/ошибки (HTML) — тогда доступ по ссылке закрыт
+function ensureFile(buf: ArrayBuffer, where: string): ArrayBuffer {
+  const head = new Uint8Array(buf.slice(0, 64));
+  let i = 0;
+  while (i < head.length && (head[i] === 32 || head[i] === 10 || head[i] === 13 || head[i] === 9)) i++;
+  if (buf.byteLength < 100 || head[i] === 0x3c /* "<" */) {
+    throw new Error(`${where} вернул страницу вместо файла. Откройте доступ по ссылке: «Все, у кого есть ссылка» (без входа в аккаунт).`);
+  }
+  return buf;
+}
+
+// OneDrive (личный): официальный адрес скачивания по ссылке «поделиться»
+async function downloadOneDrive(shareUrl: string): Promise<ArrayBuffer> {
+  const api = "https://api.onedrive.com/v1.0/shares/u!" + toBase64Url(shareUrl.trim()) + "/root/content";
+  const r = await fetchRetry(api);
+  if (r.ok) return ensureFile(await r.arrayBuffer(), "OneDrive");
+  // запасной путь: прямая загрузка по самой ссылке
+  return await downloadDirect(shareUrl, "OneDrive");
+}
+
+// SharePoint / рабочий OneDrive: ссылка «для всех» + параметр download=1
+async function downloadDirect(shareUrl: string, name: string): Promise<ArrayBuffer> {
+  const u = new URL(shareUrl.trim());
+  u.searchParams.set("download", "1");
+  const r = await fetchRetry(u.toString());
+  if (!r.ok) {
+    throw new Error(`${name} не отдал файл (HTTP ${r.status}). Откройте доступ по ссылке: «Все, у кого есть ссылка», без ограничения по организации.`);
+  }
+  return ensureFile(await r.arrayBuffer(), name);
+}
+
+async function downloadOnce(publicUrl: string): Promise<ArrayBuffer> {
+  switch (detectProvider(publicUrl)) {
+    case "yandex": return await downloadYandex(publicUrl);
+    case "onedrive": return await downloadOneDrive(publicUrl);
+    case "sharepoint": return await downloadDirect(publicUrl, "SharePoint");
+    default:
+      throw new Error("Ссылка не распознана. Поддерживаются Яндекс Диск, OneDrive и SharePoint.");
+  }
+}
+
+// пробуем несколько раз с паузами и только потом сдаёмся; не временные ошибки (нет доступа, плохая ссылка) повторять нет смысла
 async function downloadXlsx(publicUrl: string): Promise<ArrayBuffer> {
   let lastErr: unknown;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     try { return await downloadOnce(publicUrl); }
     catch (e) {
       lastErr = e;
-      if (!/HTTP 5\d\d/.test(String((e as any)?.message ?? e))) throw e; // не временный сбой — повторять нет смысла
-      await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+      if (!TRANSIENT_RE.test(String((e as any)?.message ?? e))) throw e;
+      await new Promise((r) => setTimeout(r, 3000));
     }
   }
   throw lastErr;
@@ -97,33 +173,36 @@ async function notifyAdmins(text: string) {
   }
 }
 
-async function finish(status: string, message: string, alert: string | null, prevAlert: string | null) {
-  await db.from("schedule_sync").update({
-    last_run_at: new Date().toISOString(), last_status: status, last_message: message,
-    last_alert: alert, updated_at: new Date().toISOString(),
-  }).eq("id", 1);
-  // шлём админам только когда проблема новая или изменилась, а не каждые 10 минут
-  if (alert && alert !== prevAlert) await notifyAdmins("📋 График из таблицы\n" + message);
-  return json({ status, message });
+type Link = {
+  id: string; url: string; enabled: boolean;
+  last_month: string | null; last_status: string | null; last_alert: string | null;
+};
+type Res = { id: string; status: string; message: string };
+
+// как назвать ссылку в сообщениях: месяц из файла, иначе адрес сервиса
+function linkLabel(link: Link, month?: string | null): string {
+  if (month) return month;
+  if (link.last_month) return link.last_month;
+  try { return new URL(link.url).hostname; } catch { return "ссылка"; }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+// записывает статус запуска в строку этой ссылки
+async function finishLink(link: Link, status: string, message: string, alert: string | null, month: string | null): Promise<Res> {
+  const prevAlert = link.last_alert; // до записи нового статуса
+  const now = new Date().toISOString();
+  await db.from("schedule_sync_links").update({
+    last_run_at: now, last_status: status, last_message: message, last_alert: alert,
+    last_month: month ?? link.last_month, updated_at: now,
+  }).eq("id", link.id);
+  // шлём админам только когда проблема новая или изменилась, а не каждые 10 минут
+  if (alert && alert !== prevAlert) await notifyAdmins(`📋 График из таблицы (${linkLabel(link, month)})\n` + message);
+  return { id: link.id, status, message };
+}
 
-  const secret = Deno.env.get("SYNC_SECRET");
-  const byCron = !!secret && req.headers.get("x-sync-secret") === secret;
-  // ручной запуск («Обновить сейчас»): только админ, работает даже при выключенном автоимпорте
-  const manual = !byCron && (await isAdminCaller(req));
-  if (!byCron && !manual) return json({ error: "forbidden" }, 403);
-
-  const { data: cfg, error: cfgErr } = await db.from("schedule_sync").select("*").eq("id", 1).maybeSingle();
-  if (cfgErr || !cfg) return json({ error: "нет строки настроек schedule_sync" }, 500);
-  if (!cfg.url) return json({ status: "skipped", message: "ссылка на график не задана" });
-  if (!manual && !cfg.enabled) return json({ status: "skipped", message: "автоимпорт выключен" });
-  const prev: string | null = cfg.last_alert;
-
+// обрабатывает одну ссылку; usedMonths не даёт двум ссылкам на один месяц перетирать друг друга
+async function syncOne(link: Link, usedMonths: Set<number>): Promise<Res> {
   try {
-    const data = await downloadXlsx(cfg.url);
+    const data = await downloadXlsx(link.url);
 
     // года в файле нет — берём тот, при котором числа совпадают с днями недели
     const now = moscowNow();
@@ -135,13 +214,18 @@ Deno.serve(async (req) => {
       if (errs === 0) break;
     }
     const { parsed, year } = best;
-    if (parsed.errors.length) return await finish("error", "Не получилось прочитать файл: " + parsed.errors.join("; "), "parse:" + parsed.errors.join("|"), prev);
+    const monthLabel: string | null = parsed.month ? `${parsed.monthName} ${year}` : null;
+    if (parsed.errors.length) return await finishLink(link, "error", "Не получилось прочитать файл: " + parsed.errors.join("; "), "parse:" + parsed.errors.join("|"), monthLabel);
 
     // прошлые месяцы не трогаем; в файле должен быть текущий или следующий месяц
     const fileIdx = year * 12 + parsed.month, nowIdx = now.year * 12 + now.month;
     if (fileIdx < nowIdx || fileIdx > nowIdx + 1) {
-      return await finish("skipped", `В файле ${parsed.monthName} ${year}: это не текущий и не следующий месяц, ничего не меняю.`, null, prev);
+      return await finishLink(link, "skipped", `В файле ${monthLabel}: это не текущий и не следующий месяц, ничего не меняю. Если этот месяц уже прошёл, ссылку можно удалить.`, null, monthLabel);
     }
+    if (usedMonths.has(fileIdx)) {
+      return await finishLink(link, "attention", `${monthLabel}: этот месяц уже обновлён из другой ссылки, эту пропускаю. Оставьте для месяца одну ссылку.`, "dup:" + fileIdx, monthLabel);
+    }
+    usedMonths.add(fileIdx);
 
     const mm = String(parsed.month).padStart(2, "0");
     const last = new Date(year, parsed.month, 0).getDate();
@@ -154,7 +238,7 @@ Deno.serve(async (req) => {
 
     // 1) защита от «слишком много удалений за раз»
     if (plan.deletes.length > MAX_DELETES) {
-      return await finish("attention", `Импорт остановлен: он удалил бы ${plan.deletes.length} смен за раз. Проверьте файл и примените вручную: Управление → Импорт графика.`, "del:" + plan.deletes.length, prev);
+      return await finishLink(link, "attention", `Импорт остановлен: он удалил бы ${plan.deletes.length} смен за раз. Проверьте файл и примените вручную: Управление → Импорт графика.`, "del:" + plan.deletes.length, monthLabel);
     }
     // 2) ошибки разметки блоков: сами блоки уже пропущены, остальное применяем
 
@@ -184,14 +268,39 @@ Deno.serve(async (req) => {
 
     if (issues.length) {
       const text = summary + "\n" + issues.join("\n") + "\nСопоставьте имена и ПВЗ в приложении: Управление → Импорт графика.";
-      return await finish("attention", text, "iss:" + issues.join("|"), prev);
+      return await finishLink(link, "attention", text, "iss:" + issues.join("|"), monthLabel);
     }
-    return await finish("ok", summary, null, prev);
+    return await finishLink(link, "ok", summary, null, monthLabel);
   } catch (e) {
     const msg = String((e as any)?.message ?? e);
-    // временный сбой (Яндекс 5xx, рассинхрон часов у Supabase и т.п.): админам пишем, только если прошлый запуск тоже закончился ошибкой
-    const transient = /HTTP 5\d\d|JWT issued at future|fetch failed|timed? ?out/i.test(msg);
-    const alert = transient && cfg.last_status !== "error" ? null : "err:" + msg;
-    return await finish("error", "Ошибка автоимпорта: " + msg, alert, prev);
+    // временный сбой (сеть, Яндекс/Microsoft 5xx, рассинхрон часов у Supabase): админам пишем, только если прошлый запуск тоже закончился ошибкой
+    const transient = TRANSIENT_RE.test(msg) || /JWT issued at future/i.test(msg);
+    const alert = transient && link.last_status !== "error" ? null : "err:" + msg;
+    return await finishLink(link, "error", "Ошибка автоимпорта: " + msg, alert, null);
   }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+
+  const secret = Deno.env.get("SYNC_SECRET");
+  const byCron = !!secret && req.headers.get("x-sync-secret") === secret;
+  // ручной запуск («Обновить сейчас»): только админ
+  const manual = !byCron && (await isAdminCaller(req));
+  if (!byCron && !manual) return json({ error: "forbidden" }, 403);
+
+  const { data: links, error: linksErr } = await db.from("schedule_sync_links").select("*").order("created_at", { ascending: true });
+  if (linksErr) return json({ error: "нет таблицы schedule_sync_links: выполните sql/migration_schedule_sync_links.sql" }, 500);
+  const active = (links || []).filter((l: Link) => l.enabled);
+  if (!active.length) return json({ status: "skipped", message: "нет включённых ссылок на график", results: [] });
+
+  // по очереди, а не параллельно: ссылки на один месяц не должны писать в базу одновременно
+  const usedMonths = new Set<number>();
+  const results: Res[] = [];
+  for (const link of active) results.push(await syncOne(link as Link, usedMonths));
+
+  const rank: Record<string, number> = { error: 3, attention: 2, ok: 1, skipped: 0 };
+  const worst = results.reduce((w, r) => ((rank[r.status] ?? 0) > (rank[w] ?? 0) ? r.status : w), "skipped");
+  const message = results.length === 1 ? results[0].message : results.map((r, i) => `${i + 1}) ${r.message}`).join("\n");
+  return json({ status: worst, message, results });
 });

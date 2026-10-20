@@ -2042,7 +2042,7 @@ const App = (() => {
     openModal("Автоимпорт графика", `
       <div class="imp-hint">Раз в 10 минут бот сам берёт файл по этой ссылке и обновляет смены. Раз в месяц достаточно вставить сюда новую ссылку. Доступ к файлу на Яндекс Диске должен быть «по ссылке».</div>
       <label>Ссылка на файл (Яндекс Диск)</label>
-      <input type="url" id="syncUrl" placeholder="https://disk.yandex.ru/i/..." value="${escapeHtml(cfg.url || "")}">
+      <input type="url" id="syncUrl" placeholder="Ссылка на файл: Яндекс Диск, OneDrive или SharePoint" value="${escapeHtml(cfg.url || "")}">
       <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
         <input type="checkbox" id="syncEnabled" ${cfg.enabled ? "checked" : ""} style="width:auto;"> Автоимпорт включён
       </label>

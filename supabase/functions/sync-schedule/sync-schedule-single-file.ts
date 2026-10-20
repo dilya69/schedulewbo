@@ -460,26 +460,44 @@ async function fetchAll(table: string, build: (q: any) => any) {
   return rows;
 }
 
+// сетевые сбои (сброс соединения, таймаут, DNS) и 5xx Яндекса: временные, их стоит повторить
+const TRANSIENT_RE = /HTTP 5\d\d|HTTP 429|error sending request|connection (reset|closed|error)|SendRequest|fetch failed|timed? ?out|aborted|network/i;
+
+async function fetchRetry(url: string, tries = 3): Promise<Response> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (r.status >= 500 || r.status === 429) throw new Error(`HTTP ${r.status}`);
+      return r;
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) await new Promise((res) => setTimeout(res, 1500 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 async function downloadOnce(publicUrl: string): Promise<ArrayBuffer> {
   const api = "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=" + encodeURIComponent(publicUrl);
-  const r1 = await fetch(api);
+  const r1 = await fetchRetry(api);
   if (!r1.ok) throw new Error(`Яндекс Диск не отдал ссылку на файл (HTTP ${r1.status}). Проверьте, что доступ по ссылке включён.`);
   const { href } = await r1.json();
   if (!href) throw new Error("Яндекс Диск не вернул адрес скачивания");
-  const r2 = await fetch(href);
+  const r2 = await fetchRetry(href);
   if (!r2.ok) throw new Error(`Не удалось скачать файл (HTTP ${r2.status})`);
   return await r2.arrayBuffer();
 }
 
-// Яндекс Диск иногда отвечает 5xx на пару секунд: пробуем до 3 раз, и только потом сдаёмся
+// пробуем несколько раз с паузами и только потом сдаёмся; не временные ошибки (нет доступа, плохая ссылка) повторять нет смысла
 async function downloadXlsx(publicUrl: string): Promise<ArrayBuffer> {
   let lastErr: unknown;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     try { return await downloadOnce(publicUrl); }
     catch (e) {
       lastErr = e;
-      if (!/HTTP 5\d\d/.test(String((e as any)?.message ?? e))) throw e; // не временный сбой — повторять нет смысла
-      await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+      if (!TRANSIENT_RE.test(String((e as any)?.message ?? e))) throw e;
+      await new Promise((r) => setTimeout(r, 3000));
     }
   }
   throw lastErr;
@@ -592,7 +610,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = String((e as any)?.message ?? e);
     // временный сбой (Яндекс 5xx, рассинхрон часов у Supabase и т.п.): админам пишем, только если прошлый запуск тоже закончился ошибкой
-    const transient = /HTTP 5\d\d|JWT issued at future|fetch failed|timed? ?out/i.test(msg);
+    const transient = TRANSIENT_RE.test(msg) || /JWT issued at future/i.test(msg);
     const alert = transient && cfg.last_status !== "error" ? null : "err:" + msg;
     return await finish("error", "Ошибка автоимпорта: " + msg, alert, prev);
   }

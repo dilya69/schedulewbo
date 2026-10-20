@@ -2040,8 +2040,8 @@ const App = (() => {
     try { cfg = await Api.getScheduleSync(); } catch (e) { return toast("🚫 " + e.message); }
     if (!cfg) return toast("🚫 Нет настроек автоимпорта: выполните sql/migration_schedule_sync.sql");
     openModal("Автоимпорт графика", `
-      <div class="imp-hint">Раз в 10 минут бот сам берёт файл по этой ссылке и обновляет смены. Раз в месяц достаточно вставить сюда новую ссылку. Доступ к файлу на Яндекс Диске должен быть «по ссылке».</div>
-      <label>Ссылка на файл (Яндекс Диск)</label>
+      <div class="imp-hint">Раз в 10 минут бот сам берёт файл по этой ссылке и обновляет смены. Раз в месяц достаточно вставить сюда новую ссылку. Поддерживаются Яндекс Диск, OneDrive и SharePoint. Доступ к файлу должен быть открыт «всем, у кого есть ссылка» (без входа в аккаунт).</div>
+      <label>Ссылка на файл</label>
       <input type="url" id="syncUrl" placeholder="Ссылка на файл: Яндекс Диск, OneDrive или SharePoint" value="${escapeHtml(cfg.url || "")}">
       <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
         <input type="checkbox" id="syncEnabled" ${cfg.enabled ? "checked" : ""} style="width:auto;"> Автоимпорт включён

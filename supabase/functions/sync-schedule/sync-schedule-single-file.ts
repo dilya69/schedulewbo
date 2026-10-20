@@ -478,7 +478,7 @@ async function fetchRetry(url: string, tries = 3): Promise<Response> {
   throw lastErr;
 }
 
-async function downloadOnce(publicUrl: string): Promise<ArrayBuffer> {
+async function downloadYandex(publicUrl: string): Promise<ArrayBuffer> {
   const api = "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=" + encodeURIComponent(publicUrl);
   const r1 = await fetchRetry(api);
   if (!r1.ok) throw new Error(`Яндекс Диск не отдал ссылку на файл (HTTP ${r1.status}). Проверьте, что доступ по ссылке включён.`);
@@ -487,6 +487,64 @@ async function downloadOnce(publicUrl: string): Promise<ArrayBuffer> {
   const r2 = await fetchRetry(href);
   if (!r2.ok) throw new Error(`Не удалось скачать файл (HTTP ${r2.status})`);
   return await r2.arrayBuffer();
+}
+
+// ---------- какой облачный сервис в ссылке ----------
+function detectProvider(raw: string): "yandex" | "onedrive" | "sharepoint" | "unknown" {
+  let host = "";
+  try { host = new URL(raw.trim()).hostname.toLowerCase(); } catch { return "unknown"; }
+  if (/(^|\.)(disk\.yandex\.[a-z.]+|yadi\.sk)$/.test(host)) return "yandex";
+  if (host === "1drv.ms" || host === "onedrive.live.com" || host === "photos.onedrive.com") return "onedrive";
+  if (/\.sharepoint\.(com|de|cn)$/.test(host)) return "sharepoint";
+  return "unknown";
+}
+
+function toBase64Url(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+// вместо файла сервис мог вернуть страницу входа/ошибки (HTML) — тогда доступ по ссылке закрыт
+function ensureFile(buf: ArrayBuffer, where: string): ArrayBuffer {
+  const head = new Uint8Array(buf.slice(0, 64));
+  let i = 0;
+  while (i < head.length && (head[i] === 32 || head[i] === 10 || head[i] === 13 || head[i] === 9)) i++;
+  if (buf.byteLength < 100 || head[i] === 0x3c /* "<" */) {
+    throw new Error(`${where} вернул страницу вместо файла. Откройте доступ по ссылке: «Все, у кого есть ссылка» (без входа в аккаунт).`);
+  }
+  return buf;
+}
+
+// OneDrive (личный): официальный адрес скачивания по ссылке «поделиться»
+async function downloadOneDrive(shareUrl: string): Promise<ArrayBuffer> {
+  const api = "https://api.onedrive.com/v1.0/shares/u!" + toBase64Url(shareUrl.trim()) + "/root/content";
+  const r = await fetchRetry(api);
+  if (r.ok) return ensureFile(await r.arrayBuffer(), "OneDrive");
+  // запасной путь: прямая загрузка по самой ссылке
+  return await downloadDirect(shareUrl, "OneDrive");
+}
+
+// SharePoint / рабочий OneDrive: ссылка «для всех» + параметр download=1
+async function downloadDirect(shareUrl: string, name: string): Promise<ArrayBuffer> {
+  const u = new URL(shareUrl.trim());
+  u.searchParams.set("download", "1");
+  const r = await fetchRetry(u.toString());
+  if (!r.ok) {
+    throw new Error(`${name} не отдал файл (HTTP ${r.status}). Откройте доступ по ссылке: «Все, у кого есть ссылка», без ограничения по организации.`);
+  }
+  return ensureFile(await r.arrayBuffer(), name);
+}
+
+async function downloadOnce(publicUrl: string): Promise<ArrayBuffer> {
+  switch (detectProvider(publicUrl)) {
+    case "yandex": return await downloadYandex(publicUrl);
+    case "onedrive": return await downloadOneDrive(publicUrl);
+    case "sharepoint": return await downloadDirect(publicUrl, "SharePoint");
+    default:
+      throw new Error("Ссылка не распознана. Поддерживаются Яндекс Диск, OneDrive и SharePoint.");
+  }
 }
 
 // пробуем несколько раз с паузами и только потом сдаёмся; не временные ошибки (нет доступа, плохая ссылка) повторять нет смысла

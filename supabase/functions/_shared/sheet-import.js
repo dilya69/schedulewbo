@@ -294,9 +294,10 @@ const SheetImport = (() => {
           const r = resolveEmp(en.key);
           if (r === "skip") { plan.skippedEntries++; unsafe = true; continue; }
           if (!r || r.ambiguous) {
-            const u = unmatched.get(en.key) || { key: en.key, name: en.name, count: 0, ambiguous: !!(r && r.ambiguous), examples: [] };
+            const u = unmatched.get(en.key) || { key: en.key, name: en.name, count: 0, ambiguous: !!(r && r.ambiguous), examples: [], places: [] };
             u.count++;
             if (u.examples.length < 3) u.examples.push(`${blk.title}, ${day.day}`);
+            u.places.push({ block: blk.title, day: day.day }); // все места, где встретилось имя
             unmatched.set(en.key, u);
             plan.skippedEntries++; unsafe = true; continue;
           }

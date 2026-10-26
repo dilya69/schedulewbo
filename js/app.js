@@ -172,6 +172,13 @@ const App = (() => {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
   }
 
+  // дата ГГГГ-ММ-ДД → ДД.ММ.ГГ
+  function fmtDMY(iso) {
+    const s = String(iso ?? "");
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    return m ? `${m[3]}.${m[2]}.${m[1].slice(2)}` : s;
+  }
+
   // username Telegram — только латиница, цифры и _ (защита от поломки onclick)
   function safeUser(u) {
     return String(u ?? "").replace(/[^A-Za-z0-9_]/g, "");
@@ -1598,7 +1605,7 @@ const App = (() => {
         const start = r.requested_start_time || s.start_time;
         const end = r.requested_end_time || s.end_time;
         return `<div class="profile-income-item">
-          <div class="left"><div class="title"><i data-lucide="clock"></i> ${escapeHtml(s.pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${start.slice(0,5)}–${end.slice(0,5)} • заявка на рассмотрении</div></div>
+          <div class="left"><div class="title"><i data-lucide="clock"></i> ${escapeHtml(s.pvz?.name || "—")}</div><div class="desc">${fmtDMY(s.shift_date)}, ${start.slice(0,5)}–${end.slice(0,5)} • заявка на рассмотрении</div></div>
           <div class="right" style="color:var(--text-secondary); font-weight:500;">—</div>
         </div>`;
       });
@@ -1611,7 +1618,7 @@ const App = (() => {
         const amount = Math.round(shiftAmount(s, pvz));
         total += amount;
         return `<div class="profile-income-item">
-          <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${s.shift_date}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
+          <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${fmtDMY(s.shift_date)}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
           <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>
         </div>`;
       });

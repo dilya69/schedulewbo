@@ -179,6 +179,14 @@ const App = (() => {
     return m ? `${m[3]}.${m[2]}.${m[1].slice(2)}` : s;
   }
 
+  // дата ГГГГ-ММ-ДД → ДД.ММ.ГГ, пн
+  function fmtDMYW(iso) {
+    const base = fmtDMY(iso);
+    const d = new Date(String(iso ?? "").slice(0, 10) + "T00:00:00");
+    if (isNaN(d)) return base;
+    return `${base}, ${d.toLocaleDateString("ru-RU", { weekday: "short" })}`;
+  }
+
   // username Telegram — только латиница, цифры и _ (защита от поломки onclick)
   function safeUser(u) {
     return String(u ?? "").replace(/[^A-Za-z0-9_]/g, "");
@@ -1180,7 +1188,7 @@ const App = (() => {
       : `${(shift?.start_time || "").slice(0,5)}–${(shift?.end_time || "").slice(0,5)} (вся смена)`;
 
     const pvzName = shift?.pvz?.name || state.pvz.find((p) => p.id === (shift?.pvz_id || ""))?.name || "ПВЗ";
-    const dateLabel = shift?.shift_date ? fmtDMY(shift.shift_date) : "";
+    const dateLabel = shift?.shift_date ? fmtDMYW(shift.shift_date) : "";
 
     const approveBtn = wantsCustom
       ? `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', true)" title="Принять как просит"><i data-lucide="check"></i> Как просит</button>`
@@ -1333,7 +1341,7 @@ const App = (() => {
       const pvz = it.pvzId ? state.pvz.find((p) => p.id === it.pvzId) : null;
       const pvzName = pvz?.name || it.pvzName || "—";
       const pvzColor = pvz?.color || it.pvzColor || "#007aff";
-      const dateLabel = fmtDMY(it.date);
+      const dateLabel = fmtDMYW(it.date);
       return `<div class="my-shift-card" style="border-left-color:${pvzColor};">
         <div class="info">
           <div class="pzv-name"><i data-lucide="building-2"></i> ${escapeHtml(pvzName)}</div>
@@ -1435,7 +1443,7 @@ const App = (() => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
       const amount = Math.round(shiftAmount(s, pvz));
       total += amount;
-      const dateLabel = fmtDMY(s.shift_date);
+      const dateLabel = fmtDMYW(s.shift_date);
       return `<div class="profile-income-item">
         <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${dateLabel}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
         <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>

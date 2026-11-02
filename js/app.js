@@ -96,6 +96,7 @@ const App = (() => {
       renderWishes();
       renderRequests();
       refreshIcons();
+      syncTelegramPhoto();
     } catch (e) {
       console.error(e);
       document.getElementById("bootScreen").innerHTML =
@@ -208,6 +209,54 @@ const App = (() => {
     let hash = 0;
     for (const ch of String(name)) hash = ch.charCodeAt(0) + ((hash << 5) - hash);
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  }
+
+  // ---------- ФОТО ИЗ TELEGRAM КАК АВАТАР ----------
+  // Принимаем только ссылки на аватары Telegram (то же проверяет база).
+  const TG_PHOTO_RE = /^https:\/\/t\.me\/i\/userpic\//;
+
+  // Фото, которое можно показать для сотрудника, или null (тогда показываем эмодзи/букву).
+  function tgPhotoOf(e) {
+    if (!e || e.avatar_use_photo === false) return null;
+    const u = e.avatar_photo_url;
+    return u && TG_PHOTO_RE.test(u) ? u : null;
+  }
+
+  // Содержимое кружка-аватара: эмодзи (или буква) и поверх него фото; если фото не загрузилось — оно убирается.
+  function avatarInnerHtml(e, fallback) {
+    const photo = tgPhotoOf(e);
+    const text = `<span>${escapeHtml(fallback)}</span>`;
+    return photo
+      ? `${text}<img class="ava-img" src="${escapeHtml(photo)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`
+      : text;
+  }
+
+  // Своё текущее фото из Telegram (может быть недоступно: скрыто в приватности или не отдаётся).
+  function myTgPhotoUrl() {
+    const raw = window.Telegram?.WebApp?.initDataUnsafe?.user?.photo_url || null;
+    return raw && TG_PHOTO_RE.test(raw) ? raw : null;
+  }
+
+  // При входе запоминаем актуальную ссылку на своё фото (чтобы его видели в «Сотрудниках»);
+  // если фото недоступно — ссылку очищаем.
+  async function syncTelegramPhoto() {
+    if (state.demo || !state.employee?.id) return;
+    const me = state.employees.find((x) => x.id === state.employee.id);
+    if (me) {
+      state.employee.avatar_photo_url = me.avatar_photo_url ?? null;
+      state.employee.avatar_use_photo = me.avatar_use_photo;
+    }
+    const url = myTgPhotoUrl();
+    if ((state.employee.avatar_photo_url ?? null) === url) return;
+    try {
+      await Api.updateEmployee(state.employee.id, { avatar_photo_url: url });
+      state.employee.avatar_photo_url = url;
+      if (me) me.avatar_photo_url = url;
+      renderProfile();
+      renderEmployees();
+    } catch (e) {
+      console.warn("Фото из Telegram не сохранилось:", e);
+    }
   }
 
   function hexToRgba(hex, alpha) {
@@ -1415,7 +1464,7 @@ const App = (() => {
 
     activeContainer.innerHTML = active.map((e) => `
       <div class="employee-card${pinIndex(e) >= 0 ? " pinned" : ""}" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
-        <div class="avatar" style="background:${colorForName(e.full_name)}; box-shadow:0 0 0 2px ${e.avatar_frame || DEFAULT_FRAME_COLOR};">${e.avatar_emoji ? escapeHtml(e.avatar_emoji) : escapeHtml(e.full_name[0] || "?")}</div>
+        <div class="avatar" style="background:${colorForName(e.full_name)}; box-shadow:0 0 0 2px ${e.avatar_frame || DEFAULT_FRAME_COLOR};">${avatarInnerHtml(e, e.avatar_emoji || e.full_name[0] || "?")}</div>
         <div class="info">
           <div class="name">${escapeHtml(e.full_name)}</div>
           <div class="role">${escapeHtml(e.position || "Менеджер")}</div>
@@ -1623,11 +1672,30 @@ const App = (() => {
   }
 
   // ---------------- ПРОФИЛЬ ----------------
+  function paintProfileAvatar() {
+    const e = state.employee;
+    const emojiEl = document.getElementById("profileAvatarEmoji");
+    const imgEl = document.getElementById("profileAvatarImg");
+    if (emojiEl) emojiEl.textContent = e.avatar_emoji || "👤";
+    if (imgEl) {
+      const photo = tgPhotoOf(e);
+      if (photo) {
+        imgEl.onerror = () => { imgEl.style.display = "none"; };
+        imgEl.referrerPolicy = "no-referrer";
+        imgEl.src = photo;
+        imgEl.style.display = "block";
+      } else {
+        imgEl.style.display = "none";
+        imgEl.removeAttribute("src");
+      }
+    }
+  }
+
   function renderProfile() {
     const e = state.employee;
     const avatarEl = document.getElementById("profileAvatar");
     if (avatarEl) {
-      avatarEl.childNodes[0].nodeValue = e.avatar_emoji || "👤";
+      paintProfileAvatar();
       avatarEl.style.boxShadow = `0 0 0 3px ${e.avatar_frame || DEFAULT_FRAME_COLOR}`;
     }
     const nameEl = document.getElementById("profileName");
@@ -1784,22 +1852,52 @@ const App = (() => {
       "🐵","🐷","🐮","🦉","🦋","🌸","🍀","🍎","🍕","☕","⚽","🏀","🎮","🎧","📚","✏️",
       "💎","🎨","🎵","🌈","☀️","🌙","❄️","⚡","🔥","💧","🌊","🏔️","🚗","✈️","⚓","🏆",
     ];
+    const e = state.employee;
+    const photoMode = e.avatar_use_photo !== false;
+    const ring = (on) => on ? "box-shadow:0 0 0 2px var(--accent);" : "";
+    const tile = "border:none; background:var(--card-secondary); border-radius:10px; padding:6px 0; cursor:pointer;";
     openModal("Выберите аватар", `
       <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:6px; font-size:22px; text-align:center; max-height:280px; overflow-y:auto;">
-        ${emojis.map((em) => `<button type="button" onclick="App._pickAvatar('${em}')" style="border:none; background:var(--card-secondary); border-radius:10px; padding:6px 0; cursor:pointer;">${em}</button>`).join("")}
+        <button type="button" onclick="App._pickTelegramPhoto()" title="Фото из Telegram" style="${tile} ${ring(photoMode)} display:flex; align-items:center; justify-content:center; color:var(--accent);"><i data-lucide="camera" style="width:22px;height:22px;"></i></button>
+        ${emojis.map((em) => `<button type="button" onclick="App._pickAvatar('${em}')" style="${tile} ${ring(!photoMode && e.avatar_emoji === em)}">${em}</button>`).join("")}
+      </div>
+      <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; line-height:1.4;">
+        <i data-lucide="camera" style="width:11px;height:11px;vertical-align:-1px;"></i> — фото из вашего Telegram. Если оно скрыто настройками приватности, показывается выбранный значок.
       </div>
     `, null);
+    refreshIcons();
+  }
+
+  async function _pickTelegramPhoto() {
+    const url = myTgPhotoUrl() || tgPhotoOf({ avatar_photo_url: state.employee.avatar_photo_url });
+    if (!url) {
+      toast("📷 Фото Telegram недоступно — возможно, оно скрыто в настройках приватности");
+      return;
+    }
+    closeModal();
+    state.employee.avatar_use_photo = true;
+    state.employee.avatar_photo_url = url;
+    paintProfileAvatar();
+    if (!state.demo) {
+      try {
+        await Api.updateEmployee(state.employee.id, { avatar_use_photo: true, avatar_photo_url: url });
+        const me = state.employees.find((x) => x.id === state.employee.id);
+        if (me) { me.avatar_use_photo = true; me.avatar_photo_url = url; }
+        renderEmployees();
+      } catch (e) { toast("🚫 " + e.message); }
+    }
   }
 
   async function _pickAvatar(emoji) {
     closeModal();
-    document.getElementById("profileAvatar").childNodes[0].nodeValue = emoji;
     state.employee.avatar_emoji = emoji;
+    state.employee.avatar_use_photo = false;
+    paintProfileAvatar();
     if (!state.demo) {
       try {
-        await Api.updateEmployee(state.employee.id, { avatar_emoji: emoji });
+        await Api.updateEmployee(state.employee.id, { avatar_emoji: emoji, avatar_use_photo: false });
         const me = state.employees.find((e) => e.id === state.employee.id);
-        if (me) me.avatar_emoji = emoji;
+        if (me) { me.avatar_emoji = emoji; me.avatar_use_photo = false; }
         renderEmployees();
       } catch (e) { toast("🚫 " + e.message); }
     }
@@ -2568,7 +2666,7 @@ const App = (() => {
     _filterEmpPicker, _selectEmp,
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
     openEmployeeScheduleModal, grantAccess, openChat,
-    changeAvatar, _pickAvatar, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
+    changeAvatar, _pickAvatar, _pickTelegramPhoto, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
     openBonusFineModal, deleteBonusFine, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,

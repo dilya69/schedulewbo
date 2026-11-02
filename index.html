@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>График ПВЗ</title>
     <script src="https://unpkg.com/lucide@0.400.0"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261102e">
+    <link rel="stylesheet" href="css/styles.css?v=20261102f">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -124,7 +124,7 @@
             <div id="tab4" class="tab-content">
                 <div class="profile-header">
                     <div class="profile-avatar" id="profileAvatar" onclick="App.changeAvatar()">
-                        👤
+                        <span id="profileAvatarEmoji">👤</span><img id="profileAvatarImg" class="ava-img" alt="" style="display:none;">
                         <div class="edit-avatar"><i data-lucide="pencil" style="width:10px;height:10px;stroke:#fff;"></i></div>
                     </div>
                     <div class="profile-info">
@@ -296,10 +296,10 @@
     <div class="modal-box" id="modalBox"></div>
 </div>
 
-<script src="js/config.js?v=20261102e"></script>
-<script src="js/api.js?v=20261102e"></script>
-<script src="js/sheet-import.js?v=20261102e"></script>
-<script src="js/app.js?v=20261102e"></script>
+<script src="js/config.js?v=20261102f"></script>
+<script src="js/api.js?v=20261102f"></script>
+<script src="js/sheet-import.js?v=20261102f"></script>
+<script src="js/app.js?v=20261102f"></script>
 <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>

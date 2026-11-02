@@ -648,6 +648,9 @@ body {
 }
 
 .profile-avatar:active { transform: scale(0.95); }
+/* фото из Telegram поверх эмодзи в кружке аватара */
+.ava-img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.employee-card .avatar { position: relative; }
 .profile-avatar .edit-avatar { position: absolute; bottom: -2px; right: -2px; background: var(--accent); color: var(--accent-contrast); border-radius: 50%; width: 20px; height: 20px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--card-bg); }
 
 .profile-info { min-width: 0; }

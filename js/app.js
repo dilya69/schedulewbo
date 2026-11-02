@@ -1180,9 +1180,7 @@ const App = (() => {
       : `${(shift?.start_time || "").slice(0,5)}–${(shift?.end_time || "").slice(0,5)} (вся смена)`;
 
     const pvzName = shift?.pvz?.name || state.pvz.find((p) => p.id === (shift?.pvz_id || ""))?.name || "ПВЗ";
-    const dateLabel = shift?.shift_date
-      ? new Date(shift.shift_date + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" })
-      : "";
+    const dateLabel = shift?.shift_date ? fmtDMY(shift.shift_date) : "";
 
     const approveBtn = wantsCustom
       ? `<button class="approve" onclick="App.approveRequest('${r.id}','${r.shift_id}','${r.employee_id}', true)" title="Принять как просит"><i data-lucide="check"></i> Как просит</button>`
@@ -1335,8 +1333,7 @@ const App = (() => {
       const pvz = it.pvzId ? state.pvz.find((p) => p.id === it.pvzId) : null;
       const pvzName = pvz?.name || it.pvzName || "—";
       const pvzColor = pvz?.color || it.pvzColor || "#007aff";
-      const dateObj = new Date(it.date + "T00:00:00");
-      const dateLabel = dateObj.toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" });
+      const dateLabel = fmtDMY(it.date);
       return `<div class="my-shift-card" style="border-left-color:${pvzColor};">
         <div class="info">
           <div class="pzv-name"><i data-lucide="building-2"></i> ${escapeHtml(pvzName)}</div>
@@ -1438,8 +1435,7 @@ const App = (() => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
       const amount = Math.round(shiftAmount(s, pvz));
       total += amount;
-      const dateObj = new Date(s.shift_date + "T00:00:00");
-      const dateLabel = dateObj.toLocaleDateString("ru-RU", { day: "numeric", month: "short", weekday: "short" });
+      const dateLabel = fmtDMY(s.shift_date);
       return `<div class="profile-income-item">
         <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${dateLabel}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
         <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>

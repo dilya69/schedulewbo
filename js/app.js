@@ -495,8 +495,8 @@ const App = (() => {
     if (typeof renderTodaySummary._collapsed === "undefined") renderTodaySummary._collapsed = true;
     const isCollapsed = renderTodaySummary._collapsed;
 
-    const peopleRows = todayShifts.map((s) => {
-      const pvz = state.pvz.find((p) => p.id === s.pvz_id);
+    // группируем по пунктам выдачи: порядок ПВЗ как в календаре, внутри — по времени начала
+    const personRow = (s) => {
       const emp = state.employees.find((e) => e.id === s.employee_id);
       const name = emp?.full_name || s.employees?.full_name || "—";
       const tgUsername = safeUser(emp?.tg_username || s.employees?.tg_username || "");
@@ -506,8 +506,27 @@ const App = (() => {
         : `<span>${escapeHtml(name)}</span>`;
 
       return `<div class="row">
-        <span>${nameHtml} — ${escapeHtml(pvz?.name || "")}</span>
+        <span>${nameHtml}</span>
         <span class="time">${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</span>
+      </div>`;
+    };
+
+    const groups = [];
+    state.pvz.forEach((p) => {
+      const list = todayShifts.filter((s) => s.pvz_id === p.id);
+      if (list.length) groups.push({ pvz: p, list });
+    });
+    // смены на ПВЗ, которых нет в списке (например, отключённый) — отдельной группой в конце
+    const knownIds = new Set(state.pvz.map((p) => p.id));
+    const orphans = todayShifts.filter((s) => !knownIds.has(s.pvz_id));
+    if (orphans.length) groups.push({ pvz: null, list: orphans });
+
+    const peopleRows = groups.map(({ pvz, list }) => {
+      const icon = pvz ? (pvz.marketplace === "ozon" ? "🔵" : "🟣") : "";
+      const title = pvz ? pvz.name : "Другой пункт";
+      return `<div style="margin-top:8px; padding-top:6px; border-top:1px solid var(--border, rgba(128,128,128,0.25));">
+        <div style="font-weight:700; font-size:12px; margin-bottom:2px;">${icon} ${escapeHtml(title)} <span style="opacity:0.7; font-weight:500;">(${list.length})</span></div>
+        ${list.map(personRow).join("")}
       </div>`;
     }).join("");
 

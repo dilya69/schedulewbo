@@ -1855,10 +1855,10 @@ const App = (() => {
     const e = state.employee;
     const photoMode = e.avatar_use_photo !== false;
     const ring = (on) => on ? "box-shadow:0 0 0 2px var(--accent);" : "";
-    const tile = "border:none; background:var(--card-secondary); border-radius:10px; padding:6px 0; cursor:pointer;";
+    const tile = "border:none; background:var(--card-secondary); border-radius:10px; padding:0; cursor:pointer; aspect-ratio:1/1; width:100%; display:flex; align-items:center; justify-content:center; line-height:1; font-size:22px;";
     openModal("Выберите аватар", `
-      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:6px; font-size:22px; text-align:center; max-height:280px; overflow-y:auto;">
-        <button type="button" onclick="App._pickTelegramPhoto()" title="Фото из Telegram" style="${tile} ${ring(photoMode)} display:flex; align-items:center; justify-content:center; color:var(--accent);"><i data-lucide="camera" style="width:22px;height:22px;"></i></button>
+      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:6px; font-size:22px; text-align:center; max-height:280px; overflow-y:auto; padding:4px;">
+        <button type="button" onclick="App._pickTelegramPhoto()" title="Фото из Telegram" style="${tile} ${ring(photoMode)} color:var(--accent);"><i data-lucide="camera" style="width:22px;height:22px;display:block;"></i></button>
         ${emojis.map((em) => `<button type="button" onclick="App._pickAvatar('${em}')" style="${tile} ${ring(!photoMode && e.avatar_emoji === em)}">${em}</button>`).join("")}
       </div>
       <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; line-height:1.4;">

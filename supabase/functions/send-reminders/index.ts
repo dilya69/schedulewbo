@@ -11,6 +11,7 @@
 // Настройки берутся из notification_settings. Если у сотрудника ещё нет строки настроек
 // (он не открывал профиль), ему приходит только одно напоминание за 120 минут.
 // Сотрудникам, которые ещё не открывали бота (tg_id <= 0), ничего не отправляется.
+// Уволенным сотрудникам (is_active = false) напоминания не шлются.
 //
 // Секреты: BOT_TOKEN; SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY Supabase подставляет сам.
 
@@ -51,7 +52,7 @@ function planMessages(now, shifts, settingsRows) {
   // 1) напоминания о смене и повторы
   for (const shift of shifts) {
     const emp = shift.employees;
-    if (!emp || !(Number(emp.tg_id) > 0)) continue;
+    if (!emp || !(Number(emp.tg_id) > 0) || emp.is_active === false) continue;
     const st = settingsBy.get(shift.employee_id);
     if (st && st.push_enabled === false) continue;
 
@@ -91,7 +92,7 @@ function planMessages(now, shifts, settingsRows) {
     const st = settingsBy.get(empId);
     if (!st || st.push_enabled === false || !st.daily_time) continue;
     const emp = list[0].employees;
-    if (!emp || !(Number(emp.tg_id) > 0)) continue;
+    if (!emp || !(Number(emp.tg_id) > 0) || emp.is_active === false) continue;
     if (!inWindow(nowMin - toMin(st.daily_time))) continue;
 
     list.sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
@@ -133,7 +134,7 @@ Deno.serve(async () => {
 
   const { data: shifts, error } = await supabase
     .from("shifts")
-    .select("id, shift_date, start_time, end_time, employee_id, pvz:pvz_id(name), employees:employee_id(tg_id, full_name)")
+    .select("id, shift_date, start_time, end_time, employee_id, pvz:pvz_id(name), employees:employee_id(tg_id, full_name, is_active)")
     .not("employee_id", "is", null)
     .gte("shift_date", today);
   if (error) {

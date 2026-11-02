@@ -757,6 +757,15 @@ body {
 .finance-employee .left .details { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
 .finance-employee .left .bonus-list { font-size: 10px; color: #34c759; margin-top: 2px; }
 .finance-employee .left .fine-list { font-size: 10px; color: #ff3b30; margin-top: 2px; }
+.finance-employee .left .bonus-list,
+.finance-employee .left .fine-list { display: flex; align-items: center; gap: 6px; }
+.finance-employee .bf-del {
+    flex-shrink: 0; width: 18px; height: 18px; padding: 0; border: none; border-radius: 50%;
+    background: transparent; color: var(--text-secondary); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.finance-employee .bf-del:active { transform: scale(0.85); }
+.finance-employee .bf-del svg.lucide { width: 12px; height: 12px; }
 .finance-employee .right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .finance-employee .right .amount { font-weight: 700; font-size: 16px; color: var(--text); }
 .finance-employee .right .edit-rate { background: var(--accent); border: none; color: var(--accent-contrast); padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; cursor: pointer; transition: 0.15s; }

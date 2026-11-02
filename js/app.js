@@ -327,6 +327,24 @@ const App = (() => {
     return true;
   }
 
+  // К какой половине месяца относится бонус/штраф — по дню, когда он добавлен (московское время):
+  // 1–15 → «first», 16 и дальше → «second». Если добавлен уже после конца своего месяца — это вторая половина,
+  // если до его начала — первая.
+  function bfHalf(b) {
+    const [py, pm] = String(b.period_month).slice(0, 10).split("-").map(Number);
+    const created = b.created_at ? new Date(b.created_at) : null;
+    if (!created || isNaN(created)) return "first";
+    const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Moscow" }).format(created); // ГГГГ-ММ-ДД
+    const [cy, cm, cd] = iso.split("-").map(Number);
+    if (cy === py && cm === pm) return cd <= 15 ? "first" : "second";
+    return cy * 12 + cm > py * 12 + pm ? "second" : "first";
+  }
+
+  function bfInPeriod(b, period) {
+    if (!period || period === "full") return true;
+    return bfHalf(b) === period;
+  }
+
   function setPayPeriod(period) {
     state.payPeriod = period;
     renderProfile();
@@ -1816,13 +1834,12 @@ const App = (() => {
     renderPurgeWarning();
 
     let fund = 0, totalShiftsAll = 0;
-    const includeBF = state.payPeriod === "full";
     const activeEmployees = state.employees.filter((e) => e.is_active !== false);
 
     const rows = activeEmployees.map((e) => {
       const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
       const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
-      const bf = includeBF ? state.bonusesFines.filter((b) => b.employee_id === e.id) : [];
+      const bf = state.bonusesFines.filter((b) => b.employee_id === e.id && bfInPeriod(b, state.payPeriod));
       const bonuses = bf.filter((b) => b.kind === "bonus");
       const fines = bf.filter((b) => b.kind === "fine");
       const bonusSum = bonuses.reduce((s, b) => s + Number(b.amount), 0);
@@ -1838,8 +1855,8 @@ const App = (() => {
         <div class="left">
           <div class="name">${escapeHtml(e.full_name)}</div>
           <div class="details">${empShifts.length} смен • ${Math.round(base).toLocaleString("ru-RU")} ₽ по тарифам ПВЗ</div>
-          ${bonuses.map((b) => `<div class="bonus-list">Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
-          ${fines.map((b) => `<div class="fine-list">Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</div>`).join("")}
+          ${bonuses.map((b) => `<div class="bonus-list"><span>Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</span><button class="bf-del" title="Удалить" onclick="App.deleteBonusFine('${b.id}')"><i data-lucide="x"></i></button></div>`).join("")}
+          ${fines.map((b) => `<div class="fine-list"><span>Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</span><button class="bf-del" title="Удалить" onclick="App.deleteBonusFine('${b.id}')"><i data-lucide="x"></i></button></div>`).join("")}
         </div>
         <div class="right">
           ${[...markets].map((m) => `<span class="market-tag ${m}">${m.toUpperCase()}</span>`).join("")}
@@ -2011,6 +2028,22 @@ const App = (() => {
         closeModal();
       } catch (e) { toast("🚫 " + e.message); }
     });
+  }
+
+  async function deleteBonusFine(id) {
+    const b = state.bonusesFines.find((x) => x.id === id);
+    if (!b) return;
+    const emp = state.employees.find((e) => e.id === b.employee_id);
+    const what = b.kind === "bonus" ? "бонус" : "штраф";
+    if (!confirm(`Удалить ${what} ${b.amount} ₽${emp ? " (" + emp.full_name + ")" : ""}${b.reason ? " — " + b.reason : ""}?`)) return;
+    try {
+      await Api.deleteBonusFine(id);
+      toast("✅ Удалено");
+      state.bonusesFines = await Api.getBonusesFines(state.year, state.month);
+      renderManagement();
+      renderProfile();
+      refreshIcons();
+    } catch (e) { toast("🚫 " + e.message); }
   }
 
   function openAddPvzModal() {
@@ -2422,12 +2455,11 @@ const App = (() => {
   }
 
   function exportPayroll() {
-    const includeBF = state.payPeriod === "full";
     let csv = csvRow(["Сотрудник", "Смены", "Сумма по тарифам", "Бонусы", "Штрафы", "Итого"]);
     state.employees.filter((e) => e.is_active !== false).forEach((e) => {
       const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
       const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
-      const bf = includeBF ? state.bonusesFines.filter((b) => b.employee_id === e.id) : [];
+      const bf = state.bonusesFines.filter((b) => b.employee_id === e.id && bfInPeriod(b, state.payPeriod));
       const bonusSum = bf.filter((b) => b.kind === "bonus").reduce((s, b) => s + Number(b.amount), 0);
       const fineSum = bf.filter((b) => b.kind === "fine").reduce((s, b) => s + Number(b.amount), 0);
       const total = base + bonusSum - fineSum;
@@ -2538,7 +2570,7 @@ const App = (() => {
     openEmployeeScheduleModal, grantAccess, openChat,
     changeAvatar, _pickAvatar, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
-    openBonusFineModal, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
+    openBonusFineModal, deleteBonusFine, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     closeModal,

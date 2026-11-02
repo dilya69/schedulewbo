@@ -439,6 +439,13 @@ const Api = (() => {
     if (error) throw error;
   }
 
+  async function deleteBonusFine(id) {
+    // .select() нужен, чтобы заметить «тихий» отказ: если база ничего не удалила, вернётся пустой список
+    const { data, error } = await client.from("bonuses_fines").delete().eq("id", id).select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error("Не удалось удалить: запись не найдена или нет прав");
+  }
+
   async function getBonusesFines(year, month) {
     const period = `${year}-${String(month + 1).padStart(2, "0")}-01`;
     const { data, error } = await client.from("bonuses_fines").select("*").eq("period_month", period);
@@ -512,7 +519,7 @@ const Api = (() => {
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
-    addBonusFine, getBonusesFines,
+    addBonusFine, getBonusesFines, deleteBonusFine,
     getNotificationSettings, saveNotificationSettings,
     getWishMonth, setWishMonthEnabled, getWishes, saveMyWish, deleteWish, deleteAllWishes,
   };

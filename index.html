@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>График ПВЗ</title>
     <script src="https://unpkg.com/lucide@0.400.0"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261102c">
+    <link rel="stylesheet" href="css/styles.css?v=20261102e">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -216,6 +216,10 @@
                     <span class="collapsible-arrow collapsed" id="financeBlockArrow"><i data-lucide="chevron-down"></i></span>
                 </div>
                 <div id="financeBlock" class="collapsible-body collapsed">
+                    <div class="finance-actions">
+                        <button class="bonus-btn" onclick="App.openBonusFineModal('bonus')"><i data-lucide="plus-circle"></i> Бонус</button>
+                        <button class="fine-btn" onclick="App.openBonusFineModal('fine')"><i data-lucide="alert-circle"></i> Штраф</button>
+                    </div>
                     <div id="financeEmployeeList"></div>
                 </div>
 
@@ -227,11 +231,6 @@
 
                 <div style="font-size:10.5px; color:var(--text-secondary); text-align:center; margin:-4px 0 6px; display:flex; align-items:center; justify-content:center; gap:4px;">
                     <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> 1 числа каждого месяца данные о прошлом месяце удаляются автоматически
-                </div>
-
-                <div class="finance-actions">
-                    <button class="bonus-btn" onclick="App.openBonusFineModal('bonus')"><i data-lucide="plus-circle"></i> Бонус</button>
-                    <button class="fine-btn" onclick="App.openBonusFineModal('fine')"><i data-lucide="alert-circle"></i> Штраф</button>
                 </div>
 
                 <div style="margin-top:8px; border-top:2px solid var(--border); padding-top:10px;">
@@ -297,10 +296,10 @@
     <div class="modal-box" id="modalBox"></div>
 </div>
 
-<script src="js/config.js?v=20261102c"></script>
-<script src="js/api.js?v=20261102c"></script>
-<script src="js/sheet-import.js?v=20261102c"></script>
-<script src="js/app.js?v=20261102c"></script>
+<script src="js/config.js?v=20261102e"></script>
+<script src="js/api.js?v=20261102e"></script>
+<script src="js/sheet-import.js?v=20261102e"></script>
+<script src="js/app.js?v=20261102e"></script>
 <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>

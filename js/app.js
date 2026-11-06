@@ -1697,6 +1697,8 @@ const App = (() => {
     openModal(`Редактировать: ${emp.full_name}`, `
       <label>ФИО</label><input type="text" id="f_name" value="${escapeHtml(emp.full_name)}">
       <label>Должность</label><input type="text" id="f_position" value="${escapeHtml(emp.position || "")}">
+      <label>Telegram username (без @)</label>
+      <input type="text" id="f_username" autocapitalize="none" autocomplete="off" placeholder="ivanov" value="${escapeHtml(emp.tg_username || "")}">
       <label>Активен (доступ в приложение)</label>
       <select id="f_active"><option value="true" ${emp.is_active !== false ? "selected" : ""}>Да</option><option value="false" ${emp.is_active === false ? "selected" : ""}>Нет</option></select>
       <label>Администратор</label>
@@ -1705,6 +1707,13 @@ const App = (() => {
       <input type="text" id="f_birthday" inputmode="numeric" maxlength="5" placeholder="25.03" value="${fmtBirthday(emp)}">
     `, async () => {
       const newName = document.getElementById("f_name").value.trim();
+      const newUsername = document.getElementById("f_username").value.trim().replace(/^@/, "");
+      if (newUsername && !/^[A-Za-z0-9_]{3,32}$/.test(newUsername)) {
+        return toast("Username: только латиница, цифры и _ (от 3 до 32 символов)");
+      }
+      if (newUsername && state.employees.some((e) => e.id !== id && String(e.tg_username || "").toLowerCase() === newUsername.toLowerCase())) {
+        return toast("Такой username уже есть у другого сотрудника");
+      }
       const bdRaw = document.getElementById("f_birthday").value.trim();
       let birth_day = null, birth_month = null;
       if (bdRaw) {
@@ -1725,6 +1734,7 @@ const App = (() => {
         await Api.updateEmployee(id, {
           full_name: newName,
           position: document.getElementById("f_position").value.trim(),
+          tg_username: newUsername || null,
           is_active: newActive,
           is_admin: newAdmin,
           birth_day, birth_month,

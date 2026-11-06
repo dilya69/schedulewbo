@@ -143,6 +143,30 @@ body[class*="theme-ny-"] .header-title .small {
     margin-top: 0;
 }
 
+/* подпись под WBO: вместо «Управление сменами» — «Хо-Хо-Хо!» (текст в разметке не трогаем) */
+body[class*="theme-ny-"] .header-title .small { font-size: 0; line-height: 1; margin-top: 1px; }
+body[class*="theme-ny-"] .header-title .small::after {
+    content: "Хо-Хо-Хо!";
+    display: inline-block;
+    font-family: "Lobster", "Segoe Script", cursive;
+    font-size: 17px;
+    letter-spacing: 1.5px;
+    transform: rotate(-3deg);
+    transform-origin: left center;
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+            color: transparent;
+}
+body.theme-ny-day .header-title .small::after {
+    background-image: linear-gradient(90deg, #a80f28, #cf2238 55%, #9c1250);
+    filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.45));
+}
+body.theme-ny-night .header-title .small::after {
+    background-image: linear-gradient(90deg, #ffd36a, #fff3b0 50%, #ffb347);
+    filter: drop-shadow(0 0 6px rgba(255, 210, 100, 0.55));
+}
+
 /* логотип + шапка Деда Мороза */
 body[class*="theme-ny-"] .header-logo { overflow: visible; background: #fff; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); }
 body.theme-ny-night .header-logo { background: #18224b; border-color: #c9d6ff; }

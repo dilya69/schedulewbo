@@ -629,6 +629,20 @@ const App = (() => {
     openModal("С днём рождения! 🎂", `<p style="font-size:16px; line-height:1.55; text-align:center; margin:6px 0 4px;">${escapeHtml(text)}</p>`, null);
   }
 
+  // Открытка именинника: оформление выбирается «случайно», но одно и то же в течение дня
+  const BDAY_CARDS = 6;
+  function bdayCardHtml(bdays, date) {
+    const names = bdays.map((e) => e.full_name).join(",");
+    let seed = date.getDate() * 31 + date.getMonth() * 7;
+    for (let i = 0; i < names.length; i++) seed = (seed * 33 + names.charCodeAt(i)) % 100003;
+    const n = (seed % BDAY_CARDS) + 1;
+    const many = bdays.length > 1;
+    return `<div class="bday-card bd-${n}" style="margin-top:6px;">
+      <div class="bd-title">С днём рождения!</div>
+      <div class="bd-text">${bdays.map((e) => escapeHtml(e.full_name)).join(", ")} ${many ? "отмечают" : "отмечает"} день рождения</div>
+    </div>`;
+  }
+
   function renderTodaySummary() {
     const el = document.getElementById("todaySummary");
     if (!el) return;
@@ -643,15 +657,10 @@ const App = (() => {
 
     const bdays = state.employees.filter((e) => e.is_active !== false && isBirthdayOn(e, today));
     if (todayShifts.length === 0 && bdays.length === 0) { el.style.display = "none"; return; }
-    const bdayText = bdays.length
-      ? `🎂 ${bdays.map((e) => escapeHtml(e.full_name)).join(", ")} ${bdays.length > 1 ? "отмечают" : "отмечает"} день рождения 🎉`
-      : "";
-    const bdayHtml = bdayText
-      ? `<div style="margin-top:6px; font-size:13px; font-weight:600; color:var(--accent-contrast);">${bdayText}</div>`
-      : "";
+    const bdayHtml = bdays.length ? bdayCardHtml(bdays, today) : "";
     if (todayShifts.length === 0) {
       el.style.display = "block";
-      el.innerHTML = `<div style="font-size:13px; font-weight:600; color:var(--accent-contrast);">${bdayText}</div>`;
+      el.innerHTML = bdayHtml;
       return;
     }
 

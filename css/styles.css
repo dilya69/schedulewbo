@@ -1543,3 +1543,69 @@ button { color: inherit; }
     border: none; border-radius: 20px; padding: 9px 12px; cursor: pointer; font-size: 12px; font-weight: 600;
     background: var(--accent); color: var(--accent-contrast);
 }
+
+
+/* ============================================================
+   Открытка именинника (блок «Сегодня»): 6 вариантов, текст всегда тёмный на светлом фоне,
+   поэтому читается в любой теме
+   ============================================================ */
+.bday-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    padding: 10px 14px 10px 54px;
+    color: #2b2140;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.12);
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.bday-card::before {            /* большой значок слева */
+    position: absolute;
+    left: 10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 30px;
+    line-height: 1;
+}
+.bday-card::after {             /* «марка» в углу открытки */
+    position: absolute;
+    right: 8px; top: 6px;
+    font-size: 15px;
+    opacity: 0.9;
+}
+.bday-card .bd-title { font-weight: 800; font-size: 14px; letter-spacing: 0.2px; }
+.bday-card .bd-text  { font-size: 12.5px; font-weight: 600; margin-top: 2px; padding-right: 22px; line-height: 1.3; }
+
+/* 1. конфетти */
+.bday-card.bd-1 {
+    background:
+        radial-gradient(circle at 12% 20%, #ff6b8b 0 2.5px, transparent 3px),
+        radial-gradient(circle at 80% 30%, #4dabf7 0 2.5px, transparent 3px),
+        radial-gradient(circle at 60% 80%, #51cf66 0 2.5px, transparent 3px),
+        radial-gradient(circle at 92% 75%, #ffa94d 0 2.5px, transparent 3px),
+        radial-gradient(circle at 38% 18%, #b197fc 0 2px, transparent 2.5px),
+        linear-gradient(135deg, #fff6c9, #ffe3a8);
+}
+.bday-card.bd-1::before { content: "🎉"; } .bday-card.bd-1::after { content: "✨"; }
+/* 2. шарики */
+.bday-card.bd-2 { background: linear-gradient(135deg, #d6f0ff, #bfe2ff 60%, #e9f6ff); }
+.bday-card.bd-2::before { content: "🎈"; } .bday-card.bd-2::after { content: "🎈"; }
+/* 3. цветы */
+.bday-card.bd-3 { background: linear-gradient(135deg, #ffe0ec, #ffc9dd 65%, #fff0f5); }
+.bday-card.bd-3::before { content: "💐"; } .bday-card.bd-3::after { content: "🌸"; }
+/* 4. торт */
+.bday-card.bd-4 { background: repeating-linear-gradient(135deg, #efe4ff 0 14px, #e4d4ff 14px 28px); }
+.bday-card.bd-4::before { content: "🎂"; } .bday-card.bd-4::after { content: "🕯️"; }
+/* 5. подарок */
+.bday-card.bd-5 { background: linear-gradient(135deg, #d9f7e4, #bdebd0 65%, #effbf3); }
+.bday-card.bd-5::before { content: "🎁"; } .bday-card.bd-5::after { content: "🎀"; }
+/* 6. звёзды */
+.bday-card.bd-6 {
+    background:
+        radial-gradient(circle at 20% 25%, rgba(255, 255, 255, 0.9) 0 2px, transparent 2.5px),
+        radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.9) 0 2px, transparent 2.5px),
+        linear-gradient(135deg, #ffd9a0, #ffb98a 60%, #ffe3c2);
+}
+.bday-card.bd-6::before { content: "🥳"; } .bday-card.bd-6::after { content: "⭐"; }

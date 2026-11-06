@@ -47,6 +47,8 @@ function timeLabel(s) {
   return `${hhmm(s.start_time)}–${hhmm(s.end_time)}`;
 }
 
+const BIRTHDAY_ADMIN_MIN = 9 * 60;   // админам о днях рождения — в 09:00 по Москве
+
 function fmtDate(ymd) {
   const [, m, d] = String(ymd).split("-");
   return `${d}.${m}`;
@@ -54,7 +56,7 @@ function fmtDate(ymd) {
 
 // Возвращает список сообщений, которые надо отправить прямо сейчас.
 // shifts: смены с employee_id (shift_date >= сегодня); settingsRows: строки notification_settings.
-function planMessages(now, shifts, settingsRows) {
+function planMessages(now, shifts, settingsRows, people) {
   const out = [];
   const settingsBy = new Map((settingsRows ?? []).map((s) => [s.employee_id, s]));
   const { ymd: today, minutes: nowMin } = mskNow(now);
@@ -114,6 +116,27 @@ function planMessages(now, shifts, settingsRows) {
       text: `☀️ Сегодня у вас ${list.length > 1 ? "смены" : "смена"}\n\n${lines.join("\n")}`,
     });
   }
+
+  // 3) день рождения: админам в 09:00 по Москве — кто сегодня именинник (о себе именинник-админ не получает)
+  if (inWindow(nowMin - BIRTHDAY_ADMIN_MIN)) {
+    const [ty, tm, td] = today.split("-").map(Number);
+    const leap = (ty % 4 === 0 && ty % 100 !== 0) || ty % 400 === 0;
+    const isBd = (p) => p.is_active !== false && p.birth_month && p.birth_day &&
+      ((p.birth_month === tm && p.birth_day === td) || (!leap && tm === 2 && td === 28 && p.birth_month === 2 && p.birth_day === 29));
+    const bdays = (people ?? []).filter(isBd);
+    if (bdays.length) {
+      for (const adm of (people ?? [])) {
+        if (!adm.is_admin || adm.is_active === false || !(Number(adm.tg_id) > 0)) continue;
+        const others = bdays.filter((p) => p.id !== adm.id);
+        if (!others.length) continue;
+        out.push({
+          chatId: Number(adm.tg_id),
+          kind: "birthday",
+          text: `🎂 Сегодня день рождения: ${others.map((p) => esc(p.full_name)).join(", ")}`,
+        });
+      }
+    }
+  }
   return out;
 }
 // </logic>
@@ -155,9 +178,15 @@ Deno.serve(async () => {
 
   const { data: settingsRows } = await supabase.from("notification_settings").select("*");
 
-  const messages = planMessages(now, shifts ?? [], settingsRows ?? []);
+  // люди для напоминаний о днях рождения; если поля ещё нет в базе — просто пропускаем
+  const { data: people } = await supabase
+    .from("employees")
+    .select("id, full_name, tg_id, is_admin, is_active, birth_day, birth_month")
+    .eq("is_active", true);
+
+  const messages = planMessages(now, shifts ?? [], settingsRows ?? [], people ?? []);
   let sent = 0;
-  const byKind = { reminder: 0, repeat: 0, daily: 0 };
+  const byKind = { reminder: 0, repeat: 0, daily: 0, birthday: 0 };
   for (const m of messages) {
     if (await sendMessage(m.chatId, m.text)) {
       sent++;

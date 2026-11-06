@@ -97,6 +97,7 @@ const App = (() => {
       renderRequests();
       refreshIcons();
       syncTelegramPhoto();
+      maybeShowBirthdayGreeting();
     } catch (e) {
       console.error(e);
       document.getElementById("bootScreen").innerHTML =
@@ -578,6 +579,47 @@ const App = (() => {
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
   }
 
+  // ---------------- ДНИ РОЖДЕНИЯ ----------------
+  const BIRTHDAY_GREETINGS = [
+    "{name}, с днём рождения! 🎉 Пусть смен будет ровно столько, сколько нужно, а выходные — длинными и тёплыми.",
+    "С днём рождения, {name}! 🥳 Желаем лёгких смен, благодарных клиентов и ни одной потерянной посылки.",
+    "{name}, поздравляем! 🎂 Пусть день будет лёгким, а настроение — отличным.",
+    "С днём рождения, {name}! 🎁 Побольше радости, поменьше очередей.",
+    "{name}, с праздником! 🎈 Пусть всё получается, а зарплата радует.",
+    "С днём рождения, {name}! ✨ Здоровья, хорошего настроения и приятных сюрпризов.",
+    "{name}, с днём рождения! 🍰 Пусть этот год будет лучше предыдущего.",
+    "Поздравляем, {name}! 🎊 Пусть сбываются планы и хватает на все мечты.",
+  ];
+
+  function isBirthdayOn(emp, date) {
+    if (!emp || !emp.birth_day || !emp.birth_month) return false;
+    const d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
+    if (emp.birth_day === d && emp.birth_month === m) return true;
+    // 29 февраля в невисокосный год отмечаем 28-го
+    const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    return emp.birth_day === 29 && emp.birth_month === 2 && !leap && d === 28 && m === 2;
+  }
+
+  function fmtBirthday(emp) {
+    return emp && emp.birth_day && emp.birth_month
+      ? `${String(emp.birth_day).padStart(2, "0")}.${String(emp.birth_month).padStart(2, "0")}`
+      : "";
+  }
+
+  // Именинник при открытии приложения видит поздравление (один раз в день)
+  function maybeShowBirthdayGreeting() {
+    const me = state.employee;
+    if (state.demo || !isBirthdayOn(me, new Date())) return;
+    const todayKey = new Date().toISOString().slice(0, 10);
+    try {
+      if (localStorage.getItem("bdGreeted") === todayKey) return;
+      localStorage.setItem("bdGreeted", todayKey);
+    } catch (_) { /* без хранилища покажем при каждом открытии — не страшно */ }
+    const first = String(me.full_name || "").trim().split(/\s+/)[0] || "";
+    const text = BIRTHDAY_GREETINGS[Math.floor(Math.random() * BIRTHDAY_GREETINGS.length)].replace("{name}", first);
+    openModal("С днём рождения! 🎂", `<p style="font-size:16px; line-height:1.55; text-align:center; margin:6px 0 4px;">${escapeHtml(text)}</p>`, null);
+  }
+
   function renderTodaySummary() {
     const el = document.getElementById("todaySummary");
     if (!el) return;
@@ -590,7 +632,19 @@ const App = (() => {
       .filter((s) => s.shift_date === todayStr && s.employee_id)
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-    if (todayShifts.length === 0) { el.style.display = "none"; return; }
+    const bdays = state.employees.filter((e) => e.is_active !== false && isBirthdayOn(e, today));
+    if (todayShifts.length === 0 && bdays.length === 0) { el.style.display = "none"; return; }
+    const bdayText = bdays.length
+      ? `🎂 ${bdays.map((e) => escapeHtml(e.full_name)).join(", ")} ${bdays.length > 1 ? "отмечают" : "отмечает"} день рождения 🎉`
+      : "";
+    const bdayHtml = bdayText
+      ? `<div style="margin-top:6px; font-size:13px; font-weight:600; color:var(--accent-contrast);">${bdayText}</div>`
+      : "";
+    if (todayShifts.length === 0) {
+      el.style.display = "block";
+      el.innerHTML = `<div style="font-size:13px; font-weight:600; color:var(--accent-contrast);">${bdayText}</div>`;
+      return;
+    }
 
     // по умолчанию свёрнуто, не запоминается между перезаходами
     if (typeof renderTodaySummary._collapsed === "undefined") renderTodaySummary._collapsed = true;
@@ -646,6 +700,7 @@ const App = (() => {
         </div>
         <span class="collapsible-arrow ${isCollapsed ? "collapsed" : ""}" id="todaySummaryArrow" style="font-size:12px; color:var(--accent-contrast); transition: transform 0.2s;"><i data-lucide="chevron-down"></i></span>
       </div>
+      ${bdayHtml}
       <div id="todaySummaryBody" style="margin-top:6px; ${isCollapsed ? "display:none;" : ""}">
         ${peopleRows}
       </div>
@@ -1646,8 +1701,20 @@ const App = (() => {
       <select id="f_active"><option value="true" ${emp.is_active !== false ? "selected" : ""}>Да</option><option value="false" ${emp.is_active === false ? "selected" : ""}>Нет</option></select>
       <label>Администратор</label>
       <select id="f_admin"><option value="false" ${!emp.is_admin ? "selected" : ""}>Нет</option><option value="true" ${emp.is_admin ? "selected" : ""}>Да</option></select>
+      <label>День рождения (ДД.ММ, необязательно)</label>
+      <input type="text" id="f_birthday" inputmode="numeric" maxlength="5" placeholder="25.03" value="${fmtBirthday(emp)}">
     `, async () => {
       const newName = document.getElementById("f_name").value.trim();
+      const bdRaw = document.getElementById("f_birthday").value.trim();
+      let birth_day = null, birth_month = null;
+      if (bdRaw) {
+        const bm = /^(\d{1,2})[.\/-](\d{1,2})$/.exec(bdRaw);
+        const bd = bm ? Number(bm[1]) : 0, bmo = bm ? Number(bm[2]) : 0;
+        if (!bm || bmo < 1 || bmo > 12 || bd < 1 || bd > new Date(2024, bmo, 0).getDate()) {
+          return toast("День рождения: введите дату как ДД.ММ, например 25.03");
+        }
+        birth_day = bd; birth_month = bmo;
+      }
       const newActive = document.getElementById("f_active").value === "true";
       const newAdmin = document.getElementById("f_admin").value === "true";
       if (!newName) return toast("Введите имя");
@@ -1660,6 +1727,7 @@ const App = (() => {
           position: document.getElementById("f_position").value.trim(),
           is_active: newActive,
           is_admin: newAdmin,
+          birth_day, birth_month,
         });
         toast("✅ Изменения сохранены");
         state.employees = await Api.getEmployees();

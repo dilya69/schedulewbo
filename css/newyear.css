@@ -80,17 +80,27 @@ body.theme-ny-night .header {
     background-repeat: repeat-x, no-repeat;
     background-position: 0 0, 0 0;
 }
-/* плывущие облака */
+/* плывущие облака + снегопад (день) */
 body[class*="theme-ny-"] .header::before {
     content: "";
     position: absolute;
     inset: 0 0 8px 0;
-    background-image: var(--ny-clouds);
-    background-repeat: repeat-x;
-    background-size: 300px 50px;
-    background-position: 0 8px;
-    animation: ny-drift 80s linear infinite;
+    background-repeat: repeat, repeat, repeat-x;
     pointer-events: none;
+}
+body.theme-ny-day .header::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Ccircle cx='8' cy='10' r='1.6' fill='%23fff' opacity='0.95' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='30' cy='48' r='1.1' fill='%23fff' opacity='0.8' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='52' cy='22' r='1.9' fill='%23fff' opacity='0.95' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='70' cy='70' r='1.2' fill='%23fff' opacity='0.8' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='18' cy='76' r='1.4' fill='%23fff' opacity='0.85' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='80' cy='36' r='1.0' fill='%23fff' opacity='0.75' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='44' cy='86' r='1.3' fill='%23fff' opacity='0.8' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='62' cy='4' r='1.1' fill='%23fff' opacity='0.8' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130' viewBox='0 0 130 130'%3E%3Ccircle cx='14' cy='20' r='2.3' fill='%23fff' opacity='0.95' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='60' cy='58' r='2.6' fill='%23fff' opacity='0.9' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='100' cy='14' r='2.0' fill='%23fff' opacity='0.9' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='36' cy='96' r='2.2' fill='%23fff' opacity='0.85' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='112' cy='86' r='2.4' fill='%23fff' opacity='0.9' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='84' cy='116' r='2.0' fill='%23fff' opacity='0.85' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='8' cy='60' r='1.8' fill='%23fff' opacity='0.8' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='124' cy='50' r='1.7' fill='%23fff' opacity='0.8' stroke='%238fc6ea' stroke-width='.5' stroke-opacity='.55'/%3E%3C/svg%3E"), var(--ny-clouds);
+    background-size: 90px 90px, 130px 130px, 300px 50px;
+    background-position: 0 0, 0 0, 0 8px;
+    animation: ny-fall-day 70s linear infinite;
+}
+/* ночью: ещё и Санта на санях, летит над облаками */
+body.theme-ny-night .header::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='44' viewBox='0 0 700 44'%3E%3Cg transform='translate(30 2) scale(.72)'%3E%3Cg fill='%23ffe9a0'%3E%3Ccircle cx='-12' cy='26' r='1.1' opacity='.9'/%3E%3Ccircle cx='-20' cy='22' r='.9' opacity='.7'/%3E%3Ccircle cx='-28' cy='28' r='.8' opacity='.5'/%3E%3Ccircle cx='-17' cy='31' r='.7' opacity='.6'/%3E%3C/g%3E%3Cpath d='M2 30 Q6 38 16 36 L44 36 Q50 36 50 30' fill='none' stroke='%23ffd36a' stroke-width='1.8' stroke-linecap='round'/%3E%3Cpath d='M6 30 L8 22 Q10 18 16 18 L42 18 Q48 18 50 24 L50 28 Q50 31 46 31 L10 31 Q6 31 6 30Z' fill='%23c8283d' stroke='%238e1626' stroke-width='.8'/%3E%3Ccircle cx='22' cy='12.5' r='3.4' fill='%23ffd9b5'/%3E%3Cpath d='M18.6 11.6 Q22 8 25.6 11.6 L25.6 13 Q22 15.8 18.6 13Z' fill='%23fff'/%3E%3Cpath d='M18.8 10.8 Q19 4.4 25.6 5.2 Q23.6 7 24.4 10.6Z' fill='%23d3293d'/%3E%3Ccircle cx='26' cy='5.2' r='1.5' fill='%23fff'/%3E%3Crect x='18.6' y='9.4' width='7' height='1.6' rx='.8' fill='%23fff'/%3E%3Cpath d='M18 18 Q22 14.6 26 18Z' fill='%23d3293d'/%3E%3Crect x='32' y='14' width='9' height='6' rx='1.2' fill='%232fa66a' stroke='%23fff' stroke-width='.6'/%3E%3Cpath d='M36.5 14 V20 M32 17 H41' stroke='%23ffd36a' stroke-width='.8'/%3E%3Cpath d='M50 24 L66 21 M50 26 L92 22' stroke='%23ffd36a' stroke-width='.7' fill='none'/%3E%3Cg transform='translate(56 0)'%3E%3Cellipse cx='10' cy='20' rx='8' ry='4.4' fill='%238a5a35'/%3E%3Cpath d='M16 18 L21 12' stroke='%238a5a35' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='22.4' cy='10.8' r='3.2' fill='%238a5a35'/%3E%3Ccircle cx='25.3' cy='11.6' r='1.5' fill='%23ff3b3b'/%3E%3Cpath d='M21 8 L19 3 M20 5.4 L17.4 4.6 M23 8 L24.6 2.6 M23.8 4.6 L26.4 4' stroke='%23c9a06a' stroke-width='1' stroke-linecap='round' fill='none'/%3E%3Cpath d='M5 23 L3.6 30 M8.6 24 L8 31 M13 24 L14 31 M16 22.4 L19 29' stroke='%236e4524' stroke-width='1.5' stroke-linecap='round'/%3E%3C/g%3E%3Cg transform='translate(82 0)'%3E%3Cellipse cx='10' cy='20' rx='8' ry='4.4' fill='%238a5a35'/%3E%3Cpath d='M16 18 L21 12' stroke='%238a5a35' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='22.4' cy='10.8' r='3.2' fill='%238a5a35'/%3E%3Ccircle cx='25.3' cy='11.6' r='1.5' fill='%23ff3b3b'/%3E%3Cpath d='M21 8 L19 3 M20 5.4 L17.4 4.6 M23 8 L24.6 2.6 M23.8 4.6 L26.4 4' stroke='%23c9a06a' stroke-width='1' stroke-linecap='round' fill='none'/%3E%3Cpath d='M5 23 L3.6 30 M8.6 24 L8 31 M13 24 L14 31 M16 22.4 L19 29' stroke='%236e4524' stroke-width='1.5' stroke-linecap='round'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Ccircle cx='8' cy='10' r='1.6' fill='%23fff' opacity='0.95' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='30' cy='48' r='1.1' fill='%23fff' opacity='0.8' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='52' cy='22' r='1.9' fill='%23fff' opacity='0.95' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='70' cy='70' r='1.2' fill='%23fff' opacity='0.8' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='18' cy='76' r='1.4' fill='%23fff' opacity='0.85' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='80' cy='36' r='1.0' fill='%23fff' opacity='0.75' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='44' cy='86' r='1.3' fill='%23fff' opacity='0.8' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='62' cy='4' r='1.1' fill='%23fff' opacity='0.8' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130' viewBox='0 0 130 130'%3E%3Ccircle cx='14' cy='20' r='2.3' fill='%23fff' opacity='0.95' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='60' cy='58' r='2.6' fill='%23fff' opacity='0.9' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='100' cy='14' r='2.0' fill='%23fff' opacity='0.9' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='36' cy='96' r='2.2' fill='%23fff' opacity='0.85' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='112' cy='86' r='2.4' fill='%23fff' opacity='0.9' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='84' cy='116' r='2.0' fill='%23fff' opacity='0.85' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='8' cy='60' r='1.8' fill='%23fff' opacity='0.8' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3Ccircle cx='124' cy='50' r='1.7' fill='%23fff' opacity='0.8' stroke='none' stroke-width='.5' stroke-opacity='.55'/%3E%3C/svg%3E"), var(--ny-clouds);
+    background-size: 700px 44px, 90px 90px, 130px 130px, 300px 50px;
+    background-repeat: repeat-x, repeat, repeat, repeat-x;
+    background-position: 0 2px, 0 0, 0 0, 0 8px;
+    animation: ny-fall-night 70s linear infinite;
 }
 /* облачный нижний край шапки */
 body[class*="theme-ny-"] .header::after {
@@ -103,7 +113,13 @@ body[class*="theme-ny-"] .header::after {
     background-size: 56px 18px;
     pointer-events: none;
 }
-@keyframes ny-drift { to { background-position: -300px 8px; } }
+/* всё крутится одним таймером в 70 с: размеры сдвигов кратны размеру плитки, поэтому шва нет */
+@keyframes ny-fall-day {
+    to { background-position: 90px 1260px, 130px 1820px, -2100px 8px; }
+}
+@keyframes ny-fall-night {
+    to { background-position: 2800px 6px, 90px 1260px, 130px 1820px, -2100px 8px; }
+}
 
 body[class*="theme-ny-"] .header > * { position: relative; z-index: 1; }
 

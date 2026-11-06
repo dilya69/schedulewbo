@@ -1,0 +1,468 @@
+/* ============================================================
+   НОВОГОДНИЕ ТЕМЫ: «Новый год · день» (ny-day) и «Новый год · ночь» (ny-night)
+   Файл сгенерирован из шаблона (картинки встроены как SVG), подключается после styles.css.
+   Все правила привязаны к body.theme-ny-*, остальные темы не затрагиваются.
+   ============================================================ */
+
+/* ---------- палитры ---------- */
+body.theme-ny-day {
+    --bg: #dceffb;
+    --card-bg: #ffffff;
+    --text: #17304f;
+    --text-secondary: #566f8e;
+    --border: #cfe3f2;
+    --card-secondary: #eef7fd;
+    --shadow: 0 10px 40px rgba(60, 120, 180, 0.22);
+    --nav-bg: #f6fbff;
+    --input-bg: #f4faff;
+    --input-border: #b3d3e8;
+    --profile-bg: #fff4f1;
+    --accent: #d3293d;
+    --accent-contrast: #ffffff;
+    --accent-rgb: 211, 41, 61;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.08);
+    --calendar-bg-ozon: rgba(211, 41, 61, 0.08);
+    --ny-red: linear-gradient(135deg, #dc3045, #b3203a);
+    --ny-green: linear-gradient(135deg, #2a9d62, #17724a);
+    --ny-sky: linear-gradient(180deg, #74c4f3 0%, #b6e1fa 62%, #e4f4fe 100%);
+    --ny-puffs: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='18' viewBox='0 0 56 18'%3E%3Cpath d='M0 18 V11 C0 7 4 5 8 6 C10 1 18 0 22 4 C26 0 34 0 36 5 C40 2 47 3 48 7 C53 6 56 8 56 11 V18 Z' fill='%23ffffff'/%3E%3C/svg%3E");
+    --ny-clouds: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='50' viewBox='0 0 300 50'%3E%3Cg fill='%23fff' opacity='0.92'%3E%3Ccircle cx='33' cy='24' r='9'/%3E%3Ccircle cx='48' cy='18' r='12.5'/%3E%3Ccircle cx='63' cy='23' r='10'/%3E%3Ccircle cx='76' cy='26' r='7'/%3E%3Crect x='24' y='24' width='58' height='9' rx='4.5'/%3E%3C/g%3E%3Cg fill='%23fff' opacity='0.7'%3E%3Ccircle cx='154.5' cy='32.8' r='6.3'/%3E%3Ccircle cx='165.0' cy='28.6' r='8.75'/%3E%3Ccircle cx='175.5' cy='32.1' r='7.0'/%3E%3Ccircle cx='184.6' cy='34.2' r='4.8999999999999995'/%3E%3Crect x='148.2' y='32.8' width='40.599999999999994' height='6.3' rx='3.15'/%3E%3C/g%3E%3Cg fill='%23fff' opacity='0.85'%3E%3Ccircle cx='237.25' cy='20.4' r='7.6499999999999995'/%3E%3Ccircle cx='250.0' cy='15.3' r='10.625'/%3E%3Ccircle cx='262.75' cy='19.55' r='8.5'/%3E%3Ccircle cx='273.8' cy='22.1' r='5.95'/%3E%3Crect x='229.6' y='20.4' width='49.3' height='7.6499999999999995' rx='3.8249999999999997'/%3E%3C/g%3E%3C/svg%3E");
+    --ny-scene: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='42' viewBox='0 0 240 42'%3E%3Cg transform='translate(30 31) scale(1)'%3E%3Crect x='-2' y='-1' width='4' height='6' fill='%236b4423'/%3E%3Cpolygon points='0,-26 -8,-14 8,-14' fill='%232d8a57'/%3E%3Cpolygon points='0,-19 -10,-6 10,-6' fill='%232d8a57'/%3E%3Cpolygon points='0,-11 -12,3 12,3' fill='%232d8a57'/%3E%3Cpath d='M0 -26 L-3.2 -21.4 L-1 -22 L0.8 -20.8 L2.6 -22 L3.2 -21.4Z M-4.2 -14 L-8 -14 L-6 -17 Z' fill='%23ffffff'/%3E%3Cpath d='M0 -19 L-3.6 -14.2 L-1.4 -14.8 L.6 -13.4 L2.6 -14.8 L3.6 -14.2Z' fill='%23ffffff'/%3E%3Ccircle cx='-3' cy='-8' r='1.3' fill='%23ff4d5e'/%3E%3Ccircle cx='4' cy='-4' r='1.3' fill='%23ffd24a'/%3E%3Ccircle cx='-6' cy='0' r='1.3' fill='%234db8ff'/%3E%3Cpath d='M0 -30 L1 -27.4 L3.6 -27 L1.7 -25.4 L2.2 -22.8 L0 -24.2 L-2.2 -22.8 L-1.7 -25.4 L-3.6 -27 L-1 -27.4Z' fill='%23ffcc33'/%3E%3C/g%3E%3Cg transform='translate(72 30) scale(0.62)'%3E%3Crect x='-2' y='-1' width='4' height='6' fill='%236b4423'/%3E%3Cpolygon points='0,-26 -8,-14 8,-14' fill='%232d8a57'/%3E%3Cpolygon points='0,-19 -10,-6 10,-6' fill='%232d8a57'/%3E%3Cpolygon points='0,-11 -12,3 12,3' fill='%232d8a57'/%3E%3Cpath d='M0 -26 L-3.2 -21.4 L-1 -22 L0.8 -20.8 L2.6 -22 L3.2 -21.4Z M-4.2 -14 L-8 -14 L-6 -17 Z' fill='%23ffffff'/%3E%3Cpath d='M0 -19 L-3.6 -14.2 L-1.4 -14.8 L.6 -13.4 L2.6 -14.8 L3.6 -14.2Z' fill='%23ffffff'/%3E%3Ccircle cx='-3' cy='-8' r='1.3' fill='%23ff4d5e'/%3E%3Ccircle cx='4' cy='-4' r='1.3' fill='%23ffd24a'/%3E%3Ccircle cx='-6' cy='0' r='1.3' fill='%234db8ff'/%3E%3Cpath d='M0 -30 L1 -27.4 L3.6 -27 L1.7 -25.4 L2.2 -22.8 L0 -24.2 L-2.2 -22.8 L-1.7 -25.4 L-3.6 -27 L-1 -27.4Z' fill='%23ffcc33'/%3E%3C/g%3E%3Cg transform='translate(142 32)' stroke='%23a9c4d8' stroke-width='.9'%3E%3Ccircle cx='0' cy='-6' r='7' fill='%23ffffff'/%3E%3Ccircle cx='0' cy='-16' r='5.2' fill='%23ffffff'/%3E%3Ccircle cx='0' cy='-24' r='3.9' fill='%23ffffff'/%3E%3Crect x='-3.6' y='-33' width='7.2' height='6' rx='.6' fill='%232b2d3a' stroke='none'/%3E%3Crect x='-5.4' y='-28.2' width='10.8' height='1.8' rx='.6' fill='%232b2d3a' stroke='none'/%3E%3Ccircle cx='-1.3' cy='-24.6' r='.6' fill='%23222' stroke='none'/%3E%3Ccircle cx='1.3' cy='-24.6' r='.6' fill='%23222' stroke='none'/%3E%3Cpath d='M0 -23.2 L4.6 -22.4 L0 -21.6Z' fill='%23ff8a1f' stroke='none'/%3E%3Cpath d='M-4 -19.4 Q0 -17.6 4 -19.4 L4 -17.8 Q0 -16.2 -4 -17.8Z' fill='%23d3293d' stroke='none'/%3E%3Ccircle cx='0' cy='-13' r='.8' fill='%23222' stroke='none'/%3E%3Ccircle cx='0' cy='-9.6' r='.8' fill='%23222' stroke='none'/%3E%3Cpath d='M-5 -15 L-11 -19 M5 -15 L11 -19' stroke='%236b4423' stroke-width='1.2' stroke-linecap='round' fill='none'/%3E%3C/g%3E%3Cg transform='translate(206 31) scale(0.85)'%3E%3Crect x='-2' y='-1' width='4' height='6' fill='%236b4423'/%3E%3Cpolygon points='0,-26 -8,-14 8,-14' fill='%232d8a57'/%3E%3Cpolygon points='0,-19 -10,-6 10,-6' fill='%232d8a57'/%3E%3Cpolygon points='0,-11 -12,3 12,3' fill='%232d8a57'/%3E%3Cpath d='M0 -26 L-3.2 -21.4 L-1 -22 L0.8 -20.8 L2.6 -22 L3.2 -21.4Z M-4.2 -14 L-8 -14 L-6 -17 Z' fill='%23ffffff'/%3E%3Cpath d='M0 -19 L-3.6 -14.2 L-1.4 -14.8 L.6 -13.4 L2.6 -14.8 L3.6 -14.2Z' fill='%23ffffff'/%3E%3Ccircle cx='-3' cy='-8' r='1.3' fill='%23ff4d5e'/%3E%3Ccircle cx='4' cy='-4' r='1.3' fill='%23ffd24a'/%3E%3Ccircle cx='-6' cy='0' r='1.3' fill='%234db8ff'/%3E%3Cpath d='M0 -30 L1 -27.4 L3.6 -27 L1.7 -25.4 L2.2 -22.8 L0 -24.2 L-2.2 -22.8 L-1.7 -25.4 L-3.6 -27 L-1 -27.4Z' fill='%23ffcc33'/%3E%3C/g%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffffff'/%3E%3Cstop offset='1' stop-color='%23e3f1fb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M-10 42 V31 H0 C25 31 42 25 72 27 S132 32 172 28 S214 31 240 31 H250 V42 Z' fill='url(%23g)' stroke='%23bcdcf0' stroke-width='1'/%3E%3C/svg%3E");
+    --ny-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E %3Cg fill='none' stroke='%23d3293d' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M14 7.5V20.5 M8.4 10.7L19.6 17.3 M8.4 17.3L19.6 10.7'/%3E%3C/g%3E %3Cpath d='M44 33 L48 39 L44 45 L40 39 Z' fill='%232a9d62'/%3E %3Ccircle cx='46' cy='11' r='2.2' fill='%23e0a91d'/%3E%3Ccircle cx='12' cy='44' r='2.2' fill='%23e0a91d'/%3E %3Cg fill='none' stroke='%23d3293d' stroke-width='1.2' stroke-linecap='round' opacity='.7'%3E%3Cpath d='M30 26V32 M27.4 27.5L32.6 30.5 M27.4 30.5L32.6 27.5'/%3E%3C/g%3E %3C/svg%3E");
+    --ny-paper-bg: #fff3ef;
+    --ny-title: #17304f;
+    --ny-sub: #234a73;
+}
+
+body.theme-ny-night {
+    --bg: #060b1d;
+    --card-bg: #0f1736;
+    --text: #eaf1ff;
+    --text-secondary: #9db0d6;
+    --border: #25335a;
+    --card-secondary: #18224b;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.65);
+    --nav-bg: #131c42;
+    --input-bg: #18224b;
+    --input-border: #364a82;
+    --profile-bg: #18224b;
+    --accent: #ff7383;
+    --accent-contrast: #1a0a10;
+    --accent-rgb: 255, 115, 131;
+    --calendar-bg-wb: rgba(142, 68, 173, 0.18);
+    --calendar-bg-ozon: rgba(255, 115, 131, 0.12);
+    --ny-red: linear-gradient(135deg, #d12f45, #9d1d35);
+    --ny-green: linear-gradient(135deg, #218a58, #136042);
+    --ny-sky: linear-gradient(180deg, #060b24 0%, #121c4a 55%, #24336f 100%);
+    --ny-puffs: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='18' viewBox='0 0 56 18'%3E%3Cpath d='M0 18 V11 C0 7 4 5 8 6 C10 1 18 0 22 4 C26 0 34 0 36 5 C40 2 47 3 48 7 C53 6 56 8 56 11 V18 Z' fill='%230f1736'/%3E%3C/svg%3E");
+    --ny-clouds: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='50' viewBox='0 0 300 50'%3E%3Cg fill='%236c80c8' opacity='0.38'%3E%3Ccircle cx='33' cy='24' r='9'/%3E%3Ccircle cx='48' cy='18' r='12.5'/%3E%3Ccircle cx='63' cy='23' r='10'/%3E%3Ccircle cx='76' cy='26' r='7'/%3E%3Crect x='24' y='24' width='58' height='9' rx='4.5'/%3E%3C/g%3E%3Cg fill='%236c80c8' opacity='0.3'%3E%3Ccircle cx='154.5' cy='32.8' r='6.3'/%3E%3Ccircle cx='165.0' cy='28.6' r='8.75'/%3E%3Ccircle cx='175.5' cy='32.1' r='7.0'/%3E%3Ccircle cx='184.6' cy='34.2' r='4.8999999999999995'/%3E%3Crect x='148.2' y='32.8' width='40.599999999999994' height='6.3' rx='3.15'/%3E%3C/g%3E%3Cg fill='%236c80c8' opacity='0.34'%3E%3Ccircle cx='237.25' cy='20.4' r='7.6499999999999995'/%3E%3Ccircle cx='250.0' cy='15.3' r='10.625'/%3E%3Ccircle cx='262.75' cy='19.55' r='8.5'/%3E%3Ccircle cx='273.8' cy='22.1' r='5.95'/%3E%3Crect x='229.6' y='20.4' width='49.3' height='7.6499999999999995' rx='3.8249999999999997'/%3E%3C/g%3E%3C/svg%3E");
+    --ny-scene: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='42' viewBox='0 0 240 42'%3E%3Cg transform='translate(30 31) scale(1)'%3E%3Crect x='-2' y='-1' width='4' height='6' fill='%236b4423'/%3E%3Cpolygon points='0,-26 -8,-14 8,-14' fill='%231f6e4c'/%3E%3Cpolygon points='0,-19 -10,-6 10,-6' fill='%231f6e4c'/%3E%3Cpolygon points='0,-11 -12,3 12,3' fill='%231f6e4c'/%3E%3Cpath d='M0 -26 L-3.2 -21.4 L-1 -22 L0.8 -20.8 L2.6 -22 L3.2 -21.4Z M-4.2 -14 L-8 -14 L-6 -17 Z' fill='%23eef3ff'/%3E%3Cpath d='M0 -19 L-3.6 -14.2 L-1.4 -14.8 L.6 -13.4 L2.6 -14.8 L3.6 -14.2Z' fill='%23eef3ff'/%3E%3Ccircle cx='-3' cy='-8' r='1.3' fill='%23ff4d5e'/%3E%3Ccircle cx='4' cy='-4' r='1.3' fill='%23ffd24a'/%3E%3Ccircle cx='-6' cy='0' r='1.3' fill='%234db8ff'/%3E%3Cpath d='M0 -30 L1 -27.4 L3.6 -27 L1.7 -25.4 L2.2 -22.8 L0 -24.2 L-2.2 -22.8 L-1.7 -25.4 L-3.6 -27 L-1 -27.4Z' fill='%23ffcc33'/%3E%3C/g%3E%3Cg transform='translate(72 30) scale(0.62)'%3E%3Crect x='-2' y='-1' width='4' height='6' fill='%236b4423'/%3E%3Cpolygon points='0,-26 -8,-14 8,-14' fill='%231f6e4c'/%3E%3Cpolygon points='0,-19 -10,-6 10,-6' fill='%231f6e4c'/%3E%3Cpolygon points='0,-11 -12,3 12,3' fill='%231f6e4c'/%3E%3Cpath d='M0 -26 L-3.2 -21.4 L-1 -22 L0.8 -20.8 L2.6 -22 L3.2 -21.4Z M-4.2 -14 L-8 -14 L-6 -17 Z' fill='%23eef3ff'/%3E%3Cpath d='M0 -19 L-3.6 -14.2 L-1.4 -14.8 L.6 -13.4 L2.6 -14.8 L3.6 -14.2Z' fill='%23eef3ff'/%3E%3Ccircle cx='-3' cy='-8' r='1.3' fill='%23ff4d5e'/%3E%3Ccircle cx='4' cy='-4' r='1.3' fill='%23ffd24a'/%3E%3Ccircle cx='-6' cy='0' r='1.3' fill='%234db8ff'/%3E%3Cpath d='M0 -30 L1 -27.4 L3.6 -27 L1.7 -25.4 L2.2 -22.8 L0 -24.2 L-2.2 -22.8 L-1.7 -25.4 L-3.6 -27 L-1 -27.4Z' fill='%23ffcc33'/%3E%3C/g%3E%3Cg transform='translate(142 32)' stroke='%238396cc' stroke-width='.9'%3E%3Ccircle cx='0' cy='-6' r='7' fill='%23f2f6ff'/%3E%3Ccircle cx='0' cy='-16' r='5.2' fill='%23f2f6ff'/%3E%3Ccircle cx='0' cy='-24' r='3.9' fill='%23f2f6ff'/%3E%3Crect x='-3.6' y='-33' width='7.2' height='6' rx='.6' fill='%232b2d3a' stroke='none'/%3E%3Crect x='-5.4' y='-28.2' width='10.8' height='1.8' rx='.6' fill='%232b2d3a' stroke='none'/%3E%3Ccircle cx='-1.3' cy='-24.6' r='.6' fill='%23222' stroke='none'/%3E%3Ccircle cx='1.3' cy='-24.6' r='.6' fill='%23222' stroke='none'/%3E%3Cpath d='M0 -23.2 L4.6 -22.4 L0 -21.6Z' fill='%23ff8a1f' stroke='none'/%3E%3Cpath d='M-4 -19.4 Q0 -17.6 4 -19.4 L4 -17.8 Q0 -16.2 -4 -17.8Z' fill='%23d3293d' stroke='none'/%3E%3Ccircle cx='0' cy='-13' r='.8' fill='%23222' stroke='none'/%3E%3Ccircle cx='0' cy='-9.6' r='.8' fill='%23222' stroke='none'/%3E%3Cpath d='M-5 -15 L-11 -19 M5 -15 L11 -19' stroke='%236b4423' stroke-width='1.2' stroke-linecap='round' fill='none'/%3E%3C/g%3E%3Cg transform='translate(206 31) scale(0.85)'%3E%3Crect x='-2' y='-1' width='4' height='6' fill='%236b4423'/%3E%3Cpolygon points='0,-26 -8,-14 8,-14' fill='%231f6e4c'/%3E%3Cpolygon points='0,-19 -10,-6 10,-6' fill='%231f6e4c'/%3E%3Cpolygon points='0,-11 -12,3 12,3' fill='%231f6e4c'/%3E%3Cpath d='M0 -26 L-3.2 -21.4 L-1 -22 L0.8 -20.8 L2.6 -22 L3.2 -21.4Z M-4.2 -14 L-8 -14 L-6 -17 Z' fill='%23eef3ff'/%3E%3Cpath d='M0 -19 L-3.6 -14.2 L-1.4 -14.8 L.6 -13.4 L2.6 -14.8 L3.6 -14.2Z' fill='%23eef3ff'/%3E%3Ccircle cx='-3' cy='-8' r='1.3' fill='%23ff4d5e'/%3E%3Ccircle cx='4' cy='-4' r='1.3' fill='%23ffd24a'/%3E%3Ccircle cx='-6' cy='0' r='1.3' fill='%234db8ff'/%3E%3Cpath d='M0 -30 L1 -27.4 L3.6 -27 L1.7 -25.4 L2.2 -22.8 L0 -24.2 L-2.2 -22.8 L-1.7 -25.4 L-3.6 -27 L-1 -27.4Z' fill='%23ffcc33'/%3E%3C/g%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23dfe9ff'/%3E%3Cstop offset='1' stop-color='%23b9c9f0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M-10 42 V31 H0 C25 31 42 25 72 27 S132 32 172 28 S214 31 240 31 H250 V42 Z' fill='url(%23g)' stroke='%238aa0d8' stroke-width='1'/%3E%3C/svg%3E");
+    --ny-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E %3Cg fill='none' stroke='%23a9c8ff' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M14 7.5V20.5 M8.4 10.7L19.6 17.3 M8.4 17.3L19.6 10.7'/%3E%3C/g%3E %3Cpath d='M44 33 L48 39 L44 45 L40 39 Z' fill='%23ff7a88'/%3E %3Ccircle cx='46' cy='11' r='2.2' fill='%23ffd36a'/%3E%3Ccircle cx='12' cy='44' r='2.2' fill='%23ffd36a'/%3E %3Cg fill='none' stroke='%23a9c8ff' stroke-width='1.2' stroke-linecap='round' opacity='.7'%3E%3Cpath d='M30 26V32 M27.4 27.5L32.6 30.5 M27.4 30.5L32.6 27.5'/%3E%3C/g%3E %3C/svg%3E");
+    --ny-paper-bg: #1a2552;
+    --ny-title: #ffffff;
+    --ny-sub: #c3d1f3;
+}
+
+/* ============================================================
+   ШАПКА: небо, облака, надписи
+   ============================================================ */
+body[class*="theme-ny-"] .header {
+    position: relative;
+    border-radius: 0;
+    box-shadow: none;
+    margin-bottom: 4px;
+    padding: 14px 16px 24px;
+    background: var(--ny-sky);
+}
+body.theme-ny-night .header {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='70' viewBox='0 0 170 70'%3E%3Cg fill='%23fff'%3E%3Ccircle cx='12' cy='14' r='0.9' opacity='0.9'/%3E%3Ccircle cx='40' cy='40' r='0.7' opacity='0.7'/%3E%3Ccircle cx='63' cy='9' r='1' opacity='0.85'/%3E%3Ccircle cx='92' cy='30' r='0.8' opacity='0.8'/%3E%3Ccircle cx='118' cy='12' r='0.9' opacity='0.9'/%3E%3Ccircle cx='140' cy='48' r='0.7' opacity='0.7'/%3E%3Ccircle cx='158' cy='22' r='1' opacity='0.8'/%3E%3Ccircle cx='24' cy='60' r='0.7' opacity='0.6'/%3E%3Ccircle cx='78' cy='58' r='0.8' opacity='0.7'/%3E%3Ccircle cx='105' cy='64' r='0.7' opacity='0.6'/%3E%3C/g%3E%3Cpath d='M30 22.6 L30.952 25.048 L33.4 26 L30.952 26.952 L30 29.4 L29.048 26.952 L26.6 26 L29.048 25.048 Z' fill='%23ffe9a0'/%3E%3Cpath d='M104 37 L104.84 39.16 L107 40 L104.84 40.84 L104 43 L103.16 40.84 L101 40 L103.16 39.16 Z' fill='%23fff6d0'/%3E%3Cpath d='M148 6.4 L149.008 8.991999999999999 L151.6 10 L149.008 11.008000000000001 L148 13.6 L146.992 11.008000000000001 L144.4 10 L146.992 8.991999999999999 Z' fill='%23ffe9a0'/%3E%3Cpath d='M58 47.4 L58.728 49.272 L60.6 50 L58.728 50.728 L58 52.6 L57.272 50.728 L55.4 50 L57.272 49.272 Z' fill='%23fff'/%3E%3C/svg%3E"), var(--ny-sky);
+    background-size: 170px 70px, auto;
+    background-repeat: repeat-x, no-repeat;
+    background-position: 0 0, 0 0;
+}
+/* плывущие облака */
+body[class*="theme-ny-"] .header::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 8px 0;
+    background-image: var(--ny-clouds);
+    background-repeat: repeat-x;
+    background-size: 300px 50px;
+    background-position: 0 8px;
+    animation: ny-drift 80s linear infinite;
+    pointer-events: none;
+}
+/* облачный нижний край шапки */
+body[class*="theme-ny-"] .header::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 18px;
+    background-image: var(--ny-puffs);
+    background-repeat: repeat-x;
+    background-size: 56px 18px;
+    pointer-events: none;
+}
+@keyframes ny-drift { to { background-position: -300px 8px; } }
+
+body[class*="theme-ny-"] .header > * { position: relative; z-index: 1; }
+
+/* новогодний шрифт */
+body[class*="theme-ny-"] .header-title {
+    font-family: "Mountains of Christmas", "Lobster", "Segoe Script", cursive;
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--ny-title);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+body.theme-ny-night .header-title { text-shadow: 0 0 10px rgba(160, 190, 255, 0.55); }
+body[class*="theme-ny-"] .header-title .small {
+    font-family: "Lobster", "Segoe Script", cursive;
+    font-size: 12.5px;
+    font-weight: 400;
+    letter-spacing: 0.4px;
+    text-transform: none;
+    color: var(--ny-sub);
+    margin-top: 0;
+}
+
+/* логотип + шапка Деда Мороза */
+body[class*="theme-ny-"] .header-logo { overflow: visible; background: #fff; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); }
+body.theme-ny-night .header-logo { background: #18224b; border-color: #c9d6ff; }
+body[class*="theme-ny-"] .header-logo img { border-radius: 50%; }
+body[class*="theme-ny-"] .header-logo::after {
+    content: "";
+    position: absolute;
+    top: -15px; left: -9px;
+    width: 30px; height: 27px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='36' viewBox='0 0 40 36'%3E %3Cpath d='M6 27 C6.5 14 14 5.5 25 5.5 C30 5.5 33.5 8.5 35 12 C30.5 10.5 26.5 12.5 24.5 17 C23 21 22.8 24 23.5 27 Z' fill='%23d3293d' stroke='%239f1a2d' stroke-width='.8'/%3E %3Crect x='2.5' y='24' width='34' height='9' rx='4.5' fill='%23fff' stroke='%23d7dde8' stroke-width='.9'/%3E %3Ccircle cx='35.5' cy='12.5' r='4.6' fill='%23fff' stroke='%23d7dde8' stroke-width='.9'/%3E %3C/svg%3E") center/contain no-repeat;
+    transform: rotate(-16deg);
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* ПВЗ / АДМИН — солнце (день) и луна (ночь) */
+body[class*="theme-ny-"] .header-badge {
+    position: relative;
+    isolation: isolate;
+    width: 52px; height: 52px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+    font-family: "Lobster", "Segoe Script", cursive;
+    font-size: 11.5px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+}
+body[class*="theme-ny-"] .header-badge svg { display: none; }
+body[class*="theme-ny-"] .header-badge::before { content: ""; position: absolute; border-radius: 50%; z-index: -1; pointer-events: none; }
+
+body.theme-ny-day .header-badge {
+    color: #5b2a00;
+    background: radial-gradient(circle at 36% 30%, #fffbc2 0%, #ffe066 42%, #ffb627 100%);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55), 0 0 18px 4px rgba(255, 196, 40, 0.65);
+}
+body.theme-ny-day .header-badge::before {
+    inset: -12px;
+    background: repeating-conic-gradient(from 0deg, #ffc531 0deg 10deg, transparent 10deg 22.5deg);
+    -webkit-mask: radial-gradient(circle, transparent 0 52%, #000 54% 100%);
+            mask: radial-gradient(circle, transparent 0 52%, #000 54% 100%);
+    animation: ny-spin 40s linear infinite;
+}
+body.theme-ny-day .header-badge.admin-on {
+    color: #4a1500;
+    background: radial-gradient(circle at 36% 30%, #ffe3b0 0%, #ffa94d 45%, #ff7a1a 100%);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55), 0 0 18px 4px rgba(255, 130, 30, 0.6);
+}
+body.theme-ny-day .header-badge.admin-on::before {
+    background: repeating-conic-gradient(from 0deg, #ff9a2e 0deg 10deg, transparent 10deg 22.5deg);
+}
+@keyframes ny-spin { to { transform: rotate(360deg); } }
+
+body.theme-ny-night .header-badge {
+    color: #1d2550;
+    background:
+        radial-gradient(circle at 28% 38%, rgba(190, 182, 140, 0.55) 0 3px, transparent 3.6px),
+        radial-gradient(circle at 66% 66%, rgba(190, 182, 140, 0.5) 0 4.2px, transparent 4.8px),
+        radial-gradient(circle at 72% 24%, rgba(190, 182, 140, 0.45) 0 2.2px, transparent 2.8px),
+        radial-gradient(circle at 36% 30%, #fffef2 0%, #f1ebc8 60%, #d9d09c 100%);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25), 0 0 20px 5px rgba(255, 245, 190, 0.45);
+}
+body.theme-ny-night .header-badge::before {
+    inset: -14px;
+    background: radial-gradient(circle, rgba(255, 246, 200, 0.28) 38%, transparent 70%);
+}
+body.theme-ny-night .header-badge.admin-on {
+    color: #14204a;
+    background:
+        radial-gradient(circle at 28% 38%, rgba(120, 140, 190, 0.5) 0 3px, transparent 3.6px),
+        radial-gradient(circle at 66% 66%, rgba(120, 140, 190, 0.45) 0 4.2px, transparent 4.8px),
+        radial-gradient(circle at 36% 30%, #f4f8ff 0%, #cfdcf7 60%, #a9bde8 100%);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25), 0 0 20px 5px rgba(150, 190, 255, 0.5);
+}
+
+/* ============================================================
+   ОБЩЕЕ: контент, снег внизу, нижнее меню
+   ============================================================ */
+body[class*="theme-ny-"] .main-content { padding-top: 4px; padding-bottom: 28px; }
+
+body[class*="theme-ny-"] .bottom-nav {
+    position: relative;
+    border-top: 0;
+    box-shadow: 0 -1px 0 var(--border);
+}
+body[class*="theme-ny-"] .bottom-nav::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 100%;
+    height: 37px;
+    margin-bottom: -1px;
+    background: var(--ny-scene) repeat-x left bottom / 210px 37px;
+    pointer-events: none;
+    z-index: 3;
+}
+body[class*="theme-ny-"] .nav-item.active {
+    color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.12);
+}
+body[class*="theme-ny-"] .nav-item .icon { position: relative; }
+body[class*="theme-ny-"] .nav-item.active .icon::after {
+    content: "";
+    position: absolute;
+    top: -4px; left: -7px;
+    width: 10px; height: 10px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 .6 L7.6 4.3 L11.5 4.6 L8.5 7.2 L9.4 11 L6 9 L2.6 11 L3.5 7.2 L.5 4.6 L4.4 4.3 Z' fill='%23ffcc33' stroke='%23d99a00' stroke-width='.5' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+    animation: ny-twinkle 2.2s ease-in-out infinite;
+}
+@keyframes ny-twinkle { 0%, 100% { transform: scale(1) rotate(0); opacity: 1; } 50% { transform: scale(0.65) rotate(18deg); opacity: 0.6; } }
+
+/* иконки «человек» — в шапке Деда Мороза (в Lucide такой нет, нарисована своя) */
+body[class*="theme-ny-"] svg.lucide-user > *,
+body[class*="theme-ny-"] svg.lucide-users > * { display: none; }
+body[class*="theme-ny-"] svg.lucide-user {
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12.6' r='2.9'/%3E%3Cpath d='M5.6 21 C5.6 17.4 8.4 15.8 12 15.8 S18.4 17.4 18.4 21'/%3E%3C/g%3E%3Cg transform='translate(0 0)' fill='%23000'%3E%3Cpath d='M7.4 8.2 L12 2.8 Q14.8 2.2 16.6 4.4 Q14.6 4.2 13.8 6.4 L16.6 8.2 Z'/%3E%3Crect x='6.6' y='7.2' width='10.8' height='2.2' rx='1.1'/%3E%3Ccircle cx='17' cy='4.5' r='1.7'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12.6' r='2.9'/%3E%3Cpath d='M5.6 21 C5.6 17.4 8.4 15.8 12 15.8 S18.4 17.4 18.4 21'/%3E%3C/g%3E%3Cg transform='translate(0 0)' fill='%23000'%3E%3Cpath d='M7.4 8.2 L12 2.8 Q14.8 2.2 16.6 4.4 Q14.6 4.2 13.8 6.4 L16.6 8.2 Z'/%3E%3Crect x='6.6' y='7.2' width='10.8' height='2.2' rx='1.1'/%3E%3Ccircle cx='17' cy='4.5' r='1.7'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat;
+}
+body[class*="theme-ny-"] svg.lucide-users {
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='9' cy='12.8' r='2.7'/%3E%3Cpath d='M3.2 21 C3.2 17.6 5.6 16 9 16 S14.8 17.6 14.8 21'/%3E%3Cpath d='M16.2 11 A2.6 2.6 0 1 0 16.2 5.8 M19.6 20.6 C19.6 18 18.4 16.4 16.6 15.6'/%3E%3C/g%3E%3Cg transform='translate(-3 0)' fill='%23000'%3E%3Cpath d='M7.4 8.2 L12 2.8 Q14.8 2.2 16.6 4.4 Q14.6 4.2 13.8 6.4 L16.6 8.2 Z'/%3E%3Crect x='6.6' y='7.2' width='10.8' height='2.2' rx='1.1'/%3E%3Ccircle cx='17' cy='4.5' r='1.7'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='9' cy='12.8' r='2.7'/%3E%3Cpath d='M3.2 21 C3.2 17.6 5.6 16 9 16 S14.8 17.6 14.8 21'/%3E%3Cpath d='M16.2 11 A2.6 2.6 0 1 0 16.2 5.8 M19.6 20.6 C19.6 18 18.4 16.4 16.6 15.6'/%3E%3C/g%3E%3Cg transform='translate(-3 0)' fill='%23000'%3E%3Cpath d='M7.4 8.2 L12 2.8 Q14.8 2.2 16.6 4.4 Q14.6 4.2 13.8 6.4 L16.6 8.2 Z'/%3E%3Crect x='6.6' y='7.2' width='10.8' height='2.2' rx='1.1'/%3E%3Ccircle cx='17' cy='4.5' r='1.7'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat;
+}
+
+/* ============================================================
+   КАЛЕНДАРЬ: навигация по месяцам, гирлянда, носок на сегодня
+   ============================================================ */
+body[class*="theme-ny-"] .month-nav {
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--card-secondary), var(--card-bg));
+}
+body[class*="theme-ny-"] .month-nav .month-label {
+    font-family: "Lobster", "Segoe Script", cursive;
+    font-weight: 400;
+    font-size: 18px;
+    letter-spacing: 0.3px;
+}
+body[class*="theme-ny-"] .month-nav .month-label::before,
+body[class*="theme-ny-"] .month-nav .month-label::after {
+    content: "\2744\FE0E";
+    font-family: sans-serif;
+    font-size: 12px;
+    margin: 0 7px;
+    vertical-align: 1px;
+    color: var(--accent);
+}
+body.theme-ny-day .month-nav .month-label::before, body.theme-ny-day .month-nav .month-label::after { color: #3b9ad9; }
+body.theme-ny-night .month-nav .month-label::before, body.theme-ny-night .month-nav .month-label::after { color: #a9c8ff; }
+
+/* гирлянда над днями недели, лампочки перемигиваются */
+body[class*="theme-ny-"] .weekdays { position: relative; padding-top: 16px; }
+body[class*="theme-ny-"] .weekdays::before,
+body[class*="theme-ny-"] .weekdays::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: 16px;
+    background-repeat: repeat-x;
+    background-size: 56px 16px;
+    pointer-events: none;
+}
+body[class*="theme-ny-"] .weekdays::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='16' viewBox='0 0 56 16'%3E%3Cpath d='M0 2 Q14 14 28 2 Q42 14 56 2' fill='none' stroke='%231f5d3b' stroke-width='1.5'/%3E%3Crect x='5.8' y='5.4' width='2.4' height='3' rx='.6' fill='%232b3a33'/%3E%3Cellipse cx='7' cy='11.4' rx='2.7' ry='3.5' fill='%23ff3b4e'/%3E%3Cellipse cx='6.2' cy='10.2' rx='.8' ry='1.1' fill='%23fff' opacity='.7'/%3E%3Crect x='33.8' y='5.4' width='2.4' height='3' rx='.6' fill='%232b3a33'/%3E%3Cellipse cx='35' cy='11.4' rx='2.7' ry='3.5' fill='%233da5ff'/%3E%3Cellipse cx='34.2' cy='10.2' rx='.8' ry='1.1' fill='%23fff' opacity='.7'/%3E%3C/svg%3E"); animation: ny-blink 1.8s ease-in-out infinite; }
+body[class*="theme-ny-"] .weekdays::after  { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='16' viewBox='0 0 56 16'%3E%3Crect x='19.8' y='5.4' width='2.4' height='3' rx='.6' fill='%232b3a33'/%3E%3Cellipse cx='21' cy='11.4' rx='2.7' ry='3.5' fill='%23ffc93c'/%3E%3Cellipse cx='20.2' cy='10.2' rx='.8' ry='1.1' fill='%23fff' opacity='.7'/%3E%3Crect x='47.8' y='5.4' width='2.4' height='3' rx='.6' fill='%232b3a33'/%3E%3Cellipse cx='49' cy='11.4' rx='2.7' ry='3.5' fill='%2338d27a'/%3E%3Cellipse cx='48.2' cy='10.2' rx='.8' ry='1.1' fill='%23fff' opacity='.7'/%3E%3C/svg%3E"); animation: ny-blink 1.8s ease-in-out infinite reverse; }
+@keyframes ny-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* сегодняшний день — с новогодним носком */
+body[class*="theme-ny-"] .day-cell.today { position: relative; }
+body[class*="theme-ny-"] .day-cell.today::after {
+    content: "";
+    position: absolute;
+    top: 1px; right: 1px;
+    width: 12px; height: 16px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='26' viewBox='0 0 20 26'%3E %3Cpath d='M5 2 H15 V14 L18.6 18.6 Q20.4 22.6 16.4 24.4 Q12.4 26 9.4 22 L5 17 Z' fill='%23d3293d' stroke='%239f1a2d' stroke-width='.8'/%3E %3Crect x='4' y='1' width='12' height='5.4' rx='2' fill='%23fff' stroke='%23d7dde8' stroke-width='.8'/%3E %3Cpath d='M13.4 19.4 Q16.4 20.6 15.6 22.6 Q13 23.4 11.8 21.4Z' fill='%23fff' opacity='.9'/%3E %3Ccircle cx='8.6' cy='10' r='1.3' fill='%23fff' opacity='.9'/%3E %3C/svg%3E") center/contain no-repeat;
+    transform: rotate(8deg);
+    pointer-events: none;
+}
+body[class*="theme-ny-"] .day-cell { border-color: var(--border); }
+
+/* ============================================================
+   КНОПКИ И ПЛАШКИ: конфетный красный, снег сверху
+   ============================================================ */
+body[class*="theme-ny-"] .collapsible-header,
+body[class*="theme-ny-"] .finance-export,
+body[class*="theme-ny-"] .bulk-free-btn,
+body[class*="theme-ny-"] .modal-actions .btn-confirm,
+body[class*="theme-ny-"] .add-shift-btn {
+    background: var(--ny-red) !important;
+    color: #fff !important;
+    outline: 1.5px dashed rgba(255, 255, 255, 0.55);
+    outline-offset: -4px;
+    box-shadow: 0 4px 12px rgba(160, 20, 40, 0.30);
+}
+body[class*="theme-ny-"] .collapsible-header span:first-child { color: #fff !important; }
+body[class*="theme-ny-"] .collapsible-header svg { stroke: #fff; }
+body[class*="theme-ny-"] .bulk-free-btn.import-btn,
+body[class*="theme-ny-"] .finance-export + .finance-export,
+body[class*="theme-ny-"] .bonus-btn {
+    background: var(--ny-green) !important;
+    box-shadow: 0 4px 12px rgba(20, 100, 60, 0.30);
+}
+body[class*="theme-ny-"] .fine-btn { background: var(--ny-red) !important; box-shadow: 0 4px 12px rgba(160, 20, 40, 0.30); }
+body[class*="theme-ny-"] .bonus-btn, body[class*="theme-ny-"] .fine-btn { color: #fff !important; }
+
+/* снег на верхнем крае цветных плашек */
+body[class*="theme-ny-"] .collapsible-header,
+body[class*="theme-ny-"] .profile-total,
+body[class*="theme-ny-"] .finance-summary { position: relative; }
+body[class*="theme-ny-"] .collapsible-header::before,
+body[class*="theme-ny-"] .profile-total::before,
+body[class*="theme-ny-"] .finance-summary::before {
+    content: "";
+    position: absolute;
+    left: 10px; right: 10px; top: -1px;
+    height: 11px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='11' viewBox='0 0 44 11'%3E%3Cpath d='M0 0 H44 V3.5 Q41 10 36.5 5.5 Q33 9 28 4.5 Q24 10 19 5 Q14.5 10 10 5.5 Q5 9 2.5 5 Q1 4.5 0 4.2 Z' fill='%23fff'/%3E%3C/svg%3E") repeat-x left top / 44px 11px;
+    pointer-events: none;
+}
+body[class*="theme-ny-"] .profile-total, body[class*="theme-ny-"] .finance-summary { overflow: hidden; }
+body[class*="theme-ny-"] .profile-total::before, body[class*="theme-ny-"] .finance-summary::before { left: 0; right: 0; }
+
+body[class*="theme-ny-"] .profile-total {
+    background: var(--ny-red);
+    color: #fff;
+    padding-top: 18px;
+}
+body[class*="theme-ny-"] .profile-total .label { opacity: 0.92; }
+
+body[class*="theme-ny-"] .finance-summary {
+    padding-top: 22px;
+    color: #fff;
+    background:
+        radial-gradient(circle at 88% 22%, rgba(255, 255, 255, 0.18) 0 2px, transparent 2.5px),
+        radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.14) 0 1.6px, transparent 2px),
+        radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.14) 0 2px, transparent 2.5px),
+        var(--ny-green);
+}
+body.theme-ny-night .finance-summary {
+    background:
+        radial-gradient(circle at 88% 22%, rgba(255, 255, 255, 0.28) 0 2px, transparent 2.5px),
+        radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.2) 0 1.6px, transparent 2px),
+        radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.2) 0 2px, transparent 2.5px),
+        linear-gradient(135deg, #1f3f8f, #12245c);
+}
+body[class*="theme-ny-"] .finance-summary .total-label,
+body[class*="theme-ny-"] .finance-summary .total-sub { opacity: 0.9; }
+
+body[class*="theme-ny-"] .profile-chip-btn { border: 1px solid var(--border); background: var(--card-bg); }
+
+/* карточки */
+body[class*="theme-ny-"] .profile-stat,
+body[class*="theme-ny-"] .notification-settings,
+body[class*="theme-ny-"] .my-shift-card,
+body[class*="theme-ny-"] .employee-card,
+body[class*="theme-ny-"] .finance-employee { border: 1px solid var(--border); }
+
+/* ============================================================
+   ПРОФИЛЬ: подарочная бумага, лента, шапка Деда Мороза на фото
+   ============================================================ */
+body[class*="theme-ny-"] .profile-header {
+    position: relative;
+    overflow: hidden;
+    background: var(--ny-paper) 0 0 / 60px 60px, var(--ny-paper-bg);
+    border: 1px solid var(--border);
+}
+/* вертикальная ленточка за фотографией */
+body[class*="theme-ny-"] .profile-header::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 33px;
+    width: 30px;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.55) 0 2px, transparent 2px calc(100% - 2px), rgba(255, 255, 255, 0.55) calc(100% - 2px)),
+        linear-gradient(90deg, #b3203a, #e4384d 50%, #b3203a);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+}
+@media (max-width: 420px) {
+    body[class*="theme-ny-"] .profile-header::before { left: 50%; transform: translateX(-50%); }
+}
+body[class*="theme-ny-"] .profile-avatar { z-index: 1; border-color: #fff; }
+body.theme-ny-night .profile-avatar { border-color: #dfe8ff; }
+body[class*="theme-ny-"] .profile-avatar::after {
+    content: "";
+    position: absolute;
+    top: -19px; left: -10px;
+    width: 46px; height: 41px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='36' viewBox='0 0 40 36'%3E %3Cpath d='M6 27 C6.5 14 14 5.5 25 5.5 C30 5.5 33.5 8.5 35 12 C30.5 10.5 26.5 12.5 24.5 17 C23 21 22.8 24 23.5 27 Z' fill='%23d3293d' stroke='%239f1a2d' stroke-width='.8'/%3E %3Crect x='2.5' y='24' width='34' height='9' rx='4.5' fill='%23fff' stroke='%23d7dde8' stroke-width='.9'/%3E %3Ccircle cx='35.5' cy='12.5' r='4.6' fill='%23fff' stroke='%23d7dde8' stroke-width='.9'/%3E %3C/svg%3E") center/contain no-repeat;
+    transform: rotate(-14deg);
+    pointer-events: none;
+    z-index: 3;
+}
+body[class*="theme-ny-"] .profile-info {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.10);
+}
+
+/* маленькие шапки на аватарках сотрудников */
+body[class*="theme-ny-"] .employee-card .avatar::after {
+    content: "";
+    position: absolute;
+    top: -9px; left: -5px;
+    width: 19px; height: 17px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='36' viewBox='0 0 40 36'%3E %3Cpath d='M6 27 C6.5 14 14 5.5 25 5.5 C30 5.5 33.5 8.5 35 12 C30.5 10.5 26.5 12.5 24.5 17 C23 21 22.8 24 23.5 27 Z' fill='%23d3293d' stroke='%239f1a2d' stroke-width='.8'/%3E %3Crect x='2.5' y='24' width='34' height='9' rx='4.5' fill='%23fff' stroke='%23d7dde8' stroke-width='.9'/%3E %3Ccircle cx='35.5' cy='12.5' r='4.6' fill='%23fff' stroke='%23d7dde8' stroke-width='.9'/%3E %3C/svg%3E") center/contain no-repeat;
+    transform: rotate(-16deg);
+    pointer-events: none;
+}
+
+/* ============================================================
+   МОДАЛКИ
+   ============================================================ */
+body[class*="theme-ny-"] .modal-box {
+    background-color: var(--card-bg);
+    background-image: repeating-linear-gradient(135deg, #d3293d 0 8px, #ffffff 8px 16px);
+    background-repeat: no-repeat;
+    background-size: 100% 6px;
+    background-position: top;
+    padding-top: 24px;
+    border: 1px solid var(--border);
+}
+body[class*="theme-ny-"] .modal-box h3 { font-family: "Lobster", "Segoe Script", cursive; font-weight: 400; font-size: 19px; }
+
+/* ============================================================
+   Уменьшенная анимация
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    body[class*="theme-ny-"] .header::before,
+    body.theme-ny-day .header-badge::before,
+    body[class*="theme-ny-"] .weekdays::before,
+    body[class*="theme-ny-"] .weekdays::after,
+    body[class*="theme-ny-"] .nav-item.active .icon::after { animation: none; }
+}

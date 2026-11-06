@@ -20,6 +20,8 @@ const App = (() => {
     { id: "dark-violet", name: "Тёмный фиолет",      dark: true  },
     { id: "dark-forest", name: "Тёмно-зелёная",      dark: true  },
     { id: "dark-neon",   name: "Тёмно-розовая",      dark: true  },
+    { id: "ny-day",      name: "Новый год · день",   dark: false, ny: true },
+    { id: "ny-night",    name: "Новый год · ночь",   dark: true,  ny: true },
   ];
 
   const THEME_PREVIEW = {
@@ -33,6 +35,8 @@ const App = (() => {
     "dark-violet": { bg: "#14101f", card: "#1e1830", accent: "#a78bfa" },
     "dark-forest": { bg: "#0e1a12", card: "#16261b", accent: "#4ade80" },
     "dark-neon":   { bg: "#1a0e15", card: "#26141f", accent: "#f472b6" },
+    "ny-day":      { bg: "linear-gradient(180deg,#74c4f3,#e4f4fe)", card: "#ffffff", accent: "#d3293d" },
+    "ny-night":    { bg: "linear-gradient(180deg,#060b24,#24336f)", card: "#18224b", accent: "#ff7383" },
   };
 
   const DEFAULT_THEME = "sand";
@@ -40,6 +44,11 @@ const App = (() => {
   const THEME_COLORS = {
     light: { bg: "#eef0f3", header: "#ffffff", bottom: "#f8f9fc" },
     dark:  { bg: "#1a1a1e", header: "#2c2c2e", bottom: "#2c2c2e" },
+  };
+  // цвета системной рамки Telegram для отдельных тем (иначе берутся light/dark)
+  const THEME_CHROME = {
+    "ny-day":   { bg: "#dceffb", header: "#74c4f3", bottom: "#f6fbff" },
+    "ny-night": { bg: "#060b1d", header: "#060b24", bottom: "#131c42" },
   };
 
   let state = {
@@ -74,7 +83,7 @@ const App = (() => {
       state.demo = !!result.demo;
       state.employee = result.employee || demoEmployee();
 
-      syncTelegramChrome(isDarkTheme(getCurrentTheme()) ? "dark" : "light");
+      syncTelegramChrome(isDarkTheme(getCurrentTheme()) ? "dark" : "light", getCurrentTheme());
 
       if (state.demo) toast("⚠️ Демо-режим: нет соединения с Supabase, данные не сохраняются");
 
@@ -284,7 +293,7 @@ const App = (() => {
     const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
     document.body.classList.add(`theme-${theme.id}`);
     localStorage.setItem("theme", theme.id);
-    syncTelegramChrome(theme.dark ? "dark" : "light");
+    syncTelegramChrome(theme.dark ? "dark" : "light", theme.id);
   }
 
   function setTheme(themeId) {
@@ -294,11 +303,11 @@ const App = (() => {
     }
   }
 
-  function syncTelegramChrome(theme) {
+  function syncTelegramChrome(theme, themeId) {
     document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
     const tg = window.Telegram?.WebApp;
     if (!tg) return;
-    const c = THEME_COLORS[theme] || THEME_COLORS.light;
+    const c = THEME_CHROME[themeId] || THEME_COLORS[theme] || THEME_COLORS.light;
     try {
       tg.setHeaderColor?.(c.header);
       tg.setBackgroundColor?.(c.bg);
@@ -1912,14 +1921,17 @@ const App = (() => {
         </button>`;
     };
 
-    const lightThemes = THEMES.filter(t => !t.dark);
-    const darkThemes  = THEMES.filter(t => t.dark);
+    const lightThemes = THEMES.filter(t => !t.dark && !t.ny);
+    const darkThemes  = THEMES.filter(t => t.dark && !t.ny);
+    const nyThemes    = THEMES.filter(t => t.ny);
 
     openModal("Тема приложения", `
       <div class="theme-section-title">Светлые</div>
       <div class="theme-grid">${lightThemes.map(tile).join("")}</div>
       <div class="theme-section-title">Тёмные</div>
       <div class="theme-grid">${darkThemes.map(tile).join("")}</div>
+      <div class="theme-section-title">🎄 Новогодние</div>
+      <div class="theme-grid">${nyThemes.map(tile).join("")}</div>
     `, null);
   }
 

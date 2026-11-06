@@ -25,6 +25,8 @@ import * as XLSX from "npm:xlsx@0.18.5";
 //   «:)» или «-»      — в этот день смены нет
 //   «Катя+»           — плюс = бонус (импорт только напоминает о нём)
 //   «Катя обуч»       — обучение: смена по обычному тарифу, в отчёте отдельной строкой
+//   «Женя 2ч»         — смена на несколько часов без точного времени (оплата по часовой ставке ПВЗ);
+//                       допустимо «1,5ч», «2 ч», «2 часа»; можно и «? 2ч» — свободная короткая смена
 //   «Катя ?», «Катя с 17?», «Катя до?» — под сомнением: смена остаётся свободной, имя только в отчёте
 // ============================================================
 const SheetImport = (() => {
@@ -39,6 +41,12 @@ const SheetImport = (() => {
   const clean = (s) => String(s ?? "").replace(/ /g, " ").replace(/\s+/g, " ").trim();
   const normKey = (s) => clean(s).toLowerCase().replace(/ё/g, "е");
   const hhmm = (t) => String(t || "").slice(0, 5);
+  // "10:00" + 120 минут -> "12:00" (не позже 23:59)
+  const addMin = (t, m) => {
+    const [h, mi] = String(t).split(":").map(Number);
+    const total = Math.min(h * 60 + mi + m, 23 * 60 + 59);
+    return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`;
+  };
 
   // "17" | "17:30" | "17.30" -> "17:00" | "17:30" | "17:30"
   function parseTime(t) {
@@ -71,6 +79,16 @@ const SheetImport = (() => {
     // «Матвей обуч» / «Матвей обуч.» — стажировка: оплата обычная, но админу показываем отдельно
     if (/\s+обуч\.?$/i.test(s)) { training = true; s = s.replace(/\s+обуч\.?$/i, "").trim(); }
 
+    // «Женя 2ч», «Женя 1,5 ч», «Женя 2 часа» — смена на несколько часов без точного времени
+    let duration = null;
+    const dm = /\s+(\d+(?:[.,]\d+)?)\s*(?:ч|час(?:а|ов)?)\.?$/i.exec(s);
+    if (dm) {
+      const mins = Math.round(Number(dm[1].replace(",", ".")) * 60);
+      if (!(mins > 0 && mins <= 720)) return { kind: "error", error: "не понял длительность (нужно от 0,5 до 12 ч)" };
+      duration = mins;
+      s = s.slice(0, dm.index).trim();
+    }
+
     // «с» и «c» (латинская) принимаем одинаково — частая опечатка
     const m = /^(.*?)(?:\s+[сc]\s*(\d{1,2}(?:[:.]\d{2})?))?(?:\s+до\s*(\d{1,2}(?:[:.]\d{2})?))?$/i.exec(s);
     if (!m) return { kind: "error", error: "не понял запись" };
@@ -79,8 +97,9 @@ const SheetImport = (() => {
     const to = m[3] ? parseTime(m[3]) : null;
     if ((m[2] && !from) || (m[3] && !to)) return { kind: "error", error: "не понял время" };
     if (!name) return { kind: "error", error: "нет имени" };
-    if (name === "?") return { kind: "free", from, to };
-    return { kind: "person", name, key: normKey(name), from, to, bonus, training, tentative };
+    if (duration && (from || to)) return { kind: "error", error: "укажите либо «с…до…», либо длительность в часах, а не оба сразу" };
+    if (name === "?") return { kind: "free", from, to, duration };
+    return { kind: "person", name, key: normKey(name), from, to, bonus, training, tentative, duration };
   }
 
   // ---------- разбор книги Excel ----------
@@ -266,7 +285,8 @@ const SheetImport = (() => {
       id: s.id, pvz_id: s.pvz_id, shift_date: s.shift_date,
       start_time: hhmm(s.start_time), end_time: hhmm(s.end_time),
       employee_id: s.employee_id || null, status: s.status,
-      custom_amount: s.custom_amount ?? null, source: s.source ?? null, ...patch,
+      custom_amount: s.custom_amount ?? null, source: s.source ?? null,
+      duration_minutes: s.duration_minutes ?? null, ...patch,
     });
     const isFreeSlot = (s) => s.status === "free" && !s.employee_id;
 
@@ -290,18 +310,22 @@ const SheetImport = (() => {
             plan.cellErrors.push({ block: blk.title, cell: en.cell, raw: en.raw, error: en.error });
             unsafe = true; continue;
           }
-          const start = en.from || open, end = en.to || close;
+          // «Женя 2ч»: точного времени нет. В базе лежит условное время от открытия ПВЗ (чтобы работали отчёты и часы),
+          // а настоящая длительность — в duration_minutes; в приложении показывается «2 ч».
+          const dur = en.duration || null;
+          const start = dur ? open : (en.from || open);
+          const end = dur ? addMin(open, dur) : (en.to || close);
           if (start >= end) {
             plan.cellErrors.push({ block: blk.title, cell: en.cell, raw: en.raw, error: `время ${start}–${end}: начало не раньше конца` });
             unsafe = true; continue;
           }
           if (en.kind === "person" && en.tentative) {
             // под сомнением: никого не назначаем (ни напоминаний, ни оплаты), смена остаётся свободной
-            plan.tentatives.push({ pvz: pvz.name, date, name: en.name, start, end });
-            desired.push({ free: true, start, end, cell: en.cell });
+            plan.tentatives.push({ pvz: pvz.name, date, name: en.name, start, end, dur });
+            desired.push({ free: true, start, end, dur, cell: en.cell });
             continue;
           }
-          if (en.kind === "free") { plan.freeEntries++; desired.push({ free: true, start, end, cell: en.cell }); continue; }
+          if (en.kind === "free") { plan.freeEntries++; desired.push({ free: true, start, end, dur, cell: en.cell }); continue; }
 
           plan.peopleEntries++;
           const r = resolveEmp(en.key);
@@ -315,7 +339,7 @@ const SheetImport = (() => {
             plan.skippedEntries++; unsafe = true; continue;
           }
           if (desired.some((d) => d.empId === r.id)) plan.duplicatePeople.push({ block: blk.title, date, name: en.name, cell: en.cell });
-          desired.push({ empId: r.id, start, end, cell: en.cell });
+          desired.push({ empId: r.id, start, end, dur, cell: en.cell });
           if (en.bonus) plan.bonuses.push({ pvz: pvz.name, date, name: en.name });
           if (en.training) plan.trainings.push({ pvz: pvz.name, date, name: en.name });
         }
@@ -324,7 +348,8 @@ const SheetImport = (() => {
         // ---- сверка с тем, что уже есть в приложении ----
         const existing = existingBy.get(`${pvz.id}|${date}`) || [];
         const used = new Set();
-        const sameTime = (s, d) => hhmm(s.start_time) === d.start && hhmm(s.end_time) === d.end;
+        const sameTime = (s, d) => hhmm(s.start_time) === d.start && hhmm(s.end_time) === d.end
+          && (s.duration_minutes || null) === (d.dur || null);
 
         // 1) точные совпадения
         const rest = [];
@@ -342,8 +367,8 @@ const SheetImport = (() => {
           const slots = existing.filter((s) => !used.has(s.id) && isFreeSlot(s));
           const slot = slots.find((s) => sameTime(s, d)) || slots[0];
           const patch = d.free
-            ? { start_time: d.start, end_time: d.end, employee_id: null, status: "free", source: "sheet" }
-            : { start_time: d.start, end_time: d.end, employee_id: d.empId, status: "confirmed", source: "sheet" };
+            ? { start_time: d.start, end_time: d.end, duration_minutes: d.dur || null, employee_id: null, status: "free", source: "sheet" }
+            : { start_time: d.start, end_time: d.end, duration_minutes: d.dur || null, employee_id: d.empId, status: "confirmed", source: "sheet" };
           if (slot) {
             used.add(slot.id);
             plan.updates.push(rowFrom(slot, patch)); touched.add(slot.id);
@@ -352,7 +377,7 @@ const SheetImport = (() => {
             plan.inserts.push({
               pvz_id: pvz.id, shift_date: date, start_time: d.start, end_time: d.end,
               employee_id: d.free ? null : d.empId, status: d.free ? "free" : "confirmed",
-              custom_amount: null, source: "sheet",
+              custom_amount: null, source: "sheet", duration_minutes: d.dur || null,
             });
             plan.stats.inserted++;
           }
@@ -385,7 +410,7 @@ const SheetImport = (() => {
       if (delSet.has(s.id)) continue;
       const u = updMap.get(s.id);
       const r = u || s;
-      if (r.employee_id) finalRows.push({ empId: r.employee_id, date: r.shift_date, start: hhmm(r.start_time), end: hhmm(r.end_time), pvzId: r.pvz_id, touched: !!u });
+      if (r.employee_id && !r.duration_minutes) finalRows.push({ empId: r.employee_id, date: r.shift_date, start: hhmm(r.start_time), end: hhmm(r.end_time), pvzId: r.pvz_id, touched: !!u });
     }
     for (const i of plan.inserts) if (i.employee_id) finalRows.push({ empId: i.employee_id, date: i.shift_date, start: i.start_time, end: i.end_time, pvzId: i.pvz_id, touched: true });
     const byEmpDate = new Map();

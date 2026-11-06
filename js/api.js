@@ -200,8 +200,8 @@ const Api = (() => {
     return data;
   }
 
-  async function upsertShift({ id, pvz_id, shift_date, start_time, end_time, employee_id, status, custom_amount }) {
-    const payload = { pvz_id, shift_date, start_time, end_time, employee_id, status, custom_amount: custom_amount ?? null };
+  async function upsertShift({ id, pvz_id, shift_date, start_time, end_time, employee_id, status, custom_amount, duration_minutes }) {
+    const payload = { pvz_id, shift_date, start_time, end_time, employee_id, status, custom_amount: custom_amount ?? null, duration_minutes: duration_minutes ?? null };
     if (id) payload.id = id;
     const { error } = await client.from("shifts").upsert(payload);
     if (error) throw error;

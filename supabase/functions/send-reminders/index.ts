@@ -37,6 +37,16 @@ function mskNow(now) {
   return { ymd: d.toISOString().slice(0, 10), minutes: d.getUTCHours() * 60 + d.getUTCMinutes() };
 }
 
+// смена «на N часов» без точного времени (duration_minutes) показывается как «2 ч», а не диапазоном
+function timeLabel(s) {
+  const d = Number(s.duration_minutes);
+  if (d > 0) {
+    const h = Math.floor(d / 60), m = d % 60;
+    return h && m ? `${h} ч ${m} мин` : h ? `${h} ч` : `${m} мин`;
+  }
+  return `${hhmm(s.start_time)}–${hhmm(s.end_time)}`;
+}
+
 function fmtDate(ymd) {
   const [, m, d] = String(ymd).split("-");
   return `${d}.${m}`;
@@ -56,6 +66,7 @@ function planMessages(now, shifts, settingsRows) {
     const st = settingsBy.get(shift.employee_id);
     if (st && st.push_enabled === false) continue;
 
+    if (shift.duration_minutes) continue; // у короткой смены нет точного начала — напоминание «за N минут» не имеет смысла, остаётся утренняя сводка
     const remind = st?.remind_minutes ?? 120;
     const repeat = st?.repeat_minutes ?? 0;
     const startMs = new Date(`${shift.shift_date}T${shift.start_time}${TZ_OFFSET}`).getTime();
@@ -77,7 +88,7 @@ function planMessages(now, shifts, settingsRows) {
     out.push({
       chatId: Number(emp.tg_id),
       kind: k > 0 ? "repeat" : "reminder",
-      text: `${title}\n\n🏢 ${esc(shift.pvz?.name ?? "ПВЗ")}\n📅 ${fmtDate(shift.shift_date)}, ${hhmm(shift.start_time)}–${hhmm(shift.end_time)}\n\nНе забудьте про смену!`,
+      text: `${title}\n\n🏢 ${esc(shift.pvz?.name ?? "ПВЗ")}\n📅 ${fmtDate(shift.shift_date)}, ${timeLabel(shift)}\n\nНе забудьте про смену!`,
     });
   }
 
@@ -96,7 +107,7 @@ function planMessages(now, shifts, settingsRows) {
     if (!inWindow(nowMin - toMin(st.daily_time))) continue;
 
     list.sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
-    const lines = list.map((s) => `🏢 ${esc(s.pvz?.name ?? "ПВЗ")}: ${hhmm(s.start_time)}–${hhmm(s.end_time)}`);
+    const lines = list.map((s) => `🏢 ${esc(s.pvz?.name ?? "ПВЗ")}: ${timeLabel(s)}`);
     out.push({
       chatId: Number(emp.tg_id),
       kind: "daily",
@@ -134,7 +145,7 @@ Deno.serve(async () => {
 
   const { data: shifts, error } = await supabase
     .from("shifts")
-    .select("id, shift_date, start_time, end_time, employee_id, pvz:pvz_id(name), employees:employee_id(tg_id, full_name, is_active)")
+    .select("id, shift_date, start_time, end_time, duration_minutes, employee_id, pvz:pvz_id(name), employees:employee_id(tg_id, full_name, is_active)")
     .not("employee_id", "is", null)
     .gte("shift_date", today);
   if (error) {

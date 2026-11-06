@@ -323,11 +323,36 @@ const App = (() => {
   }
 
   // ---------------- СМЕНА / СТАВКА ----------------
+  // Короткая смена «на N часов» без точного времени («Женя 2ч»): длительность лежит в shift.duration_minutes,
+  // а start_time/end_time — условные (от открытия ПВЗ), чтобы работали часы, отчёты и оплата.
+  function fmtDuration(min) {
+    const h = Math.floor(min / 60), m = min % 60;
+    return h && m ? `${h} ч ${m} мин` : h ? `${h} ч` : `${m} мин`;
+  }
+  function shiftTimeLabel(s) {
+    return s.duration_minutes ? fmtDuration(s.duration_minutes) : `${String(s.start_time || "").slice(0,5)}–${String(s.end_time || "").slice(0,5)}`;
+  }
+  function addMinutesToTime(t, m) {
+    const [h, mi] = String(t).split(":").map(Number);
+    const total = Math.min((h || 0) * 60 + (mi || 0) + m, 23 * 60 + 59);
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  }
+
   function shiftAmount(shift, pvz) {
     if (shift.custom_amount !== undefined && shift.custom_amount !== null && shift.custom_amount !== "") {
       return Number(shift.custom_amount);
     }
     if (!pvz) return 0;
+
+    if (shift.duration_minutes) {
+      // смена на несколько часов: часы × часовая ставка (по часовому тарифу ПВЗ, если он задан, иначе обычная)
+      const toM = (t) => { const [h, m] = String(t || "0:0").slice(0, 5).split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+      const s0m = toM(shift.start_time);
+      const cand = (state.pvzPayRules[pvz.id] || [])
+        .filter((r) => r.rate_type === "hourly" && s0m >= toM(r.start_time) && s0m < toM(r.end_time))
+        .sort((a, b) => (toM(a.end_time) - toM(a.start_time)) - (toM(b.end_time) - toM(b.start_time)));
+      return (shift.duration_minutes / 60) * Number(cand.length ? cand[0].amount : (pvz.mid_hourly_rate || 0));
+    }
 
     const rules = state.pvzPayRules[pvz.id];
     if (!rules || rules.length === 0) return legacyShiftAmount(shift, pvz);
@@ -413,6 +438,7 @@ const App = (() => {
       if (s.employee_id !== employeeId) return false;
       if (s.shift_date !== date) return false;
       if (excludeShiftId && s.id === excludeShiftId) return false;
+      if (s.duration_minutes) return false; // у смены «на N часов» нет точного времени — пересечений нет
       return st < s.end_time.slice(0, 5) && s.start_time.slice(0, 5) < en;
     }) || null;
   }
@@ -582,7 +608,7 @@ const App = (() => {
 
       return `<div class="row">
         <span>${nameHtml}</span>
-        <span class="time">${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</span>
+        <span class="time">${shiftTimeLabel(s)}</span>
       </div>`;
     };
 
@@ -703,18 +729,18 @@ const App = (() => {
               const isMine = shift.employee_id === state.employee.id;
               const empName = shift.employees?.full_name || "?";
               const bg = colorForName(empName);
-              const title = `${empName} • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • ${Math.round(shiftAmount(shift, pvz))}₽`;
+              const title = `${empName} • ${shiftTimeLabel(shift)} • ${Math.round(shiftAmount(shift, pvz))}₽`;
               html += `<span class="name-chip ${isMine ? "mine" : ""}" style="background:${bg};" title="${escapeHtml(title)}">${escapeHtml(empName)}</span>`;
             } else if (shift.status === "pending") {
               const cnt = state.requests.filter((r) => r.shift_id === shift.id).length;
-              const title = `Есть отклики (${cnt || "?"}) • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}`;
+              const title = `Есть отклики (${cnt || "?"}) • ${shiftTimeLabel(shift)}`;
               if (state.isAdminView) {
                 html += `<button class="chip-pending-dot" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openShiftRequestsModal('${shift.id}')"></button>`;
               } else {
-                html += `<button class="chip-pending-dot" title="Откликнуться • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"></button>`;
+                html += `<button class="chip-pending-dot" title="Откликнуться • ${shiftTimeLabel(shift)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"></button>`;
               }
             } else {
-              const title = `Свободно • ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} • нажмите, чтобы подать заявку`;
+              const title = `Свободно • ${shiftTimeLabel(shift)} • нажмите, чтобы подать заявку`;
               html += `<button class="chip-free" title="${escapeHtml(title)}" onclick="event.stopPropagation(); App.openApplyModal('${shift.id}')"><i data-lucide="plus" style="width:11px;height:11px;stroke:#fff;"></i></button>`;
             }
           });
@@ -1041,7 +1067,7 @@ const App = (() => {
   function openApplyModal(shiftId) {
     const shift = state.shifts.find((s) => s.id === shiftId);
     if (!shift) return;
-    const fullLabel = `Полная смена (${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)})`;
+    const fullLabel = `Полная смена (${shiftTimeLabel(shift)})`;
 
     openModal("Откликнуться на смену", `
       <div class="pay-type-toggle">
@@ -1099,7 +1125,7 @@ const App = (() => {
     const dayShifts = shiftsForPvzAndDay(pvzId, day);
 
     const rowsHtml = dayShifts.map((s) => {
-      const timeLabel = `${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}`;
+      const timeLabel = shiftTimeLabel(s);
       if (s.employee_id) {
         return `<div class="day-shift-row" style="cursor:default;">
           <div class="left">👤 ${escapeHtml(s.employees?.full_name || "—")} • ${timeLabel}</div>
@@ -1140,7 +1166,7 @@ const App = (() => {
         clickAttr = `App.openShiftForm('${pvzId}', '${dStr}', '${s.id}')`;
       }
       return `<div class="day-shift-row">
-        <div class="left" onclick="${clickAttr}">${label} • ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div>
+        <div class="left" onclick="${clickAttr}">${label} • ${shiftTimeLabel(s)}</div>
         <button onclick="App.deleteShiftConfirm('${s.id}', '${pvzId}', ${day})" title="Удалить"><i data-lucide="trash-2"></i></button>
       </div>`;
     }).join("");
@@ -1158,35 +1184,56 @@ const App = (() => {
 
     const startVal = shift?.start_time?.slice(0,5) || presetStart || pvz?.default_start_time?.slice(0,5) || "09:00";
     const endVal = shift?.end_time?.slice(0,5) || pvz?.default_end_time?.slice(0,5) || "21:00";
-    const autoAmount = Math.round(shiftAmount({ start_time: startVal, end_time: endVal, custom_amount: null }, pvz));
+    const isShort = !!shift?.duration_minutes;
+    const hoursVal = isShort ? shift.duration_minutes / 60 : 2;
+    const autoAmount = Math.round(shiftAmount({ start_time: startVal, end_time: endVal, custom_amount: null, duration_minutes: isShort ? shift.duration_minutes : null }, pvz));
     const hasCustom = shift?.custom_amount != null;
     const currentAmount = hasCustom ? Math.round(shift.custom_amount) : autoAmount;
 
     openModal(shiftId ? "Редактировать смену" : "Новая смена", `
       <label>Сотрудник</label>
       ${renderEmpPicker(shift?.employee_id || presetEmployeeId || "")}
-      <label>Начало</label>
-      <input type="time" id="f_start" value="${startVal}" oninput="App._recalcAmount('${pvzId}')">
-      <label>Конец</label>
-      <input type="time" id="f_end" value="${endVal}" oninput="App._recalcAmount('${pvzId}')">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="f_short" style="width:auto; margin:0;" ${isShort ? "checked" : ""} onchange="App._toggleShort('${pvzId}')">
+        <span>Короткая смена без точного времени (например, «2 ч»)</span>
+      </label>
+      <div id="f_time_block" style="${isShort ? "display:none;" : ""}">
+        <label>Начало</label>
+        <input type="time" id="f_start" value="${startVal}" oninput="App._recalcAmount('${pvzId}')">
+        <label>Конец</label>
+        <input type="time" id="f_end" value="${endVal}" oninput="App._recalcAmount('${pvzId}')">
+      </div>
+      <div id="f_short_block" style="${isShort ? "" : "display:none;"}">
+        <label>Сколько часов</label>
+        <input type="number" id="f_hours" min="0.5" max="12" step="0.5" value="${hoursVal}" oninput="App._recalcAmount('${pvzId}')">
+      </div>
       <label>Ставка за смену, ₽</label>
       <input type="number" id="f_amount" value="${currentAmount}" min="0" ${hasCustom ? 'data-touched="1"' : ""} oninput="this.dataset.touched='1'">
       <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">По умолчанию для этого времени: <span id="f_amount_auto">${autoAmount}</span> ₽</div>
     `, async () => {
       const employeeId = document.getElementById("f_emp_hidden").value || null;
-      const start = document.getElementById("f_start").value;
-      const end = document.getElementById("f_end").value;
+      const isShortNow = document.getElementById("f_short").checked;
+      let start = document.getElementById("f_start").value;
+      let end = document.getElementById("f_end").value;
+      let duration_minutes = null;
+      if (isShortNow) {
+        // без точного времени: в базу пишем условное время от открытия ПВЗ + длительность отдельно
+        duration_minutes = Math.round(Number(String(document.getElementById("f_hours").value).replace(",", ".")) * 60);
+        if (!(duration_minutes > 0 && duration_minutes <= 720)) return toast("Укажите длительность от 0.5 до 12 часов");
+        start = (pvz?.default_start_time || "09:00").slice(0, 5);
+        end = addMinutesToTime(start, duration_minutes);
+      }
       const amountInput = document.getElementById("f_amount");
       const custom_amount = amountInput.dataset.touched === "1" ? Number(amountInput.value) : null;
 
       if (!start || !end || start >= end) return toast("Начало должно быть раньше конца");
-      if (employeeId && !confirmConflictOrCancel(employeeId, dStr, start, end, shiftId, "назначить")) return;
+      if (employeeId && !isShortNow && !confirmConflictOrCancel(employeeId, dStr, start, end, shiftId, "назначить")) return;
 
       try {
         await Api.upsertShift({
           id: shiftId || undefined, pvz_id: pvzId, shift_date: dStr,
           start_time: start, end_time: end, employee_id: employeeId,
-          status: employeeId ? "confirmed" : "free", custom_amount,
+          status: employeeId ? "confirmed" : "free", custom_amount, duration_minutes,
         });
         if (resolveRequestId) await Api.markRequestApproved(resolveRequestId);
         toast("✅ Смена сохранена");
@@ -1213,14 +1260,30 @@ const App = (() => {
 
   function _recalcAmount(pvzId) {
     const pvz = state.pvz.find((p) => p.id === pvzId);
-    const start = document.getElementById("f_start")?.value;
-    const end = document.getElementById("f_end")?.value;
-    if (!start || !end) return;
-    const auto = Math.round(shiftAmount({ start_time: start, end_time: end, custom_amount: null }, pvz));
+    let start, end, dur = null;
+    if (document.getElementById("f_short")?.checked) {
+      dur = Math.round(Number(String(document.getElementById("f_hours")?.value).replace(",", ".")) * 60);
+      if (!(dur > 0)) return;
+      start = (pvz?.default_start_time || "09:00").slice(0, 5);
+      end = addMinutesToTime(start, dur);
+    } else {
+      start = document.getElementById("f_start")?.value;
+      end = document.getElementById("f_end")?.value;
+      if (!start || !end) return;
+    }
+    const auto = Math.round(shiftAmount({ start_time: start, end_time: end, duration_minutes: dur, custom_amount: null }, pvz));
     const autoEl = document.getElementById("f_amount_auto");
     if (autoEl) autoEl.textContent = auto;
     const amountInput = document.getElementById("f_amount");
     if (amountInput && amountInput.dataset.touched !== "1") amountInput.value = auto;
+  }
+
+  function _toggleShort(pvzId) {
+    const on = document.getElementById("f_short")?.checked;
+    const tb = document.getElementById("f_time_block"), sb = document.getElementById("f_short_block");
+    if (tb) tb.style.display = on ? "none" : "";
+    if (sb) sb.style.display = on ? "" : "none";
+    _recalcAmount(pvzId);
   }
 
   async function deleteShiftConfirm(shiftId, pvzId, day) {
@@ -1252,7 +1315,7 @@ const App = (() => {
     const wantsCustom = !!r.requested_start_time;
     const timeLabel = wantsCustom
       ? `с ${r.requested_start_time.slice(0,5)} до ${(r.requested_end_time || shift?.end_time || "").slice(0,5)}`
-      : `${(shift?.start_time || "").slice(0,5)}–${(shift?.end_time || "").slice(0,5)} (вся смена)`;
+      : `${shift ? shiftTimeLabel(shift) : ""} (вся смена)`;
 
     const pvzName = shift?.pvz?.name || state.pvz.find((p) => p.id === (shift?.pvz_id || ""))?.name || "ПВЗ";
     const dateLabel = shift?.shift_date ? fmtDMYW(shift.shift_date) : "";
@@ -1512,7 +1575,7 @@ const App = (() => {
       total += amount;
       const dateLabel = fmtDMYW(s.shift_date);
       return `<div class="profile-income-item">
-        <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${dateLabel}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
+        <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${dateLabel}, ${shiftTimeLabel(s)}</div></div>
         <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>
       </div>`;
     }).join("");
@@ -1652,7 +1715,7 @@ const App = (() => {
       data.shifts.forEach((s) => {
         const pvz = s.pvz || state.pvz.find((p) => p.id === s.pvz_id);
         const amount = Math.round(shiftAmount(s, pvz));
-        csv += csvRow(["Смена", s.shift_date, pvz?.name || "", s.start_time?.slice(0,5) || "", s.end_time?.slice(0,5) || "", amount, ""]);
+        csv += csvRow(["Смена", s.shift_date, pvz?.name || "", s.duration_minutes ? fmtDuration(s.duration_minutes) : (s.start_time?.slice(0,5) || ""), s.duration_minutes ? "" : (s.end_time?.slice(0,5) || ""), amount, ""]);
       });
       data.bonusesFines.forEach((b) => {
         csv += csvRow([b.kind === "bonus" ? "Бонус" : "Штраф", b.period_month, "", "", "", b.amount, b.reason || ""]);
@@ -1734,7 +1797,7 @@ const App = (() => {
         const amount = Math.round(shiftAmount(s, pvz));
         total += amount;
         return `<div class="profile-income-item">
-          <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${fmtDMY(s.shift_date)}, ${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)}</div></div>
+          <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${fmtDMY(s.shift_date)}, ${shiftTimeLabel(s)}</div></div>
           <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>
         </div>`;
       });
@@ -2572,7 +2635,7 @@ const App = (() => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
       const empName = s.employees?.full_name || "";
       const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
-      csv += csvRow([s.shift_date, pvz?.name || "", empName, s.start_time?.slice(0,5), s.end_time?.slice(0,5), s.status, amount]);
+      csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
     });
     deliverCsv(csv, `смены_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
   }
@@ -2588,7 +2651,7 @@ const App = (() => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
         const empName = s.employees?.full_name || "";
         const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
-        csv += csvRow([s.shift_date, pvz?.name || "", empName, s.start_time?.slice(0,5), s.end_time?.slice(0,5), s.status, amount]);
+        csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
       });
       csv += "\r\n" + csvRow(["Бонусы/Штрафы"]);
       csv += csvRow(["Сотрудник", "Тип", "Сумма", "Причина"]);
@@ -2661,7 +2724,7 @@ const App = (() => {
     openWishModal, toggleWishBlock, toggleWishMonth, deleteWishConfirm, deleteAllWishesConfirm,
     _wishToggleDay, _wishSelectAll, _wishClearSel, _wishField, _wishSetMode, _wishApply,
     openApplyModal, _setApplyMode,
-    openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, deleteShiftConfirm,
+    openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, _toggleShort, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
     _filterEmpPicker, _selectEmp,
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,

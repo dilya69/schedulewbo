@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
     const { data: r, error } = await supabase
       .from("shift_requests")
-      .select("*, employees:employee_id(full_name, tg_id), shifts:shift_id(shift_date, start_time, end_time, pvz:pvz_id(name))")
+      .select("*, employees:employee_id(full_name, tg_id), shifts:shift_id(shift_date, start_time, end_time, duration_minutes, pvz:pvz_id(name))")
       .eq("id", shift_request_id)
       .single();
     if (error || !r) return new Response("not found", { status: 404 });
@@ -44,7 +44,9 @@ Deno.serve(async (req) => {
     const dateLabel = fmtDate(r.shifts?.shift_date || "");
     const timeLabel = r.requested_start_time
       ? `с ${String(r.requested_start_time).slice(0, 5)}`
-      : `${String(r.shifts?.start_time ?? "").slice(0, 5)}–${String(r.shifts?.end_time ?? "").slice(0, 5)}`;
+      : r.shifts?.duration_minutes
+        ? `${r.shifts.duration_minutes / 60} ч`
+        : `${String(r.shifts?.start_time ?? "").slice(0, 5)}–${String(r.shifts?.end_time ?? "").slice(0, 5)}`;
 
     if (event === "new_request") {
       const { data: admins } = await supabase

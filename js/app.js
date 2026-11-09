@@ -1577,6 +1577,10 @@ const App = (() => {
   }
 
   // ---------------- СОТРУДНИКИ ----------------
+  const _nm = (e) => String(e?.full_name || "").trim().toLowerCase();
+  const isBoss = (e) => ["иван", "светлана"].includes(_nm(e));
+  const isYana = (e) => _nm(e) === "яна";
+
   function renderEmployees() {
     const activeContainer = document.getElementById("employeeList");
     const pendingContainer = document.getElementById("pendingEmployeeList");
@@ -1607,7 +1611,8 @@ const App = (() => {
         </div>
         <div class="actions">
           ${safeUser(e.tg_username) ? `<button class="chat-btn" onclick="App.openChat('${safeUser(e.tg_username)}')" title="Чат в Telegram"><i data-lucide="message-circle"></i></button>` : ""}
-          <button class="edit-btn admin-only" onclick="App.openEmployeeScheduleModal('${e.id}')" title="График за месяц"><i data-lucide="calendar"></i></button>
+          ${isBoss(e) || isYana(e) ? `<button class="chat-btn" onclick="App.callEmployee('${e.id}')" title="${escapeHtml(e.phone || "Телефон")}"><i data-lucide="phone"></i></button>` : ""}
+          ${isBoss(e) ? "" : `<button class="edit-btn admin-only" onclick="App.openEmployeeScheduleModal('${e.id}')" title="График за месяц"><i data-lucide="calendar"></i></button>`}
           <button class="edit-btn admin-only" onclick="App.openEditEmployeeModal('${e.id}')" title="Редактировать"><i data-lucide="pencil"></i></button>
           <button class="delete admin-only" onclick="App.openDeleteEmployeeModal('${e.id}')" title="Уволить"><i data-lucide="trash-2"></i></button>
         </div>
@@ -1709,9 +1714,19 @@ const App = (() => {
     });
   }
 
+  function callEmployee(id) {
+    const emp = state.employees.find((e) => e.id === id);
+    const num = String(emp?.phone || "").replace(/[^\d+]/g, "");
+    if (!num) return toast("Номер не указан: добавь его через ✏️ у сотрудника");
+    window.location.href = "tel:" + num;
+  }
+
   function openEditEmployeeModal(id) {
     const emp = state.employees.find((e) => e.id === id);
     if (!emp) return;
+    const phoneField = (isBoss(emp) || isYana(emp))
+      ? `<label>Телефон</label><input type="tel" id="f_phone" inputmode="tel" placeholder="+7 900 000-00-00" value="${escapeHtml(emp.phone || "")}">`
+      : "";
     openModal(`Редактировать: ${emp.full_name}`, `
       <label>ФИО</label><input type="text" id="f_name" value="${escapeHtml(emp.full_name)}">
       <label>Должность</label><input type="text" id="f_position" value="${escapeHtml(emp.position || "")}">
@@ -1723,6 +1738,7 @@ const App = (() => {
       <select id="f_admin"><option value="false" ${!emp.is_admin ? "selected" : ""}>Нет</option><option value="true" ${emp.is_admin ? "selected" : ""}>Да</option></select>
       <label>День рождения (ДД.ММ, необязательно)</label>
       <input type="text" id="f_birthday" inputmode="numeric" maxlength="5" placeholder="25.03" value="${fmtBirthday(emp)}">
+      ${phoneField}
     `, async () => {
       const newName = document.getElementById("f_name").value.trim();
       const newUsername = document.getElementById("f_username").value.trim().replace(/^@/, "");
@@ -1748,15 +1764,18 @@ const App = (() => {
       if (id === state.employee.id && (!newAdmin || !newActive)) {
         return toast("Нельзя снять права или доступ у самого себя");
       }
+      const phoneEl = document.getElementById("f_phone");
+      const fields = {
+        full_name: newName,
+        position: document.getElementById("f_position").value.trim(),
+        tg_username: newUsername || null,
+        is_active: newActive,
+        is_admin: newAdmin,
+        birth_day, birth_month,
+      };
+      if (phoneEl) fields.phone = phoneEl.value.trim() || null;
       try {
-        await Api.updateEmployee(id, {
-          full_name: newName,
-          position: document.getElementById("f_position").value.trim(),
-          tg_username: newUsername || null,
-          is_active: newActive,
-          is_admin: newAdmin,
-          birth_day, birth_month,
-        });
+        await Api.updateEmployee(id, fields);
         toast("✅ Изменения сохранены");
         state.employees = await Api.getEmployees();
         renderEmployees();
@@ -2094,7 +2113,8 @@ const App = (() => {
     renderPurgeWarning();
 
     let fund = 0, totalShiftsAll = 0;
-    const activeEmployees = state.employees.filter((e) => e.is_active !== false);
+    // начальники (Иван, Светлана) не участвуют в зарплатах
+    const activeEmployees = state.employees.filter((e) => e.is_active !== false && !isBoss(e));
 
     const rows = activeEmployees.map((e) => {
       const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
@@ -2716,7 +2736,7 @@ const App = (() => {
 
   function exportPayroll() {
     let csv = csvRow(["Сотрудник", "Смены", "Сумма по тарифам", "Бонусы", "Штрафы", "Итого"]);
-    state.employees.filter((e) => e.is_active !== false).forEach((e) => {
+    state.employees.filter((e) => e.is_active !== false && !isBoss(e)).forEach((e) => {
       const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
       const base = empShifts.reduce((sum, s) => sum + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0);
       const bf = state.bonusesFines.filter((b) => b.employee_id === e.id && bfInPeriod(b, state.payPeriod));
@@ -2826,7 +2846,7 @@ const App = (() => {
     openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, _toggleShort, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
     _filterEmpPicker, _selectEmp,
-    filterEmployees, openAddEmployeeModal, openEditEmployeeModal, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
+    filterEmployees, openAddEmployeeModal, openEditEmployeeModal, callEmployee, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
     openEmployeeScheduleModal, grantAccess, openChat,
     changeAvatar, _pickAvatar, _pickTelegramPhoto, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,

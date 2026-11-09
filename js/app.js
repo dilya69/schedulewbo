@@ -1754,6 +1754,8 @@ const App = (() => {
       <label>День рождения (ДД.ММ, необязательно)</label>
       <input type="text" id="f_birthday" inputmode="numeric" maxlength="5" placeholder="25.03" value="${fmtBirthday(emp)}">
       ${phoneField}
+      <label>Доступ к камерам (бот зовёт по /помогите)</label>
+      <select id="f_camera"><option value="false" ${!emp.camera_access ? "selected" : ""}>Нет</option><option value="true" ${emp.camera_access ? "selected" : ""}>Да</option></select>
     `, async () => {
       const newName = document.getElementById("f_name").value.trim();
       const newUsername = document.getElementById("f_username").value.trim().replace(/^@/, "");
@@ -1787,6 +1789,7 @@ const App = (() => {
         is_active: newActive,
         is_admin: newAdmin,
         birth_day, birth_month,
+        camera_access: document.getElementById("f_camera").value === "true",
       };
       if (phoneEl) fields.phone = phoneEl.value.trim() || null;
       try {

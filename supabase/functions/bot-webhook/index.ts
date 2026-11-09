@@ -5,9 +5,9 @@
 // /start    — кнопка запуска мини-приложения (+ кнопка «График в чате»).
 // /schedule — график прямо в чате: Сегодня / Завтра / Неделя (все ПВЗ или один)
 //             и «Мои смены» с листанием по неделям. Сообщение редактируется на месте.
-// В группах: /помогите <текст> — бот отвечает на сообщение и упоминает людей с
-//             доступом к камерам (employees.camera_access). Работает только в чатах из
-//             таблицы help_chats; админ включает чат командой /помогите_здесь.
+// В группах: /help <текст> (+фото) — бот заменяет сообщение на «Помогите пожалуйста найти <текст>»
+//             и упоминает людей с доступом к камерам (employees.camera_access). Работает только
+//             в чатах из таблицы help_chats; админ включает чат командой /help_here.
 //             Всё остальное в группах бот игнорирует.
 //
 // Секреты: BOT_TOKEN, WEBAPP_URL (ссылка на GitHub Pages/Vercel с фронтом)
@@ -74,6 +74,22 @@ async function tg(method: string, payload: Record<string, unknown>) {
     body: JSON.stringify(payload),
   });
   if (!r.ok) console.error(method, r.status, await r.text());
+}
+
+async function tgJson(method: string, payload: Record<string, unknown>): Promise<any> {
+  try {
+    const r = await fetch(`${API}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const j = await r.json();
+    if (!j.ok) console.error(method, JSON.stringify(j));
+    return j;
+  } catch (e) {
+    console.error(method, e);
+    return { ok: false };
+  }
 }
 
 async function edit(chatId: number, messageId: number, text: string, kb?: unknown) {
@@ -331,10 +347,22 @@ async function handleCallback(cb: any) {
 
 // ---------- «Помогите» в группе ----------
 
-// Команды на кириллице Telegram не считает командами бота, поэтому разбираем текст сами.
-// Работает и для подписи к фото (caption).
-const RE_HELP_HERE = /^\/помогите_здесь(?:@\w+)?(?:\s|$)/i;
-const RE_HELP = /^\/помогите(?:@\w+)?(?:\s+([\s\S]*))?$/i;
+// /help (или /помогите) <текст> — бот убирает сообщение и публикует вместо него
+// «Помогите пожалуйста найти <текст>» (с тем же фото) с упоминанием людей с доступом к камерам.
+// Если у бота нет права удалять сообщения — отвечает на исходное сообщение.
+// Кириллические команды Telegram не считает командами бота, поэтому разбираем текст сами;
+// работает и для подписи к фото (caption).
+const RE_HELP_HERE = /^\/(?:help_here|помогите_здесь)(?:@\w+)?(?:\s|$)/i;
+const RE_HELP = /^\/(?:help|помогите)(?:@\w+)?(?:\s+([\s\S]*))?$/i;
+
+async function botCanDelete(chatId: number): Promise<boolean> {
+  const me = await tgJson("getMe", {});
+  const id = me?.result?.id;
+  if (!id) return false;
+  const cm = await tgJson("getChatMember", { chat_id: chatId, user_id: id });
+  const r = cm?.result;
+  return r?.status === "creator" || (r?.status === "administrator" && r?.can_delete_messages === true);
+}
 
 async function handleGroupMessage(msg: any) {
   const chatId: number = msg.chat.id;
@@ -359,9 +387,18 @@ async function handleGroupMessage(msg: any) {
       console.error("help_chats upsert", r.status, await r.text());
       return;
     }
-    await sendMessage(chatId, "✅ Команда <b>/помогите</b> включена в этом чате.", {
-      reply_parameters: { message_id: msg.message_id, allow_sending_without_reply: true },
+    // кнопка /help в меню команд для всех групп
+    await tgJson("setMyCommands", {
+      commands: [{ command: "help", description: "Позвать людей с доступом к камерам" }],
+      scope: { type: "all_group_chats" },
     });
+    const canDel = await botCanDelete(chatId);
+    await sendMessage(
+      chatId,
+      "✅ Команда <b>/help</b> включена в этом чате." +
+        (canDel ? "" : "\n⚠️ Чтобы бот заменял ваше сообщение, дайте ему право удалять сообщения (сделайте админом). Пока он отвечает на него."),
+      { reply_parameters: { message_id: msg.message_id, allow_sending_without_reply: true } },
+    );
     return;
   }
 
@@ -383,11 +420,32 @@ async function handleGroupMessage(msg: any) {
   const targets = people.filter((e: any) => e.tg_id !== msg.from?.id);
   if (!targets.length) return;
 
-  const note = esc((m[1] ?? "").trim().slice(0, 500));
+  const note = esc((m[1] ?? "").trim().slice(0, 300));
   const mentions = targets.map((e: any) => `<a href="tg://user?id=${e.tg_id}">${esc(e.full_name ?? "—")}</a>`).join(", ");
-  const body = note ? `🆘 <b>Помогите</b> ${note}` : "🆘 <b>Нужна помощь</b>";
+  const body = note ? `🆘 <b>Помогите пожалуйста найти</b> ${note}` : "🆘 <b>Нужна помощь</b>";
+  const out = `${body}\n\n${mentions}\n\n<i>просит: ${esc(sender.full_name ?? "—")}</i>`;
 
-  await sendMessage(chatId, `${body}\n\n${mentions}`, {
+  const photo: string | undefined = msg.photo?.length ? msg.photo[msg.photo.length - 1].file_id : undefined;
+  const onlyPhotoOrText = !!photo || (!!msg.text && !msg.photo && !msg.video && !msg.document && !msg.animation);
+
+  // заменяем сообщение: удаляем исходное и публикуем новое (с тем же фото)
+  if (onlyPhotoOrText && await botCanDelete(chatId)) {
+    const sent = photo
+      ? await tgJson("sendPhoto", { chat_id: chatId, photo, caption: out, parse_mode: "HTML" })
+      : await tgJson("sendMessage", {
+        chat_id: chatId,
+        text: out,
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+      });
+    if (sent?.ok) {
+      await tgJson("deleteMessage", { chat_id: chatId, message_id: msg.message_id });
+      return;
+    }
+  }
+
+  // запасной вариант: ответ на исходное сообщение
+  await sendMessage(chatId, out, {
     reply_parameters: { message_id: msg.message_id, allow_sending_without_reply: true },
   });
 }

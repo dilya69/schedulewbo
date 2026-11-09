@@ -415,13 +415,20 @@ async function handleGroupMessage(msg: any) {
   if (!sender) return; // только сотрудники
 
   const people = await db(
-    "employees?select=id,full_name,tg_id&camera_access=eq.true&is_active=eq.true&tg_id=gt.0&order=full_name.asc",
+    "employees?select=id,full_name,tg_id,tg_username&camera_access=eq.true&is_active=eq.true&tg_id=gt.0&order=full_name.asc",
   );
   const targets = people.filter((e: any) => e.tg_id !== msg.from?.id);
   if (!targets.length) return;
 
   const note = esc((m[1] ?? "").trim().slice(0, 300));
-  const mentions = targets.map((e: any) => `<a href="tg://user?id=${e.tg_id}">${esc(e.full_name ?? "—")}</a>`).join(", ");
+  // есть username — упоминаем @username (работает всегда, если человек в чате);
+  // нет — ссылкой по id (Telegram может не засчитать, если бот не «знает» человека)
+  const mentions = targets.map((e: any) => {
+    const u = String(e.tg_username ?? "").replace(/^@/, "");
+    return /^[A-Za-z0-9_]{4,32}$/.test(u)
+      ? `@${u}`
+      : `<a href="tg://user?id=${e.tg_id}">${esc(e.full_name ?? "—")}</a>`;
+  }).join(", ");
   const body = note ? `🆘 <b>Помогите пожалуйста найти</b> ${note}` : "🆘 <b>Нужна помощь</b>";
   const out = `${body}\n\n${mentions}\n\n<i>просит: ${esc(sender.full_name ?? "—")}</i>`;
 

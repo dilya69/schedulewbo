@@ -1718,7 +1718,22 @@ const App = (() => {
     const emp = state.employees.find((e) => e.id === id);
     const num = String(emp?.phone || "").replace(/[^\d+]/g, "");
     if (!num) return toast("Номер не указан: добавь его через ✏️ у сотрудника");
-    window.location.href = "tel:" + num;
+    // копируем номер и открываем набор номера в телефоне (tel: только набирает, не звонит сам)
+    const copy = async () => {
+      try { await navigator.clipboard.writeText(num); return true; } catch (_) {}
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = num; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      } catch (_) { return false; }
+    };
+    copy().then((ok) => {
+      if (ok) toast("📋 Номер скопирован");
+      window.location.href = "tel:" + num;
+    });
   }
 
   function openEditEmployeeModal(id) {

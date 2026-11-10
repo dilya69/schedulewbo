@@ -1606,7 +1606,7 @@ const App = (() => {
       <div class="employee-card${pinIndex(e) >= 0 ? " pinned" : ""}" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
         <div class="avatar" style="background:${colorForName(e.full_name)}; box-shadow:0 0 0 2px ${e.avatar_frame || DEFAULT_FRAME_COLOR};">${avatarInnerHtml(e, e.avatar_emoji || e.full_name[0] || "?")}</div>
         <div class="info">
-          <div class="name">${escapeHtml(e.full_name)}</div>
+          <div class="name">${escapeHtml(e.full_name)}${state.employee.is_admin && safeUser(e.tg_username) ? ` <span class="tg-handle" style="font-weight:400; font-size:12px; color:var(--text-secondary, #8e8e93);">@${safeUser(e.tg_username)}</span>` : ""}</div>
           <div class="role">${escapeHtml(e.position || "Менеджер")}</div>
         </div>
         <div class="actions">

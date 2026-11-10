@@ -68,6 +68,8 @@ const App = (() => {
     requests: [],
     myRequests: [],
     bonusesFines: [],
+    acceptance: [],
+    accStaged: null,
     notif: null,
     wishEnabled: false,
     wishes: [],
@@ -130,6 +132,8 @@ const App = (() => {
     try {
       [state.allowanceTypes, state.allowances] = await Promise.all([Api.getAllowanceTypes(), Api.getAllowances()]);
     } catch (e) { console.warn("Надбавки не загрузились:", e); state.allowanceTypes = []; state.allowances = []; }
+    try { state.acceptance = await Api.getAcceptance(state.year, state.month); }
+    catch (e) { console.warn("Приёмка не загрузилась:", e); state.acceptance = []; }
     state.myRequests = await Api.getMyPendingRequests();
     if (state.employee.is_admin) {
       state.requests = await Api.getPendingRequests();
@@ -460,6 +464,8 @@ const App = (() => {
   const wdOfDate = (y, m0, d) => ((new Date(y, m0, d).getDay() + 6) % 7) + 1; // 1=Пн … 7=Вс
   const dayInPeriod = (d, period) => !period || period === "full" || (period === "first" ? d <= 15 : d >= 16);
   const fmtRub = (n) => `${Math.round(n).toLocaleString("ru-RU")} ₽`;
+  // засчитанная мотивация за приёмку (WB) у сотрудника за период
+  const acceptanceFor = (empId, period) => (typeof Acceptance === "undefined" ? 0 : Acceptance.sumFor(state.acceptance, empId, period));
 
   function shiftHours(s) {
     if (s.duration_minutes) return s.duration_minutes / 60;
@@ -651,7 +657,10 @@ const App = (() => {
         const bf = state.employee.is_admin ? await Api.getBonusesFines(state.year, state.month) : [];
         if (req !== changeMonth._n) return; // пока грузили, нажали ещё раз — этот ответ устарел
         const wish = await loadWishData();
+        let acc = [];
+        try { acc = await Api.getAcceptance(state.year, state.month); } catch (e) { console.warn("Приёмка не загрузилась:", e); }
         if (req !== changeMonth._n) return;
+        state.acceptance = acc;
         state.shifts = shifts;
         state.bonusesFines = bf;
         state.wishEnabled = wish.enabled;
@@ -2066,6 +2075,14 @@ const App = (() => {
           <div class="right">${a.amount.toLocaleString("ru-RU")} ₽</div>
         </div>`);
     });
+    const myAcc = acceptanceFor(e.id, state.payPeriod);
+    if (myAcc) {
+      total += myAcc;
+      confirmedRows.push(`<div class="profile-income-item">
+          <div class="left"><div class="title"><i data-lucide="package-check"></i> Приёмка</div></div>
+          <div class="right">${myAcc > 0 ? "+" : "−"}${Math.abs(Math.round(myAcc * 100) / 100).toLocaleString("ru-RU")} ₽</div>
+        </div>`);
+    }
     const rows = pendingRows.concat(confirmedRows);
 
     incomeContainer.innerHTML = periodToggleHtml() + (rows.join("") || `<div class="center-msg">Пока нет данных за выбранный период</div>`);
@@ -2275,11 +2292,13 @@ const App = (() => {
       const fineSum = fines.reduce((s, b) => s + Number(b.amount), 0);
       const al = allowancesFor(e.id, state.payPeriod);
       const alSum = al.reduce((s, a) => s + a.amount, 0);
-      const amount = base + bonusSum + alSum - fineSum;
+      const accSum = acceptanceFor(e.id, state.payPeriod);
+      const amount = base + bonusSum + alSum + accSum - fineSum;
       fund += amount;
       // подпись «с учётом…» — только если у человека есть надбавки, бонусы или штрафы
       const parts = [];
       if (al.length) parts.push(`надбавки (${al.map((a) => escapeHtml(a.kind)).join(", ")}) +${alSum.toLocaleString("ru-RU")} ₽`);
+      if (accSum) parts.push(`приёмки ${accSum > 0 ? "+" : "−"}${Math.abs(Math.round(accSum * 100) / 100).toLocaleString("ru-RU")} ₽`);
       if (bonusSum) parts.push(`бонуса +${bonusSum.toLocaleString("ru-RU")} ₽`);
       if (fineSum) parts.push(`штрафа −${fineSum.toLocaleString("ru-RU")} ₽`);
       const withNote = parts.length ? `<div class="details" style="color:var(--accent);">с учётом ${parts.join(", ")}</div>` : "";
@@ -2304,6 +2323,7 @@ const App = (() => {
     }).join("");
 
     renderAllowances();
+    renderAcceptance();
     listEl.innerHTML = periodToggleHtml() + (rows || `<div class="center-msg">Нет сотрудников</div>`);
     document.getElementById("totalFund").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
     document.getElementById("totalFundSub").innerHTML = `${activeEmployees.length} сотрудников • <span>${totalShiftsAll}</span> смен за месяц`;
@@ -2398,6 +2418,8 @@ const App = (() => {
       <input type="time" id="f_dstart" value="${startVal}">
       <label>Стандартное закрытие</label>
       <input type="time" id="f_dend" value="${endVal}">
+      ${pvz.marketplace === "wb" ? `<label>ID ПВЗ в WB (из файла приёмки)</label>
+      <input type="text" id="f_wb_id" inputmode="numeric" placeholder="например, 50211720" value="${escapeHtml(pvz.wb_id || "")}">` : ""}
     `, async () => {
       if (_rateDraft.length === 0) return toast("Добавьте хотя бы один тариф");
       for (const r of _rateDraft) {
@@ -2408,8 +2430,15 @@ const App = (() => {
       const default_hourly = Number(document.getElementById("f_default_hourly").value) || 0;
       const default_start_time = document.getElementById("f_dstart").value;
       const default_end_time = document.getElementById("f_dend").value;
+      const wbEl = document.getElementById("f_wb_id");
+      const fields = { mid_hourly_rate: default_hourly, default_start_time, default_end_time };
+      if (wbEl) {
+        const wb = wbEl.value.trim();
+        if (wb && state.pvz.some((p) => p.id !== pvz.id && String(p.wb_id || "").trim() === wb)) return toast("Такой ID WB уже указан у другого ПВЗ");
+        if ("wb_id" in pvz || wb) fields.wb_id = wb || null;
+      }
       try {
-        await Api.updatePvz(pvz.id, { mid_hourly_rate: default_hourly, default_start_time, default_end_time });
+        await Api.updatePvz(pvz.id, fields);
         await Api.replacePayRules(pvz.id, _rateDraft);
         toast("✅ Тарифы обновлены");
         state.pvz = await Api.getPvzList();
@@ -2442,6 +2471,161 @@ const App = (() => {
     _saveRateExtra();
     _rateDraft.splice(i, 1);
     renderRateModal();
+  }
+
+
+  // ---- Приёмка (WB): блок внутри «Зарплаты по сотрудникам» ----
+  const _accSum = (n) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(Math.round(n * 100) / 100).toLocaleString("ru-RU")} ₽`;
+
+  function renderAcceptance() {
+    const stEl = document.getElementById("accStaged");
+    const el = document.getElementById("accList");
+    const cnt = document.getElementById("accCount");
+    if (!el) return;
+    const st = state.accStaged;
+    if (stEl) {
+      stEl.innerHTML = st
+        ? `<div class="imp-hint" style="color:var(--text);">Загружено: файлов ${st.files}, строк ${st.rows.length}${st.errors.length ? `<br><span style="color:#ff3b30;">${st.errors.slice(0, 5).map(escapeHtml).join("<br>")}${st.errors.length > 5 ? `<br>…и ещё ${st.errors.length - 5}` : ""}</span>` : ""}<br>Нажмите «Посчитать».</div>`
+        : "";
+    }
+    const list = state.acceptance.slice();
+    if (cnt) cnt.textContent = list.length ? `(${list.length})` : "";
+    if (!list.length) { el.innerHTML = `<div class="center-msg" style="padding:8px 0; font-size:11px;">За этот месяц данных о приёмке нет</div>`; return; }
+
+    const empName = (id) => { const e = state.employees.find((x) => x.id === id); return e ? fullName(e) : "—"; };
+    const wbPvz = state.pvz.filter((p) => p.marketplace === "wb");
+    const decidable = list.filter((a) => (a.shares || []).length);
+    const counted = list.filter((a) => a.status === "counted").reduce((s, a) => s + Number(a.amount), 0);
+    const pending = decidable.filter((a) => a.status === "pending").length;
+
+    const bulk = decidable.length ? `
+      <div class="acc-bulk">
+        <button onclick="App._accBulk('all')">✓ Засчитать все</button>
+        <button onclick="App._accBulk('none')">✗ Не засчитывать все</button>
+        <button onclick="App._accBulk('plus')">Только плюсы</button>
+        <button onclick="App._accBulk('minus')">Только минусы</button>
+        <button onclick="App._accBulk('reset')">↶ Сбросить все</button>
+      </div>
+      <div class="imp-hint" style="margin:6px 0 4px;">Засчитано: <b>${_accSum(counted)}</b>${pending ? ` • ждут решения: ${pending}` : ""}</div>` : "";
+
+    const rows = list.map((a) => {
+      const pvz = state.pvz.find((p) => p.id === a.pvz_id);
+      const amountCls = Number(a.amount) < 0 ? "acc-neg" : "acc-pos";
+      const head = `<div class="name" style="font-size:13px;">${escapeHtml(pvz?.name || a.address || "ПВЗ " + a.wb_pvz_id)} • ${fmtDMY(String(a.bonus_date).slice(0, 10))}</div>`;
+      if (!pvz) {
+        return `<div class="finance-employee acc-row"><div class="left">${head}
+          <div class="details">ПВЗ с ID ${escapeHtml(a.wb_pvz_id)} не найден — выберите, какой это:</div>
+          <div style="display:flex; gap:6px; margin-top:4px;">
+            <select id="accAssign_${escapeHtml(a.wb_pvz_id)}" style="flex:1; min-width:0;">${wbPvz.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select>
+            <button class="al-add-btn" onclick="App._accAssign('${escapeHtml(a.wb_pvz_id)}')">Привязать</button>
+          </div></div>
+          <div class="right"><span class="amount ${amountCls}">${_accSum(Number(a.amount))}</span></div></div>`;
+      }
+      const shares = a.shares || [];
+      if (!shares.length) {
+        return `<div class="finance-employee acc-row"><div class="left">${head}
+          <div class="details">никто не работал с 9:00 — некому начислить</div></div>
+          <div class="right"><span class="amount ${amountCls}">${_accSum(Number(a.amount))}</span></div></div>`;
+      }
+      const who = shares.map((x) => `${escapeHtml(empName(x.employee_id))}${shares.length > 1 ? ` (${_accSum(Number(x.amount))})` : ""}`).join(", ");
+      const ctrl = a.status === "pending"
+        ? `<button class="al-btn acc-yes" title="Засчитать" onclick="App._accSet('${a.id}','counted')"><i data-lucide="check"></i></button>
+           <button class="al-btn acc-no" title="Не засчитывать" onclick="App._accSet('${a.id}','skipped')"><i data-lucide="x"></i></button>`
+        : `<span class="acc-state ${a.status}">${a.status === "counted" ? "засчитано" : "не засчитано"}</span>
+           <button class="al-btn" title="Отменить" onclick="App._accSet('${a.id}','pending')"><i data-lucide="undo-2"></i></button>`;
+      return `<div class="finance-employee acc-row ${a.status}"><div class="left">${head}<div class="details">${who}</div></div>
+        <div class="right"><span class="amount ${amountCls}">${_accSum(Number(a.amount))}</span>${ctrl}</div></div>`;
+    }).join("");
+    el.innerHTML = bulk + rows;
+    refreshIcons();
+  }
+
+  async function _accPick(input) {
+    const files = [...(input.files || [])];
+    input.value = "";
+    if (!files.length) return;
+    if (typeof XLSX === "undefined" || typeof Acceptance === "undefined") return toast("🚫 Не загрузилась библиотека Excel. Откройте приложение заново");
+    const all = [], errors = [];
+    for (const f of files) {
+      try {
+        const parsed = Acceptance.parseWorkbook(XLSX, await f.arrayBuffer(), f.name);
+        all.push(...parsed.rows); errors.push(...parsed.errors);
+      } catch (e) { errors.push(`${f.name}: ${e.message || e}`); }
+    }
+    state.accStaged = { files: files.length, rows: Acceptance.mergeRows(all), errors };
+    renderAcceptance();
+  }
+
+  async function _accCalc() {
+    const st = state.accStaged;
+    if (!st || !st.rows.length) return toast("Сначала загрузите файл(ы)");
+    const btn = document.getElementById("accCalcBtn");
+    if (btn) btn.disabled = true;
+    try {
+      const pvzList = await Api.getPvzList();
+      state.pvz = pvzList;
+      const months = [...new Set(st.rows.map((r) => r.date.slice(0, 7)))];
+      const shifts = [];
+      for (const ym of months) shifts.push(...(await Api.getShiftsForMonth(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1)));
+      const records = Acceptance.buildRecords(st.rows, pvzList, shifts);
+      await Api.upsertAcceptance(records);
+      state.acceptance = await Api.getAcceptance(state.year, state.month);
+      state.accStaged = null;
+      const unknown = new Set(records.filter((r) => !r.pvz_id).map((r) => r.wb_pvz_id)).size;
+      const other = records.filter((r) => Number(r.bonus_date.slice(0, 4)) !== state.year || Number(r.bonus_date.slice(5, 7)) - 1 !== state.month).length;
+      toast(`✅ Посчитано: ${records.length}${unknown ? ` • ПВЗ не найдено: ${unknown}` : ""}${other ? ` • за другие месяцы: ${other} (переключите месяц)` : ""}`);
+      renderManagement();
+    } catch (e) { toast("🚫 " + (e.message || e)); }
+    finally { if (btn) btn.disabled = false; }
+  }
+
+  async function _accSet(id, status) {
+    const a = state.acceptance.find((x) => x.id === id);
+    if (!a) return;
+    try {
+      await Api.setAcceptanceStatus([id], status);
+      a.status = status;
+      renderManagement();
+    } catch (e) { toast("🚫 " + (e.message || e)); }
+  }
+
+  async function _accBulk(mode) {
+    const rows = state.acceptance.filter((a) => (a.shares || []).length);
+    const target = (a) => {
+      const v = Number(a.amount);
+      if (mode === "all") return "counted";
+      if (mode === "none") return "skipped";
+      if (mode === "plus") return v > 0 ? "counted" : "skipped";
+      if (mode === "minus") return v < 0 ? "counted" : "skipped";
+      return "pending";
+    };
+    const groups = { counted: [], skipped: [], pending: [] };
+    rows.forEach((a) => { const t = target(a); if (a.status !== t) groups[t].push(a); });
+    try {
+      for (const st of Object.keys(groups)) {
+        await Api.setAcceptanceStatus(groups[st].map((a) => a.id), st);
+        groups[st].forEach((a) => { a.status = st; });
+      }
+      renderManagement();
+    } catch (e) { toast("🚫 " + (e.message || e)); state.acceptance = await Api.getAcceptance(state.year, state.month).catch(() => state.acceptance); renderManagement(); }
+  }
+
+  // ПВЗ из файла не нашёлся по ID — привязываем выбранный ПВЗ и пересчитываем доли по этому ID
+  async function _accAssign(wbId) {
+    const sel = document.getElementById("accAssign_" + wbId);
+    if (!sel || !sel.value) return;
+    try {
+      if (state.pvz.some((p) => String(p.wb_id || "").trim() === wbId)) return toast("Этот ID уже привязан к другому ПВЗ");
+      await Api.updatePvz(sel.value, { wb_id: wbId });
+      state.pvz = await Api.getPvzList();
+      const mine = state.acceptance.filter((a) => a.wb_pvz_id === wbId);
+      const shifts = await Api.getShiftsForMonth(state.year, state.month);
+      const recs = Acceptance.buildRecords(mine.map((a) => ({ wbId, address: a.address || "", date: String(a.bonus_date).slice(0, 10), amount: Number(a.amount) })), state.pvz, shifts);
+      await Api.upsertAcceptance(recs);
+      state.acceptance = await Api.getAcceptance(state.year, state.month);
+      toast("✅ ПВЗ привязан");
+      renderManagement();
+    } catch (e) { toast("🚫 " + (e.message || e)); }
   }
 
   // ---- Надбавки: блок вверху «Зарплаты по сотрудникам» ----
@@ -3105,8 +3289,9 @@ const App = (() => {
       const bonusSum = bf.filter((b) => b.kind === "bonus").reduce((s, b) => s + Number(b.amount), 0);
       const fineSum = bf.filter((b) => b.kind === "fine").reduce((s, b) => s + Number(b.amount), 0);
       const alSum = allowancesFor(e.id, state.payPeriod).reduce((s, a) => s + a.amount, 0);
-      const total = base + bonusSum + alSum - fineSum;
-      csv += csvRow([fullName(e), empShifts.length, Math.round(base), bonusSum + alSum, fineSum, Math.round(total)]);
+      const accSum = acceptanceFor(e.id, state.payPeriod);
+      const total = base + bonusSum + alSum + accSum - fineSum;
+      csv += csvRow([fullName(e), empShifts.length, Math.round(base), Math.round((bonusSum + alSum + accSum) * 100) / 100, fineSum, Math.round(total)]);
     });
     deliverCsv(csv, `payroll_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
   }
@@ -3216,6 +3401,7 @@ const App = (() => {
     openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAllowanceTypeModal, typeAct, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
+    _accPick, _accCalc, _accSet, _accBulk, _accAssign,
     closeModal,
   };
 })();

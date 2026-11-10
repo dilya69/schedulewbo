@@ -234,6 +234,21 @@
                         <button class="bonus-btn" onclick="App.openBonusFineModal('bonus')"><i data-lucide="plus-circle"></i> Бонус</button>
                         <button class="fine-btn" onclick="App.openBonusFineModal('fine')"><i data-lucide="alert-circle"></i> Штраф</button>
                     </div>
+                    <!-- Приёмка WB (сворачиваемо) -->
+                    <div class="collapsible-header acc-header" onclick="App.toggleCollapsible('acceptBlock')">
+                        <span style="font-weight:600; font-size:12px; color:var(--text);"><i data-lucide="package-check"></i> Приёмка (WB) <span id="accCount" style="color:var(--text-secondary); font-weight:500;"></span></span>
+                        <span class="collapsible-arrow collapsed" id="acceptBlockArrow"><i data-lucide="chevron-down"></i></span>
+                    </div>
+                    <div id="acceptBlock" class="collapsible-body collapsed">
+                        <div class="imp-hint">Мотивация за скорость приёмки: загрузите Excel с сайта WB (можно сразу несколько файлов), нажмите «Посчитать». Сумма за день делится поровну между теми, кто в этот день работал на ПВЗ с 9:00.</div>
+                        <input type="file" id="accFile" accept=".xlsx,.xls,.csv" multiple style="display:none" onchange="App._accPick(this)">
+                        <div class="finance-actions">
+                            <button class="bonus-btn" style="background:#5856d6;" onclick="document.getElementById('accFile').click()"><i data-lucide="upload"></i> Загрузить файлы</button>
+                            <button class="bonus-btn" id="accCalcBtn" onclick="App._accCalc()"><i data-lucide="calculator"></i> Посчитать</button>
+                        </div>
+                        <div id="accStaged"></div>
+                        <div id="accList"></div>
+                    </div>
                     <div id="financeEmployeeList"></div>
                 </div>
 
@@ -310,10 +325,11 @@
     <div class="modal-box" id="modalBox"></div>
 </div>
 
-<script src="js/config.js?v=20261110b"></script>
-<script src="js/api.js?v=20261110b"></script>
+<script src="js/config.js?v=20261110c"></script>
+<script src="js/api.js?v=20261110c"></script>
 <script src="js/sheet-import.js?v=20261110b"></script>
-<script src="js/app.js?v=20261110b"></script>
+<script src="js/acceptance.js?v=20261110c"></script>
+<script src="js/app.js?v=20261110c"></script>
 <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>

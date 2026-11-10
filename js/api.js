@@ -453,6 +453,30 @@ const Api = (() => {
     return data;
   }
 
+
+  // ---------- ПРИЁМКА (WB) ----------
+  // записи за месяц; админ видит все, сотрудник — только те, где у него есть доля (так решает база)
+  async function getAcceptance(year, month) {
+    const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const to = `${year}-${String(month + 1).padStart(2, "0")}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, "0")}`;
+    const { data, error } = await client.from("acceptance_bonuses").select("*").gte("bonus_date", from).lte("bonus_date", to).order("bonus_date").order("wb_pvz_id");
+    if (error) throw error;
+    return data || [];
+  }
+  // повторная загрузка того же дня обновляет сумму и доли, а решение «засчитано/нет» (status) не трогает
+  async function upsertAcceptance(records) {
+    for (let i = 0; i < records.length; i += 200) {
+      const { error } = await client.from("acceptance_bonuses").upsert(records.slice(i, i + 200), { onConflict: "wb_pvz_id,bonus_date" });
+      if (error) throw error;
+    }
+  }
+  async function setAcceptanceStatus(ids, status) {
+    if (!ids.length) return;
+    const { data, error } = await client.from("acceptance_bonuses").update({ status }).in("id", ids).select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error("Не удалось сохранить: запись не найдена или нет прав");
+  }
+
   // ---------- НАДБАВКИ К ЗАРПЛАТЕ ----------
   // админ получает все строки, сотрудник — только свои (так решает база)
   async function getAllowances() {
@@ -558,7 +582,7 @@ const Api = (() => {
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
-    addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance, getAllowanceTypes, addAllowanceType, updateAllowanceType, deleteAllowanceType,
+    addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance, getAllowanceTypes, getAcceptance, upsertAcceptance, setAcceptanceStatus, addAllowanceType, updateAllowanceType, deleteAllowanceType,
     getNotificationSettings, saveNotificationSettings,
     getWishMonth, setWishMonthEnabled, getWishes, saveMyWish, deleteWish, deleteAllWishes,
   };

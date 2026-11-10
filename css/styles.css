@@ -1641,3 +1641,16 @@ button { color: inherit; }
 .al-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .al-chip.on { background: var(--accent); color: var(--accent-contrast, #fff); border-color: var(--accent); }
 .al-preview { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(128,128,128,0.12); font-size: 14px; }
+
+/* ---- Приёмка (WB) ---- */
+.acc-header { margin-top: 10px; }
+.acc-bulk { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.acc-bulk button { padding: 6px 10px; border: none; border-radius: 30px; background: rgba(128,128,128,0.15); color: var(--text); font-size: 11px; font-weight: 600; cursor: pointer; }
+.acc-bulk button:active { transform: scale(0.96); }
+.acc-row.skipped { opacity: 0.55; }
+.acc-pos { color: #34c759; }
+.acc-neg { color: #ff3b30; }
+.al-btn.acc-yes { background: #34c759; color: #fff; }
+.al-btn.acc-no { background: #ff3b30; color: #fff; }
+.acc-state { font-size: 10.5px; font-weight: 600; color: var(--text-secondary); }
+.acc-state.counted { color: #34c759; }

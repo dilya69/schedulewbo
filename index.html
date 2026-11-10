@@ -220,16 +220,18 @@
                     <span class="collapsible-arrow collapsed" id="financeBlockArrow"><i data-lucide="chevron-down"></i></span>
                 </div>
                 <div id="financeBlock" class="collapsible-body collapsed">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin:4px 0 6px;">
-                        <span style="font-weight:600; font-size:12px; color:var(--text);">Типы надбавок</span>
-                        <button class="al-add-btn" onclick="App.openAllowanceTypeModal()"><i data-lucide="plus"></i> Тип</button>
+                    <!-- Тикеты (сворачиваемо) -->
+                    <div class="collapsible-header acc-header" onclick="App.toggleCollapsible('ticketsBlock')">
+                        <span style="font-weight:600; font-size:12px; color:var(--text);"><i data-lucide="ticket"></i> Тикеты <span id="alCount" style="color:var(--text-secondary); font-weight:500;"></span></span>
+                        <span class="collapsible-arrow collapsed" id="ticketsBlockArrow"><i data-lucide="chevron-down"></i></span>
                     </div>
-                    <div id="allowanceTypesList"></div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin:12px 0 6px;">
-                        <span style="font-weight:600; font-size:12px; color:var(--text);">Кому назначены</span>
-                        <button class="al-add-btn" onclick="App.openAllowanceModal()"><i data-lucide="plus"></i> Назначить</button>
+                    <div id="ticketsBlock" class="collapsible-body collapsed">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin:4px 0 6px;">
+                            <span style="font-size:11.5px; color:var(--text-secondary);">5 000 ₽ каждые 2 недели, если не вписана своя сумма</span>
+                            <button class="al-add-btn" onclick="App.openAllowanceModal()"><i data-lucide="plus"></i> Назначить</button>
+                        </div>
+                        <div id="allowancesList"></div>
                     </div>
-                    <div id="allowancesList"></div>
                     <div class="finance-actions">
                         <button class="bonus-btn" onclick="App.openBonusFineModal('bonus')"><i data-lucide="plus-circle"></i> Бонус</button>
                         <button class="fine-btn" onclick="App.openBonusFineModal('fine')"><i data-lucide="alert-circle"></i> Штраф</button>
@@ -325,11 +327,11 @@
     <div class="modal-box" id="modalBox"></div>
 </div>
 
-<script src="js/config.js?v=20261110c"></script>
-<script src="js/api.js?v=20261110c"></script>
+<script src="js/config.js?v=20261110d"></script>
+<script src="js/api.js?v=20261110d"></script>
 <script src="js/sheet-import.js?v=20261110b"></script>
-<script src="js/acceptance.js?v=20261110c"></script>
-<script src="js/app.js?v=20261110c"></script>
+<script src="js/acceptance.js?v=20261110d"></script>
+<script src="js/app.js?v=20261110d"></script>
 <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>

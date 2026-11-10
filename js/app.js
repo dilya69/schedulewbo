@@ -639,7 +639,7 @@ const App = (() => {
     const many = bdays.length > 1;
     return `<div class="bday-card bd-${n}" style="margin-top:6px;">
       <div class="bd-title">С днём рождения!</div>
-      <div class="bd-text">${bdays.map((e) => escapeHtml(e.full_name)).join(", ")} ${many ? "отмечают" : "отмечает"} день рождения</div>
+      <div class="bd-text">${bdays.map((e) => escapeHtml(fullName(e))).join(", ")} ${many ? "отмечают" : "отмечает"} день рождения</div>
     </div>`;
   }
 
@@ -671,7 +671,7 @@ const App = (() => {
     // группируем по пунктам выдачи; внутри пункта люди идут по времени начала смены
     const personRow = (s) => {
       const emp = state.employees.find((e) => e.id === s.employee_id);
-      const name = emp?.full_name || s.employees?.full_name || "—";
+      const name = fullName(emp) || fullName(s.employees) || "—";
       const tgUsername = safeUser(emp?.tg_username || s.employees?.tg_username || "");
 
       const nameHtml = tgUsername
@@ -916,7 +916,7 @@ const App = (() => {
         ).join("");
         return `<div class="wish-card">
           <div class="wish-card-head">
-            <div class="wish-name">${escapeHtml(w.employees?.full_name || "Сотрудник")}</div>
+            <div class="wish-name">${escapeHtml(fullName(w.employees) || "Сотрудник")}</div>
             <button class="wish-del" onclick="App.deleteWishConfirm('${w.id}')"><i data-lucide="trash-2"></i> Удалить</button>
           </div>
           ${rows || `<div class="wish-row" style="color:var(--text-secondary);">Дни не отмечены</div>`}
@@ -979,7 +979,7 @@ const App = (() => {
 
   async function deleteWishConfirm(id) {
     const w = state.wishes.find((x) => x.id === id);
-    if (!confirm(`Удалить пожелания: ${w?.employees?.full_name || "сотрудник"}?`)) return;
+    if (!confirm(`Удалить пожелания: ${fullName(w?.employees) || "сотрудник"}?`)) return;
     try {
       await Api.deleteWish(id);
       state.wishes = state.wishes.filter((x) => x.id !== id);
@@ -1403,7 +1403,7 @@ const App = (() => {
     return `
       <div class="request-card" style="margin-bottom:6px; flex-wrap:wrap;">
         <div class="info">
-          <div class="name">${index ? index + ". " : ""}${escapeHtml(r.employees?.full_name || "—")}</div>
+          <div class="name">${index ? index + ". " : ""}${escapeHtml(fullName(r.employees) || "—")}</div>
           <div class="details"><i data-lucide="building-2"></i> ${escapeHtml(pvzName)} • <i data-lucide="calendar"></i> ${dateLabel}</div>
           <div class="details"><i data-lucide="clock"></i> ${escapeHtml(timeLabel)}</div>
         </div>
@@ -1483,7 +1483,7 @@ const App = (() => {
     const items = state.employees
       .filter((e) => e.is_active !== false)
       .map((e) => `<div class="emp-picker-item ${selectedId === e.id ? "selected" : ""}" data-name="${escapeHtml(e.full_name.toLowerCase())}" onclick="App._selectEmp(this,'${e.id}')">
-        <span class="dot" style="background:${colorForName(e.full_name)};"></span>${escapeHtml(e.full_name)}
+        <span class="dot" style="background:${colorForName(e.full_name)};"></span>${escapeHtml(fullName(e))}
       </div>`).join("");
 
     return `<div class="emp-picker">
@@ -1577,6 +1577,8 @@ const App = (() => {
   }
 
   // ---------------- СОТРУДНИКИ ----------------
+  // полное имя (Имя Фамилия) — везде, кроме календаря; если не задано — короткое
+  const fullName = (e) => String((e && (e.real_name || e.full_name)) || "").trim();
   const _nm = (e) => String(e?.full_name || "").trim().toLowerCase();
   const isBoss = (e) => ["иван", "светлана"].includes(_nm(e));
   const isYana = (e) => _nm(e) === "яна";
@@ -1603,10 +1605,10 @@ const App = (() => {
     if (countEl) countEl.textContent = `${active.length} чел.`;
 
     activeContainer.innerHTML = active.map((e) => `
-      <div class="employee-card${pinIndex(e) >= 0 ? " pinned" : ""}" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
+      <div class="employee-card${pinIndex(e) >= 0 ? " pinned" : ""}" data-name="${escapeHtml((e.full_name + " " + (e.real_name || "")).toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
         <div class="avatar" style="background:${colorForName(e.full_name)}; box-shadow:0 0 0 2px ${e.avatar_frame || DEFAULT_FRAME_COLOR};">${avatarInnerHtml(e, e.avatar_emoji || e.full_name[0] || "?")}</div>
         <div class="info">
-          <div class="name">${escapeHtml(e.full_name)}${state.employee.is_admin && safeUser(e.tg_username) ? ` <span class="tg-handle" style="font-weight:400; font-size:12px; color:var(--text-secondary, #8e8e93);">@${safeUser(e.tg_username)}</span>` : ""}</div>
+          <div class="name">${escapeHtml(fullName(e))}${state.employee.is_admin && safeUser(e.tg_username) ? ` <span class="tg-handle" style="font-weight:400; font-size:12px; color:var(--text-secondary, #8e8e93);">@${safeUser(e.tg_username)}</span>` : ""}</div>
           <div class="role">${escapeHtml(e.position || "Менеджер")}</div>
         </div>
         <div class="actions">
@@ -1622,10 +1624,10 @@ const App = (() => {
       if (state.employee.is_admin && pending.length > 0) {
         pendingSection.style.display = ""; // видимость решает CSS (.admin-only)
         pendingContainer.innerHTML = pending.map((e) => `
-          <div class="employee-card pending-card" data-name="${escapeHtml(e.full_name.toLowerCase())}" data-tgid="${e.tg_id > 0 ? e.tg_id : ""}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
+          <div class="employee-card pending-card" data-name="${escapeHtml((e.full_name + " " + (e.real_name || "")).toLowerCase())}" data-tgid="${e.tg_id > 0 ? e.tg_id : ""}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
             <div class="avatar" style="background:#8e8e93;">${e.avatar_emoji ? escapeHtml(e.avatar_emoji) : escapeHtml(e.full_name[0] || "?")}</div>
             <div class="info">
-              <div class="name">${escapeHtml(e.full_name)}</div>
+              <div class="name">${escapeHtml(fullName(e))}</div>
               <div class="role">${e.tg_id > 0 ? "ID: " + e.tg_id : "ждёт первого входа"}${e.tg_username ? " • @" + escapeHtml(e.tg_username) : ""}${e.terminated_at ? " • уволен" : ""}</div>
             </div>
             <div class="actions">
@@ -1695,7 +1697,8 @@ const App = (() => {
 
   function openAddEmployeeModal() {
     openModal("Добавить сотрудника", `
-      <label>ФИО</label><input type="text" id="f_name" placeholder="Иван Иванов">
+      <label>Имя в календаре (коротко)</label><input type="text" id="f_name" placeholder="Ваня">
+      <label>Полное имя (Имя Фамилия)</label><input type="text" id="f_realname" placeholder="Иван Иванов">
       <label>Должность</label><input type="text" id="f_position" placeholder="Менеджер" value="Менеджер">
       <label>Telegram username (без @, необязательно)</label><input type="text" id="f_username" placeholder="ivanov">
     `, async () => {
@@ -1703,8 +1706,9 @@ const App = (() => {
       if (!full_name) return toast("Введите имя");
       const position = document.getElementById("f_position").value.trim();
       const tg_username = document.getElementById("f_username").value.trim().replace(/^@/, "") || null;
+      const real_name = document.getElementById("f_realname").value.trim() || null;
       try {
-        await Api.addEmployee({ full_name, position, tg_username });
+        await Api.addEmployee({ full_name, position, tg_username, real_name });
         toast("✅ Сотрудник добавлен");
         state.employees = await Api.getEmployees();
         renderEmployees();
@@ -1742,8 +1746,9 @@ const App = (() => {
     const phoneField = (isBoss(emp) || isYana(emp))
       ? `<label>Телефон</label><input type="tel" id="f_phone" inputmode="tel" placeholder="+7 900 000-00-00" value="${escapeHtml(emp.phone || "")}">`
       : "";
-    openModal(`Редактировать: ${emp.full_name}`, `
-      <label>ФИО</label><input type="text" id="f_name" value="${escapeHtml(emp.full_name)}">
+    openModal(`Редактировать: ${fullName(emp)}`, `
+      <label>Имя в календаре (коротко)</label><input type="text" id="f_name" value="${escapeHtml(emp.full_name)}">
+      <label>Полное имя (Имя Фамилия)</label><input type="text" id="f_realname" value="${escapeHtml(emp.real_name || "")}">
       <label>Должность</label><input type="text" id="f_position" value="${escapeHtml(emp.position || "")}">
       <label>Telegram username (без @)</label>
       <input type="text" id="f_username" autocapitalize="none" autocomplete="off" placeholder="ivanov" value="${escapeHtml(emp.tg_username || "")}">
@@ -1784,6 +1789,7 @@ const App = (() => {
       const phoneEl = document.getElementById("f_phone");
       const fields = {
         full_name: newName,
+        real_name: document.getElementById("f_realname").value.trim() || null,
         position: document.getElementById("f_position").value.trim(),
         tg_username: newUsername || null,
         is_active: newActive,
@@ -2151,7 +2157,7 @@ const App = (() => {
 
       return `<div class="finance-employee">
         <div class="left">
-          <div class="name">${escapeHtml(e.full_name)}</div>
+          <div class="name">${escapeHtml(fullName(e))}</div>
           <div class="details">${empShifts.length} смен • ${Math.round(base).toLocaleString("ru-RU")} ₽ по тарифам ПВЗ</div>
           ${bonuses.map((b) => `<div class="bonus-list"><span>Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</span><button class="bf-del" title="Удалить" onclick="App.deleteBonusFine('${b.id}')"><i data-lucide="x"></i></button></div>`).join("")}
           ${fines.map((b) => `<div class="fine-list"><span>Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</span><button class="bf-del" title="Удалить" onclick="App.deleteBonusFine('${b.id}')"><i data-lucide="x"></i></button></div>`).join("")}
@@ -2306,7 +2312,7 @@ const App = (() => {
   function openBonusFineModal(kind) {
     const empOptions = state.employees
       .filter((e) => e.is_active !== false)
-      .map((e) => `<option value="${e.id}">${escapeHtml(e.full_name)}</option>`).join("");
+      .map((e) => `<option value="${e.id}">${escapeHtml(fullName(e))}</option>`).join("");
     openModal((kind === "bonus" ? "Начислить бонус" : "Оформить штраф") + ` — ${MONTHS[state.month]} ${state.year}`, `
       <label>Сотрудник</label><select id="f_employee">${empOptions}</select>
       <label>Сумма, ₽</label><input type="number" id="f_amount" min="1" placeholder="1000">
@@ -2333,7 +2339,7 @@ const App = (() => {
     if (!b) return;
     const emp = state.employees.find((e) => e.id === b.employee_id);
     const what = b.kind === "bonus" ? "бонус" : "штраф";
-    if (!confirm(`Удалить ${what} ${b.amount} ₽${emp ? " (" + emp.full_name + ")" : ""}${b.reason ? " — " + b.reason : ""}?`)) return;
+    if (!confirm(`Удалить ${what} ${b.amount} ₽${emp ? " (" + fullName(emp) + ")" : ""}${b.reason ? " — " + b.reason : ""}?`)) return;
     try {
       await Api.deleteBonusFine(id);
       toast("✅ Удалено");
@@ -2644,7 +2650,7 @@ const App = (() => {
       const rows = imp.nameKeys.map((key, i) => {
         const cur = imp.mappings.emp[key] || "";
         const info = imp.names[key];
-        const opts = active.map((e) => `<option value="${e.id}" ${e.id === cur ? "selected" : ""}>${escapeHtml(e.full_name)}</option>`).join("");
+        const opts = active.map((e) => `<option value="${e.id}" ${e.id === cur ? "selected" : ""}>${escapeHtml(fullName(e))}</option>`).join("");
         return `<div class="imp-row"><span><b>${escapeHtml(info.name)}</b> <small>${info.ambiguous ? "подходит нескольким · " : ""}встречается ${info.count} раз(а)${info.examples && info.examples.length ? ": " + escapeHtml(info.examples[0]) : ""}</small></span>
           <select onchange="App._importSetEmp(${i}, this.value)"><option value="">— выбрать сотрудника —</option>${opts}<option value="__skip__" ${cur === "__skip__" ? "selected" : ""}>Не загружать эти записи</option></select></div>`;
       }).join("");
@@ -2761,7 +2767,7 @@ const App = (() => {
       const bonusSum = bf.filter((b) => b.kind === "bonus").reduce((s, b) => s + Number(b.amount), 0);
       const fineSum = bf.filter((b) => b.kind === "fine").reduce((s, b) => s + Number(b.amount), 0);
       const total = base + bonusSum - fineSum;
-      csv += csvRow([e.full_name, empShifts.length, Math.round(base), bonusSum, fineSum, Math.round(total)]);
+      csv += csvRow([fullName(e), empShifts.length, Math.round(base), bonusSum, fineSum, Math.round(total)]);
     });
     deliverCsv(csv, `payroll_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
   }
@@ -2770,7 +2776,7 @@ const App = (() => {
     let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
     state.shifts.filter((s) => inPayPeriod(s.shift_date, state.payPeriod)).slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-      const empName = s.employees?.full_name || "";
+      const empName = fullName(s.employees);
       const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
       csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
     });
@@ -2786,7 +2792,7 @@ const App = (() => {
       let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
       shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-        const empName = s.employees?.full_name || "";
+        const empName = fullName(s.employees);
         const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
         csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
       });
@@ -2794,7 +2800,7 @@ const App = (() => {
       csv += csvRow(["Сотрудник", "Тип", "Сумма", "Причина"]);
       bf.forEach((b) => {
         const emp = state.employees.find((e) => e.id === b.employee_id);
-        csv += csvRow([emp?.full_name || "—", b.kind === "bonus" ? "Бонус" : "Штраф", b.amount, b.reason || ""]);
+        csv += csvRow([fullName(emp) || "—", b.kind === "bonus" ? "Бонус" : "Штраф", b.amount, b.reason || ""]);
       });
       await deliverCsv(csv, `данные_${year}_${month + 1}.csv`);
     } catch (e) {

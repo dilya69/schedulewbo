@@ -193,7 +193,7 @@ const Api = (() => {
 
     const { data, error } = await client
       .from("shifts")
-      .select("*, employees:employee_id(id, full_name, avatar_emoji)")
+      .select("*, employees:employee_id(id, full_name, real_name, avatar_emoji)")
       .gte("shift_date", from)
       .lte("shift_date", to);
     if (error) throw error;
@@ -272,7 +272,7 @@ const Api = (() => {
   async function getPendingRequests() {
     const { data, error } = await client
       .from("shift_requests")
-      .select("*, employees:employee_id(full_name), shifts:shift_id(pvz_id, shift_date, start_time, end_time, pvz:pvz_id(name))")
+      .select("*, employees:employee_id(full_name, real_name), shifts:shift_id(pvz_id, shift_date, start_time, end_time, pvz:pvz_id(name))")
       .eq("status", "pending")
       .order("created_at", { ascending: true });
     if (error) throw error;
@@ -389,14 +389,14 @@ const Api = (() => {
     return data;
   }
 
-  async function addEmployee({ full_name, position, tg_username }) {
+  async function addEmployee({ full_name, position, tg_username, real_name = null }) {
     // отрицательный уникальный "плейсхолдер" вместо 0 — иначе второй такой же
     // сотрудник не сохранится (tg_id должен быть уникальным).
     // Когда человек сам откроет бота, telegram-auth сама привяжет его
     // настоящий tg_id к этой записи по совпадению username.
     const placeholderTgId = -(Date.now() * 1000 + Math.floor(Math.random() * 1000));
     const { error } = await client.from("employees").insert({
-      full_name, position, tg_username, tg_id: placeholderTgId, is_active: true,
+      full_name, real_name, position, tg_username, tg_id: placeholderTgId, is_active: true,
     });
     if (error) throw error;
   }
@@ -469,7 +469,7 @@ const Api = (() => {
   async function getWishes(month) {
     const { data, error } = await client
       .from("availability_wishes")
-      .select("*, employees:employee_id(full_name)")
+      .select("*, employees:employee_id(full_name, real_name)")
       .eq("month", month)
       .order("updated_at", { ascending: false });
     if (error) throw error;

@@ -1632,3 +1632,7 @@ button { color: inherit; }
 /* карточка сотрудника: кнопки действий — аккуратные круглые */
 .employee-card.collapsible .actions button { width: 34px; height: 34px; padding: 0; border-radius: 50%; background: rgba(128,128,128,0.15); display: inline-flex; align-items: center; justify-content: center; }
 .employee-card.collapsible .actions button svg.lucide { width: 16px; height: 16px; }
+
+/* быстрые варианты типа надбавки (вместо datalist, который глючит в Telegram) */
+.al-chip { padding: 5px 12px; border: 1px solid rgba(128,128,128,0.35); border-radius: 30px; background: transparent; color: var(--text); font-size: 12px; cursor: pointer; }
+.al-chip:active { background: rgba(128,128,128,0.2); }

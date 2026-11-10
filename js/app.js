@@ -2384,8 +2384,10 @@ const App = (() => {
       .map((e) => `<option value="${e.id}" ${cur?.employee_id === e.id ? "selected" : ""}>${escapeHtml(fullName(e))}</option>`).join("");
     openModal(cur ? "Изменить надбавку" : "Добавить надбавку", `
       <label>Сотрудник</label><select id="f_al_emp" ${cur ? "disabled" : ""}>${empOptions}</select>
-      <label>Тип</label><input type="text" id="f_al_kind" list="alKinds" placeholder="Тикеты" value="${escapeHtml(cur?.kind || "")}">
-      <datalist id="alKinds"><option value="Тикеты"><option value="Приёмка"></datalist>
+      <label>Тип</label><input type="text" id="f_al_kind" autocomplete="off" placeholder="Тикеты" value="${escapeHtml(cur?.kind || "")}">
+      <div style="display:flex; gap:6px; margin:-4px 0 8px;">
+        ${["Тикеты", "Приёмка"].map((k) => `<button type="button" class="al-chip" onclick="document.getElementById('f_al_kind').value='${k}'">${k}</button>`).join("")}
+      </div>
       <label>Правило начисления</label>
       <select id="f_al_rule">${Object.entries(ALLOWANCE_RULES).map(([k, r]) => `<option value="${k}" ${(cur?.rule || "half_month") === k ? "selected" : ""}>${escapeHtml(r.label)}</option>`).join("")}</select>
       <label>Сумма, ₽ (за один период по правилу)</label><input type="number" id="f_al_amount" inputmode="numeric" min="1" placeholder="5000" value="${cur ? Number(cur.amount) : ""}">

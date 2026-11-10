@@ -2410,7 +2410,7 @@ const App = (() => {
     const st = state.accStaged;
     if (stEl) {
       stEl.innerHTML = st
-        ? `<div class="imp-hint" style="color:var(--text);">Загружено: файлов ${st.files}, строк ${st.rows.length}${st.errors.length ? `<br><span style="color:#ff3b30;">${st.errors.slice(0, 5).map(escapeHtml).join("<br>")}${st.errors.length > 5 ? `<br>…и ещё ${st.errors.length - 5}` : ""}</span>` : ""}<br>Нажмите «Посчитать».</div>`
+        ? `<div class="imp-hint" style="color:var(--text);">Загружено: файлов ${st.files}, строк ${st.rows.length}${st.errors.length ? `<br><span style="color:#ff3b30;">${st.errors.slice(0, 5).map(escapeHtml).join("<br>")}${st.errors.length > 5 ? `<br>…и ещё ${st.errors.length - 5}` : ""}</span>` : ""}<br>Можно добавить ещё файлы или нажать «Посчитать». <a href="#" onclick="App._accClear(); return false;" style="color:#ff3b30;">Очистить</a></div>`
         : "";
     }
     const list = state.acceptance.slice();
@@ -2479,7 +2479,18 @@ const App = (() => {
         all.push(...parsed.rows); errors.push(...parsed.errors);
       } catch (e) { errors.push(`${f.name}: ${e.message || e}`); }
     }
-    state.accStaged = { files: files.length, rows: Acceptance.mergeRows(all), errors };
+    // файлы копятся: каждая новая загрузка добавляется к уже выбранным (на телефоне часто выбирается по одному)
+    const prev = state.accStaged;
+    state.accStaged = {
+      files: (prev ? prev.files : 0) + files.length,
+      rows: Acceptance.mergeRows([...(prev ? prev.rows : []), ...all]),
+      errors: [...(prev ? prev.errors : []), ...errors],
+    };
+    renderAcceptance();
+  }
+
+  function _accClear() {
+    state.accStaged = null;
     renderAcceptance();
   }
 
@@ -3219,7 +3230,7 @@ csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtD
     openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
-    _accPick, _accCalc, _accSet, _accBulk, _accAssign, _accDel, _accDelAll, setRoundPay,
+    _accPick, _accCalc, _accSet, _accBulk, _accAssign, _accDel, _accDelAll, _accClear, setRoundPay,
     closeModal,
   };
 })();

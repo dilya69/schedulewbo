@@ -61,6 +61,7 @@ const App = (() => {
     pvz: [],
     pvzPayRules: {},
     payPeriod: "full",
+    roundPay: (() => { try { return localStorage.getItem("roundPay") === "1"; } catch (e) { return false; } })(),
     allowances: [],
     shifts: [],
     employees: [],
@@ -442,7 +443,23 @@ const App = (() => {
   // Только «Тикеты»: 5 000 ₽ за каждые 2 недели (1–15 и 16–конец), «Весь месяц» = две половины. Можно вписать свою сумму за половину.
   const WD_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
   const TICKET_HALF_PAY = 5000;
-  const fmtRub = (n) => `${Math.round(n).toLocaleString("ru-RU")} ₽`;
+  // Деньги: по умолчанию точно, до копеек; кнопка «Округлить» у админа округляет всё до рубля
+  const moneyVal = (n) => (state.roundPay ? Math.round(Number(n)) : Math.round(Number(n) * 100) / 100);
+  const fmtNum = (n) => {
+    const v = moneyVal(n);
+    return Number.isInteger(v) ? v.toLocaleString("ru-RU") : v.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const fmtRub = (n) => `${fmtNum(n)} ₽`;
+  function setRoundPay(on) {
+    state.roundPay = !!on;
+    try { localStorage.setItem("roundPay", on ? "1" : "0"); } catch (e) { /* без хранилища — просто на время сессии */ }
+    renderProfile();
+    renderManagement();
+    refreshIcons();
+  }
+  function roundToggleHtml() {
+    return `<div class="imp-hint" style="margin:6px 0;"><button type="button" class="al-add-btn" onclick="App.setRoundPay(${state.roundPay ? "false" : "true"})">${state.roundPay ? "Показать точно, до копеек" : "Округлить до рубля"}</button>${state.roundPay ? " • сейчас суммы округлены" : " • сейчас суммы точные"}</div>`;
+  }
   // засчитанная мотивация за приёмку (WB) у сотрудника за период
   const acceptanceFor = (empId, period) => (typeof Acceptance === "undefined" ? 0 : Acceptance.sumFor(state.acceptance, empId, period));
 
@@ -830,7 +847,7 @@ const App = (() => {
               const isMine = shift.employee_id === state.employee.id;
               const empName = shift.employees?.full_name || "?";
               const bg = colorForName(empName);
-              const title = `${empName} • ${shiftTimeLabel(shift)} • ${Math.round(shiftAmount(shift, pvz))}₽`;
+              const title = `${empName} • ${shiftTimeLabel(shift)} • ${fmtNum(shiftAmount(shift, pvz))}₽`;
               html += `<span class="name-chip ${isMine ? "mine" : ""}" style="background:${bg};" title="${escapeHtml(title)}">${escapeHtml(empName)}</span>`;
             } else if (shift.status === "pending") {
               const cnt = state.requests.filter((r) => r.shift_id === shift.id).length;
@@ -864,7 +881,7 @@ const App = (() => {
       if (state.isAdminView) {
         html += `<div class="admin-panel" style="border-color:${pvz.color};">
           <div class="stat-row"><span>Смен назначено:</span><strong>${totalShifts}</strong></div>
-          <div class="stat-row"><span>Сумма:</span><strong>${Math.round(totalAmount).toLocaleString("ru-RU")} ₽</strong></div>
+          <div class="stat-row"><span>Сумма:</span><strong>${fmtRub(totalAmount)}</strong></div>
         </div>`;
       }
 
@@ -1680,18 +1697,18 @@ const App = (() => {
     let total = 0;
     const rows = shifts.map((s) => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-      const amount = Math.round(shiftAmount(s, pvz));
+      const amount = shiftAmount(s, pvz);
       total += amount;
       const dateLabel = fmtDMYW(s.shift_date);
       return `<div class="profile-income-item">
         <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${dateLabel}, ${shiftTimeLabel(s)}</div></div>
-        <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>
+        <div class="right">${fmtRub(amount)}</div>
       </div>`;
     }).join("");
 
     openModal(`График: ${name} — ${MONTHS[state.month]} ${state.year}`, `
       ${rows || '<div class="center-msg">В этом месяце смен нет</div>'}
-      ${shifts.length ? `<div style="display:flex; justify-content:space-between; font-weight:700; font-size:14px; padding:10px 0 2px; color:var(--text); border-top:1px solid var(--border); margin-top:6px;"><span>${shifts.length} смен, итого</span><span>${Math.round(total).toLocaleString("ru-RU")} ₽</span></div>` : ""}
+      ${shifts.length ? `<div style="display:flex; justify-content:space-between; font-weight:700; font-size:14px; padding:10px 0 2px; color:var(--text); border-top:1px solid var(--border); margin-top:6px;"><span>${shifts.length} смен, итого</span><span>${fmtRub(total)}</span></div>` : ""}
     `, null);
   }
 
@@ -1882,7 +1899,7 @@ const App = (() => {
       let csv = csvRow(["Тип", "Дата/Месяц", "ПВЗ", "Начало", "Конец", "Сумма", "Причина"]);
       data.shifts.forEach((s) => {
         const pvz = s.pvz || state.pvz.find((p) => p.id === s.pvz_id);
-        const amount = Math.round(shiftAmount(s, pvz));
+        const amount = moneyVal(shiftAmount(s, pvz));
         csv += csvRow(["Смена", s.shift_date, pvz?.name || "", s.duration_minutes ? fmtDuration(s.duration_minutes) : (s.start_time?.slice(0,5) || ""), s.duration_minutes ? "" : (s.end_time?.slice(0,5) || ""), amount, ""]);
       });
       data.bonusesFines.forEach((b) => {
@@ -1968,11 +1985,11 @@ const App = (() => {
       .sort((a, b) => a.shift_date.localeCompare(b.shift_date))
       .map((s) => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-        const amount = Math.round(shiftAmount(s, pvz));
+        const amount = shiftAmount(s, pvz);
         total += amount;
         return `<div class="profile-income-item">
           <div class="left"><div class="title"><i data-lucide="building-2"></i> ${escapeHtml(pvz?.name || "—")}</div><div class="desc">${fmtDMY(s.shift_date)}, ${shiftTimeLabel(s)}</div></div>
-          <div class="right">${amount.toLocaleString("ru-RU")} ₽</div>
+          <div class="right">${fmtRub(amount)}</div>
         </div>`;
       });
 
@@ -1980,7 +1997,7 @@ const App = (() => {
       total += a.amount;
       confirmedRows.push(`<div class="profile-income-item">
           <div class="left"><div class="title"><i data-lucide="plus-circle"></i> Надбавка: ${escapeHtml(a.kind)}</div></div>
-          <div class="right">${a.amount.toLocaleString("ru-RU")} ₽</div>
+          <div class="right">${fmtRub(a.amount)}</div>
         </div>`);
     });
     const myAcc = acceptanceFor(e.id, state.payPeriod);
@@ -1988,13 +2005,13 @@ const App = (() => {
       total += myAcc;
       confirmedRows.push(`<div class="profile-income-item">
           <div class="left"><div class="title"><i data-lucide="package-check"></i> Приёмка</div></div>
-          <div class="right">${myAcc > 0 ? "+" : "−"}${Math.abs(Math.round(myAcc * 100) / 100).toLocaleString("ru-RU")} ₽</div>
+          <div class="right">${myAcc > 0 ? "+" : "−"}${fmtRub(Math.abs(myAcc))}</div>
         </div>`);
     }
     const rows = pendingRows.concat(confirmedRows);
 
     incomeContainer.innerHTML = periodToggleHtml() + (rows.join("") || `<div class="center-msg">Пока нет данных за выбранный период</div>`);
-    document.getElementById("profileTotal").textContent = `${Math.round(total).toLocaleString("ru-RU")} ₽`;
+    document.getElementById("profileTotal").textContent = fmtRub(total);
 
     if (state.notif) {
       document.getElementById("remindMinutes").value = state.notif.remind_minutes ?? 120;
@@ -2205,10 +2222,10 @@ const App = (() => {
       fund += amount;
       // подпись «с учётом…» — только если у человека есть надбавки, бонусы или штрафы
       const parts = [];
-      if (al.length) parts.push(`надбавки (${al.map((a) => escapeHtml(a.kind)).join(", ")}) +${alSum.toLocaleString("ru-RU")} ₽`);
-      if (accSum) parts.push(`приёмки ${accSum > 0 ? "+" : "−"}${Math.abs(Math.round(accSum * 100) / 100).toLocaleString("ru-RU")} ₽`);
-      if (bonusSum) parts.push(`бонуса +${bonusSum.toLocaleString("ru-RU")} ₽`);
-      if (fineSum) parts.push(`штрафа −${fineSum.toLocaleString("ru-RU")} ₽`);
+      if (al.length) parts.push(`надбавки (${al.map((a) => escapeHtml(a.kind)).join(", ")}) +${fmtRub(alSum)}`);
+      if (accSum) parts.push(`приёмки ${accSum > 0 ? "+" : "−"}${fmtRub(Math.abs(accSum))}`);
+      if (bonusSum) parts.push(`бонуса +${fmtRub(bonusSum)}`);
+      if (fineSum) parts.push(`штрафа −${fmtRub(fineSum)}`);
       const withNote = parts.length ? `<div class="details" style="color:var(--accent);">с учётом ${parts.join(", ")}</div>` : "";
       totalShiftsAll += empShifts.length;
 
@@ -2218,24 +2235,24 @@ const App = (() => {
       return `<div class="finance-employee">
         <div class="left">
           <div class="name">${escapeHtml(fullName(e))}</div>
-          <div class="details">${empShifts.length} смен • ${Math.round(base).toLocaleString("ru-RU")} ₽ по тарифам ПВЗ</div>
+          <div class="details">${empShifts.length} смен • ${fmtRub(base)} по тарифам ПВЗ</div>
           ${withNote}
           ${bonuses.map((b) => `<div class="bonus-list"><span>Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</span><button class="bf-del" title="Удалить" onclick="App.deleteBonusFine('${b.id}')"><i data-lucide="x"></i></button></div>`).join("")}
           ${fines.map((b) => `<div class="fine-list"><span>Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</span><button class="bf-del" title="Удалить" onclick="App.deleteBonusFine('${b.id}')"><i data-lucide="x"></i></button></div>`).join("")}
         </div>
         <div class="right">
           ${[...markets].map((m) => `<span class="market-tag ${m}">${m.toUpperCase()}</span>`).join("")}
-          <span class="amount">${Math.round(amount).toLocaleString("ru-RU")} ₽</span>
+          <span class="amount">${fmtRub(amount)}</span>
         </div>
       </div>`;
     }).join("");
 
     renderAllowances();
     renderAcceptance();
-    listEl.innerHTML = periodToggleHtml() + (rows || `<div class="center-msg">Нет сотрудников</div>`);
-    document.getElementById("totalFund").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
+    listEl.innerHTML = periodToggleHtml() + roundToggleHtml() + (rows || `<div class="center-msg">Нет сотрудников</div>`);
+    document.getElementById("totalFund").textContent = fmtRub(fund);
     document.getElementById("totalFundSub").innerHTML = `${activeEmployees.length} сотрудников • <span>${totalShiftsAll}</span> смен за месяц`;
-    document.getElementById("financeGrandTotal").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
+    document.getElementById("financeGrandTotal").textContent = fmtRub(fund);
 
     // ПВЗ разбиты на две колонки: WB слева, Ozon справа
     const pvzItemHtml = (p) => `
@@ -2383,7 +2400,7 @@ const App = (() => {
 
 
   // ---- Приёмка (WB): блок внутри «Зарплаты по сотрудникам» ----
-  const _accSum = (n) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(Math.round(n * 100) / 100).toLocaleString("ru-RU")} ₽`;
+  const _accSum = (n) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${fmtRub(Math.abs(n))}`;
 
   function renderAcceptance() {
     const stEl = document.getElementById("accStaged");
@@ -3092,7 +3109,7 @@ const App = (() => {
       const alSum = allowancesFor(e.id, state.payPeriod).reduce((s, a) => s + a.amount, 0);
       const accSum = acceptanceFor(e.id, state.payPeriod);
       const total = base + bonusSum + alSum + accSum - fineSum;
-      csv += csvRow([fullName(e), empShifts.length, Math.round(base), Math.round((bonusSum + alSum + accSum) * 100) / 100, fineSum, Math.round(total)]);
+      csv += csvRow([fullName(e), empShifts.length, moneyVal(base), moneyVal(bonusSum + alSum + accSum), fineSum, moneyVal(total)]);
     });
     deliverCsv(csv, `payroll_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
   }
@@ -3102,7 +3119,7 @@ const App = (() => {
     state.shifts.filter((s) => inPayPeriod(s.shift_date, state.payPeriod)).slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
       const empName = fullName(s.employees);
-      const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
+      const amount = s.employee_id ? moneyVal(shiftAmount(s, pvz)) : "";
       csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
     });
     deliverCsv(csv, `смены_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
@@ -3118,8 +3135,8 @@ const App = (() => {
       shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
         const pvz = state.pvz.find((p) => p.id === s.pvz_id);
         const empName = fullName(s.employees);
-        const amount = s.employee_id ? Math.round(shiftAmount(s, pvz)) : "";
-        csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
+        const amount = s.employee_id ? moneyVal(shiftAmount(s, pvz)) : "";
+csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
       });
       csv += "\r\n" + csvRow(["Бонусы/Штрафы"]);
       csv += csvRow(["Сотрудник", "Тип", "Сумма", "Причина"]);
@@ -3202,7 +3219,7 @@ const App = (() => {
     openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
-    _accPick, _accCalc, _accSet, _accBulk, _accAssign, _accDel, _accDelAll,
+    _accPick, _accCalc, _accSet, _accBulk, _accAssign, _accDel, _accDelAll, setRoundPay,
     closeModal,
   };
 })();

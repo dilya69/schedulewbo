@@ -453,6 +453,26 @@ const Api = (() => {
     return data;
   }
 
+  // ---------- НАДБАВКИ К ЗАРПЛАТЕ ----------
+  // админ получает все строки, сотрудник — только свои (так решает база)
+  async function getAllowances() {
+    const { data, error } = await client.from("employee_allowances").select("*").order("created_at");
+    if (error) throw error;
+    return data || [];
+  }
+  async function addAllowance(employee_id, kind, amount) {
+    const { error } = await client.from("employee_allowances").insert({ employee_id, kind, amount });
+    if (error) throw error;
+  }
+  async function updateAllowance(id, kind, amount) {
+    const { error } = await client.from("employee_allowances").update({ kind, amount }).eq("id", id);
+    if (error) throw error;
+  }
+  async function deleteAllowance(id) {
+    const { error } = await client.from("employee_allowances").delete().eq("id", id);
+    if (error) throw error;
+  }
+
   // ---------- ПОЖЕЛАНИЯ ПО ГРАФИКУ ----------
   // month — строка "YYYY-MM-01". Сотрудник по правилам базы видит только свои записи, админ — все.
   async function getWishMonth(month) {
@@ -519,7 +539,7 @@ const Api = (() => {
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
-    addBonusFine, getBonusesFines, deleteBonusFine,
+    addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance,
     getNotificationSettings, saveNotificationSettings,
     getWishMonth, setWishMonthEnabled, getWishes, saveMyWish, deleteWish, deleteAllWishes,
   };

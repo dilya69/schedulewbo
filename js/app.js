@@ -61,6 +61,7 @@ const App = (() => {
     pvz: [],
     pvzPayRules: {},
     payPeriod: "full",
+    allowances: [],
     shifts: [],
     employees: [],
     requests: [],
@@ -125,6 +126,7 @@ const App = (() => {
     await reloadShifts();
     state.employees = await Api.getEmployees();
     state.bonusesFines = state.employee.is_admin ? await Api.getBonusesFines(state.year, state.month) : [];
+    try { state.allowances = await Api.getAllowances(); } catch (e) { console.warn("Надбавки не загрузились:", e); state.allowances = []; }
     state.myRequests = await Api.getMyPendingRequests();
     if (state.employee.is_admin) {
       state.requests = await Api.getPendingRequests();
@@ -427,6 +429,12 @@ const App = (() => {
   function bfInPeriod(b, period) {
     if (!period || period === "full") return true;
     return bfHalf(b) === period;
+  }
+
+  // Надбавки сотрудника за период: сумма задана за каждую половину месяца; за «весь месяц» — две половины
+  function allowancesFor(empId, period) {
+    const k = !period || period === "full" ? 2 : 1;
+    return state.allowances.filter((a) => a.employee_id === empId).map((a) => ({ ...a, amount: Number(a.amount) * k }));
   }
 
   function setPayPeriod(period) {
@@ -1948,6 +1956,13 @@ const App = (() => {
         </div>`;
       });
 
+    allowancesFor(e.id, state.payPeriod).forEach((a) => {
+      total += a.amount;
+      confirmedRows.push(`<div class="profile-income-item">
+          <div class="left"><div class="title"><i data-lucide="plus-circle"></i> Надбавка: ${escapeHtml(a.kind)}</div></div>
+          <div class="right">${a.amount.toLocaleString("ru-RU")} ₽</div>
+        </div>`);
+    });
     const rows = pendingRows.concat(confirmedRows);
 
     incomeContainer.innerHTML = periodToggleHtml() + (rows.join("") || `<div class="center-msg">Пока нет данных за выбранный период</div>`);
@@ -2155,8 +2170,16 @@ const App = (() => {
       const fines = bf.filter((b) => b.kind === "fine");
       const bonusSum = bonuses.reduce((s, b) => s + Number(b.amount), 0);
       const fineSum = fines.reduce((s, b) => s + Number(b.amount), 0);
-      const amount = base + bonusSum - fineSum;
+      const al = allowancesFor(e.id, state.payPeriod);
+      const alSum = al.reduce((s, a) => s + a.amount, 0);
+      const amount = base + bonusSum + alSum - fineSum;
       fund += amount;
+      // подпись «с учётом…» — только если у человека есть надбавки, бонусы или штрафы
+      const parts = [];
+      if (al.length) parts.push(`надбавки (${al.map((a) => escapeHtml(a.kind)).join(", ")}) +${alSum.toLocaleString("ru-RU")} ₽`);
+      if (bonusSum) parts.push(`бонуса +${bonusSum.toLocaleString("ru-RU")} ₽`);
+      if (fineSum) parts.push(`штрафа −${fineSum.toLocaleString("ru-RU")} ₽`);
+      const withNote = parts.length ? `<div class="details" style="color:var(--accent);">с учётом ${parts.join(", ")}</div>` : "";
       totalShiftsAll += empShifts.length;
 
       const empPvzIds = new Set(empShifts.map((s) => s.pvz_id));
@@ -2166,6 +2189,7 @@ const App = (() => {
         <div class="left">
           <div class="name">${escapeHtml(fullName(e))}</div>
           <div class="details">${empShifts.length} смен • ${Math.round(base).toLocaleString("ru-RU")} ₽ по тарифам ПВЗ</div>
+          ${withNote}
           ${bonuses.map((b) => `<div class="bonus-list"><span>Бонус: +${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</span><button class="bf-del" title="Удалить" onclick="App.deleteBonusFine('${b.id}')"><i data-lucide="x"></i></button></div>`).join("")}
           ${fines.map((b) => `<div class="fine-list"><span>Штраф: -${b.amount}₽ ${b.reason ? "(" + escapeHtml(b.reason) + ")" : ""}</span><button class="bf-del" title="Удалить" onclick="App.deleteBonusFine('${b.id}')"><i data-lucide="x"></i></button></div>`).join("")}
         </div>
@@ -2176,6 +2200,7 @@ const App = (() => {
       </div>`;
     }).join("");
 
+    renderAllowances();
     listEl.innerHTML = periodToggleHtml() + (rows || `<div class="center-msg">Нет сотрудников</div>`);
     document.getElementById("totalFund").textContent = `${Math.round(fund).toLocaleString("ru-RU")} ₽`;
     document.getElementById("totalFundSub").innerHTML = `${activeEmployees.length} сотрудников • <span>${totalShiftsAll}</span> смен за месяц`;
@@ -2314,6 +2339,68 @@ const App = (() => {
     _saveRateExtra();
     _rateDraft.splice(i, 1);
     renderRateModal();
+  }
+
+  // ---- Надбавки: блок вверху «Зарплаты по сотрудникам» ----
+  function renderAllowances() {
+    const el = document.getElementById("allowancesList");
+    if (!el) return;
+    const byEmp = (id) => state.employees.find((e) => e.id === id);
+    const items = state.allowances.filter((a) => byEmp(a.employee_id)?.is_active !== false);
+    el.innerHTML = items.map((a) => `
+      <div class="finance-employee" style="padding:8px 12px; margin-bottom:5px;">
+        <div class="left">
+          <div class="name" style="font-size:13px;">${escapeHtml(fullName(byEmp(a.employee_id)) || "—")}</div>
+          <div class="details">${escapeHtml(a.kind)}</div>
+        </div>
+        <div class="right" style="display:flex; align-items:center; gap:8px;">
+          <span class="amount">+${Number(a.amount).toLocaleString("ru-RU")} ₽</span>
+          <button class="bf-del" title="Изменить" onclick="App.openAllowanceModal('${a.id}')"><i data-lucide="pencil"></i></button>
+          <button class="bf-del" title="Удалить" onclick="App.deleteAllowanceConfirm('${a.id}')"><i data-lucide="x"></i></button>
+        </div>
+      </div>`).join("") || `<div class="center-msg" style="padding:8px 0; font-size:11px;">Надбавок пока нет</div>`;
+    refreshIcons();
+  }
+
+  function openAllowanceModal(id) {
+    const cur = id ? state.allowances.find((a) => a.id === id) : null;
+    const empOptions = state.employees
+      .filter((e) => e.is_active !== false && !isBoss(e))
+      .map((e) => `<option value="${e.id}" ${cur?.employee_id === e.id ? "selected" : ""}>${escapeHtml(fullName(e))}</option>`).join("");
+    openModal(cur ? "Изменить надбавку" : "Добавить надбавку", `
+      <label>Сотрудник</label><select id="f_al_emp" ${cur ? "disabled" : ""}>${empOptions}</select>
+      <label>Тип</label><input type="text" id="f_al_kind" list="alKinds" placeholder="Тикеты" value="${escapeHtml(cur?.kind || "")}">
+      <datalist id="alKinds"><option value="Тикеты"><option value="Приёмка"></datalist>
+      <label>Сумма за каждые 1–15 и 16–конец, ₽</label><input type="number" id="f_al_amount" inputmode="numeric" min="1" placeholder="5000" value="${cur ? Number(cur.amount) : ""}">
+    `, async () => {
+      const empId = document.getElementById("f_al_emp").value;
+      const kind = document.getElementById("f_al_kind").value.trim() || "Надбавка";
+      const amount = Number(document.getElementById("f_al_amount").value);
+      if (!empId) return toast("Выберите сотрудника");
+      if (!amount || amount <= 0) return toast("Введите корректную сумму");
+      try {
+        if (cur) await Api.updateAllowance(cur.id, kind, amount);
+        else await Api.addAllowance(empId, kind, amount);
+        state.allowances = await Api.getAllowances();
+        toast("✅ Надбавка сохранена");
+        renderManagement();
+        renderProfile();
+        closeModal();
+      } catch (e) { toast("🚫 " + e.message); }
+    });
+  }
+
+  async function deleteAllowanceConfirm(id) {
+    const a = state.allowances.find((x) => x.id === id);
+    if (!a) return;
+    const emp = state.employees.find((e) => e.id === a.employee_id);
+    if (!confirm(`Удалить надбавку «${a.kind}» ${Number(a.amount)} ₽${emp ? " (" + fullName(emp) + ")" : ""}?`)) return;
+    try {
+      await Api.deleteAllowance(id);
+      state.allowances = await Api.getAllowances();
+      renderManagement();
+      renderProfile();
+    } catch (e) { toast("🚫 " + e.message); }
   }
 
   function openBonusFineModal(kind) {
@@ -2773,8 +2860,9 @@ const App = (() => {
       const bf = state.bonusesFines.filter((b) => b.employee_id === e.id && bfInPeriod(b, state.payPeriod));
       const bonusSum = bf.filter((b) => b.kind === "bonus").reduce((s, b) => s + Number(b.amount), 0);
       const fineSum = bf.filter((b) => b.kind === "fine").reduce((s, b) => s + Number(b.amount), 0);
-      const total = base + bonusSum - fineSum;
-      csv += csvRow([fullName(e), empShifts.length, Math.round(base), bonusSum, fineSum, Math.round(total)]);
+      const alSum = allowancesFor(e.id, state.payPeriod).reduce((s, a) => s + a.amount, 0);
+      const total = base + bonusSum + alSum - fineSum;
+      csv += csvRow([fullName(e), empShifts.length, Math.round(base), bonusSum + alSum, fineSum, Math.round(total)]);
     });
     deliverCsv(csv, `payroll_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
   }
@@ -2881,7 +2969,7 @@ const App = (() => {
     openEmployeeScheduleModal, grantAccess, openChat, toggleEmpCard,
     changeAvatar, _pickAvatar, _pickTelegramPhoto, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
-    openBonusFineModal, deleteBonusFine, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
+    openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     closeModal,

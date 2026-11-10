@@ -220,6 +220,11 @@
                     <span class="collapsible-arrow collapsed" id="financeBlockArrow"><i data-lucide="chevron-down"></i></span>
                 </div>
                 <div id="financeBlock" class="collapsible-body collapsed">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin:4px 0 6px;">
+                        <span style="font-weight:600; font-size:12px; color:var(--text);">Надбавки</span>
+                        <button class="bonus-btn" onclick="App.openAllowanceModal()"><i data-lucide="plus"></i> Надбавка</button>
+                    </div>
+                    <div id="allowancesList"></div>
                     <div class="finance-actions">
                         <button class="bonus-btn" onclick="App.openBonusFineModal('bonus')"><i data-lucide="plus-circle"></i> Бонус</button>
                         <button class="fine-btn" onclick="App.openBonusFineModal('fine')"><i data-lucide="alert-circle"></i> Штраф</button>

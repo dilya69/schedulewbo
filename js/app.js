@@ -2567,13 +2567,16 @@ const App = (() => {
       const months = [...new Set(st.rows.map((r) => r.date.slice(0, 7)))];
       const shifts = [];
       for (const ym of months) shifts.push(...(await Api.getShiftsForMonth(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1)));
-      const records = Acceptance.buildRecords(st.rows, pvzList, shifts);
+      // приёмка идёт в зарплату только с 16-го числа до конца месяца — остальное не сохраняем
+      const early = st.rows.filter((r) => Number(r.date.slice(8, 10)) < Acceptance.FROM_DAY).length;
+      const records = Acceptance.buildRecords(st.rows.filter((r) => Number(r.date.slice(8, 10)) >= Acceptance.FROM_DAY), pvzList, shifts);
+      if (!records.length) { state.accStaged = null; renderManagement(); return toast("В файле нет дней с 16-го числа — считать нечего"); }
       await Api.upsertAcceptance(records);
       state.acceptance = await Api.getAcceptance(state.year, state.month);
       state.accStaged = null;
       const unknown = new Set(records.filter((r) => !r.pvz_id).map((r) => r.wb_pvz_id)).size;
       const other = records.filter((r) => Number(r.bonus_date.slice(0, 4)) !== state.year || Number(r.bonus_date.slice(5, 7)) - 1 !== state.month).length;
-      toast(`✅ Посчитано: ${records.length}${unknown ? ` • ПВЗ не найдено: ${unknown}` : ""}${other ? ` • за другие месяцы: ${other} (переключите месяц)` : ""}`);
+      toast(`✅ Посчитано: ${records.length}${early ? ` • дней до 16-го пропущено: ${early}` : ""}${unknown ? ` • ПВЗ не найдено: ${unknown}` : ""}${other ? ` • за другие месяцы: ${other} (переключите месяц)` : ""}`);
       renderManagement();
     } catch (e) { toast("🚫 " + (e.message || e)); }
     finally { if (btn) btn.disabled = false; }

@@ -14,6 +14,9 @@ const Acceptance = (() => {
 
   // «С утра» = смена началась в 9:00 или раньше. Короткие смены «на N часов» (без точного времени) не считаются.
   const MORNING_START = "09:00";
+  // В зарплату идёт только приёмка с 16-го числа включительно до конца месяца
+  const FROM_DAY = 16;
+  const dayOf = (d) => Number(String(d).slice(8, 10));
 
   // дата из ячейки: «01.08.2026», «2026-08-01», число-серийник Excel или Date
   function parseDate(v) {
@@ -124,19 +127,18 @@ const Acceptance = (() => {
     });
   }
 
-  // сколько засчитанной приёмки у сотрудника за период (first | second | full)
+  // сколько засчитанной приёмки у сотрудника за период (first | second | full); дни до 16-го не учитываются
   function sumFor(records, employeeId, period) {
     let sum = 0;
+    if (period === "first") return 0;
     for (const a of records) {
-      if (a.status !== "counted") continue;
-      if (period === "first" && Number(String(a.bonus_date).slice(8, 10)) > 15) continue;
-      if (period === "second" && Number(String(a.bonus_date).slice(8, 10)) <= 15) continue;
+      if (a.status !== "counted" || dayOf(a.bonus_date) < FROM_DAY) continue;
       for (const s of a.shares || []) if (s.employee_id === employeeId) sum += Number(s.amount);
     }
     return Math.round(sum * 100) / 100;
   }
 
-  return { parseWorkbook, mergeRows, buildRecords, morningEmployees, splitShares, sumFor, parseDate, parseAmount };
+  return { FROM_DAY, parseWorkbook, mergeRows, buildRecords, morningEmployees, splitShares, sumFor, parseDate, parseAmount };
 })();
 
 if (typeof module !== "undefined") module.exports = Acceptance;

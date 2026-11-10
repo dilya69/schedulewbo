@@ -470,6 +470,12 @@ const Api = (() => {
       if (error) throw error;
     }
   }
+  async function deleteAcceptance(ids) {
+    if (!ids.length) return;
+    const { data, error } = await client.from("acceptance_bonuses").delete().in("id", ids).select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error("Не удалось удалить: запись не найдена или нет прав");
+  }
   async function setAcceptanceStatus(ids, status) {
     if (!ids.length) return;
     const { data, error } = await client.from("acceptance_bonuses").update({ status }).in("id", ids).select("id");
@@ -582,7 +588,7 @@ const Api = (() => {
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
-    addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance, getAllowanceTypes, getAcceptance, upsertAcceptance, setAcceptanceStatus, addAllowanceType, updateAllowanceType, deleteAllowanceType,
+    addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance, getAllowanceTypes, getAcceptance, upsertAcceptance, setAcceptanceStatus, deleteAcceptance, addAllowanceType, updateAllowanceType, deleteAllowanceType,
     getNotificationSettings, saveNotificationSettings,
     getWishMonth, setWishMonthEnabled, getWishes, saveMyWish, deleteWish, deleteAllWishes,
   };

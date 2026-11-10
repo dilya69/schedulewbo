@@ -2413,12 +2413,14 @@ const App = (() => {
         <button onclick="App._accBulk('plus')">Только плюсы</button>
         <button onclick="App._accBulk('minus')">Только минусы</button>
         <button onclick="App._accBulk('reset')">↶ Сбросить все</button>
+        <button onclick="App._accDelAll()" style="color:#ff3b30;">🗑 Удалить все</button>
       </div>
       <div class="imp-hint" style="margin:6px 0 4px;">Засчитано: <b>${_accSum(counted)}</b>${pending ? ` • ждут решения: ${pending}` : ""}</div>` : "";
 
     const rows = list.map((a) => {
       const pvz = state.pvz.find((p) => p.id === a.pvz_id);
       const amountCls = Number(a.amount) < 0 ? "acc-neg" : "acc-pos";
+      const delBtn = `<button class="al-btn" title="Удалить запись" onclick="App._accDel('${a.id}')"><i data-lucide="trash-2"></i></button>`;
       const head = `<div class="name" style="font-size:13px;">${escapeHtml(pvz?.name || a.address || "ПВЗ " + a.wb_pvz_id)} • ${fmtDMY(String(a.bonus_date).slice(0, 10))}</div>`;
       if (!pvz) {
         return `<div class="finance-employee acc-row"><div class="left">${head}
@@ -2427,13 +2429,13 @@ const App = (() => {
             <select id="accAssign_${escapeHtml(a.wb_pvz_id)}" style="flex:1; min-width:0;">${wbPvz.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select>
             <button class="al-add-btn" onclick="App._accAssign('${escapeHtml(a.wb_pvz_id)}')">Привязать</button>
           </div></div>
-          <div class="right"><span class="amount ${amountCls}">${_accSum(Number(a.amount))}</span></div></div>`;
+          <div class="right"><span class="amount ${amountCls}">${_accSum(Number(a.amount))}</span>${delBtn}</div></div>`;
       }
       const shares = a.shares || [];
       if (!shares.length) {
         return `<div class="finance-employee acc-row"><div class="left">${head}
           <div class="details">никто не работал с 9:00 — некому начислить</div></div>
-          <div class="right"><span class="amount ${amountCls}">${_accSum(Number(a.amount))}</span></div></div>`;
+          <div class="right"><span class="amount ${amountCls}">${_accSum(Number(a.amount))}</span>${delBtn}</div></div>`;
       }
       const who = shares.map((x) => `${escapeHtml(empName(x.employee_id))}${shares.length > 1 ? ` (${_accSum(Number(x.amount))})` : ""}`).join(", ");
       const ctrl = a.status === "pending"
@@ -2442,7 +2444,7 @@ const App = (() => {
         : `<span class="acc-state ${a.status}">${a.status === "counted" ? "засчитано" : "не засчитано"}</span>
            <button class="al-btn" title="Отменить" onclick="App._accSet('${a.id}','pending')"><i data-lucide="undo-2"></i></button>`;
       return `<div class="finance-employee acc-row ${a.status}"><div class="left">${head}<div class="details">${who}</div></div>
-        <div class="right"><span class="amount ${amountCls}">${_accSum(Number(a.amount))}</span>${ctrl}</div></div>`;
+        <div class="right"><span class="amount ${amountCls}">${_accSum(Number(a.amount))}</span>${ctrl}${delBtn}</div></div>`;
     }).join("");
     el.innerHTML = bulk + rows;
     refreshIcons();
@@ -2498,6 +2500,30 @@ const App = (() => {
       a.status = status;
       renderManagement();
     } catch (e) { toast("🚫 " + (e.message || e)); }
+  }
+
+  async function _accDel(id) {
+    const a = state.acceptance.find((x) => x.id === id);
+    if (!a) return;
+    const pvz = state.pvz.find((p) => p.id === a.pvz_id);
+    if (!confirm(`Удалить запись приёмки: ${pvz?.name || "ПВЗ " + a.wb_pvz_id} • ${fmtDMY(String(a.bonus_date).slice(0, 10))} (${_accSum(Number(a.amount))})?`)) return;
+    try {
+      await Api.deleteAcceptance([id]);
+      state.acceptance = state.acceptance.filter((x) => x.id !== id);
+      renderManagement();
+    } catch (e) { toast("🚫 " + (e.message || e)); }
+  }
+
+  async function _accDelAll() {
+    const ids = state.acceptance.map((a) => a.id);
+    if (!ids.length) return;
+    if (!confirm(`Удалить ВСЮ приёмку за ${MONTHS[state.month]} (${ids.length} шт.)? Засчитанные суммы пропадут из зарплаты.`)) return;
+    try {
+      await Api.deleteAcceptance(ids);
+      state.acceptance = [];
+      renderManagement();
+      toast("🗑 Приёмка за месяц удалена");
+    } catch (e) { toast("🚫 " + (e.message || e)); state.acceptance = await Api.getAcceptance(state.year, state.month).catch(() => state.acceptance); renderManagement(); }
   }
 
   async function _accBulk(mode) {
@@ -3176,7 +3202,7 @@ const App = (() => {
     openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
-    _accPick, _accCalc, _accSet, _accBulk, _accAssign,
+    _accPick, _accCalc, _accSet, _accBulk, _accAssign, _accDel, _accDelAll,
     closeModal,
   };
 })();

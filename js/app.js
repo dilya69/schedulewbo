@@ -1605,12 +1605,13 @@ const App = (() => {
     if (countEl) countEl.textContent = `${active.length} чел.`;
 
     activeContainer.innerHTML = active.map((e) => `
-      <div class="employee-card${pinIndex(e) >= 0 ? " pinned" : ""}" data-name="${escapeHtml((e.full_name + " " + (e.real_name || "")).toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
+      <div class="employee-card collapsible${pinIndex(e) >= 0 ? " pinned" : ""}" onclick="App.toggleEmpCard(this, event)" data-name="${escapeHtml((e.full_name + " " + (e.real_name || "")).toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
         <div class="avatar" style="background:${colorForName(e.full_name)}; box-shadow:0 0 0 2px ${e.avatar_frame || DEFAULT_FRAME_COLOR};">${avatarInnerHtml(e, e.avatar_emoji || e.full_name[0] || "?")}</div>
         <div class="info">
           <div class="name">${escapeHtml(fullName(e))}${state.employee.is_admin && safeUser(e.tg_username) ? ` <span class="tg-handle" style="font-weight:400; font-size:12px; color:var(--text-secondary, #8e8e93);">@${safeUser(e.tg_username)}</span>` : ""}</div>
           <div class="role">${escapeHtml(e.position || "Менеджер")}</div>
         </div>
+        <i data-lucide="chevron-down" class="emp-chevron"></i>
         <div class="actions">
           ${safeUser(e.tg_username) ? `<button class="chat-btn" onclick="App.openChat('${safeUser(e.tg_username)}')" title="Чат в Telegram"><i data-lucide="message-circle"></i></button>` : ""}
           ${isBoss(e) || isYana(e) ? `<button class="chat-btn" onclick="App.callEmployee('${e.id}')" title="${escapeHtml(e.phone || "Телефон")}"><i data-lucide="phone"></i></button>` : ""}
@@ -1863,6 +1864,12 @@ const App = (() => {
     } catch (e) {
       toast("🚫 " + e.message);
     }
+  }
+
+  // карточка сотрудника: кнопки свёрнуты, по нажатию на карточку раскрываются
+  function toggleEmpCard(card, ev) {
+    if (ev && ev.target.closest && ev.target.closest(".actions")) return;
+    card.classList.toggle("open");
   }
 
   function openChat(username) {
@@ -2871,7 +2878,7 @@ const App = (() => {
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
     _filterEmpPicker, _selectEmp,
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, callEmployee, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
-    openEmployeeScheduleModal, grantAccess, openChat,
+    openEmployeeScheduleModal, grantAccess, openChat, toggleEmpCard,
     changeAvatar, _pickAvatar, _pickTelegramPhoto, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
     openBonusFineModal, deleteBonusFine, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,

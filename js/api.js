@@ -107,6 +107,34 @@ const Api = (() => {
     return body; // { status, message }
   }
 
+  // ---------- СВЕРКА СМЕН (рассылка «проверьте свои смены» с кнопкой «Всё в порядке») ----------
+  // payload: { title, body } — новая рассылка всем; { resend_check_id } — повтор тем, кто ещё не отметился
+  async function sendScheduleCheck(payload) {
+    const url = CONFIG.BROADCAST_FUNCTION_URL || CONFIG.SYNC_FUNCTION_URL.replace(/\/[^/]+$/, "/broadcast-check");
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}`, apikey: CONFIG.SUPABASE_ANON_KEY },
+      body: JSON.stringify(payload),
+    });
+    let body = {};
+    try { body = await res.json(); } catch (_) { /* не JSON */ }
+    if (!res.ok) throw new Error(body.error === "forbidden" ? "Нет прав на рассылку" : (body.error || `Ошибка ${res.status}`));
+    return body; // { check_id, sent, failed: [имена] }
+  }
+
+  // последняя рассылка со списком, кто отметился
+  async function getLatestScheduleCheck() {
+    const { data: c, error } = await client.from("schedule_checks").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    if (!c) return null;
+    const { data: rows, error: e2 } = await client
+      .from("schedule_check_replies")
+      .select("employee_id, status, confirmed_at, employees:employee_id(full_name, real_name)")
+      .eq("check_id", c.id);
+    if (e2) throw e2;
+    return { ...c, replies: rows || [] };
+  }
+
   // ---------- ПВЗ ----------
   async function getPvzList() {
     const { data, error } = await client.from("pvz").select("*").eq("is_active", true).order("sort_order");
@@ -583,7 +611,7 @@ const Api = (() => {
 
   return {
     login, getCurrentEmployee, isReady, sendFileToMe,
-    getSyncLinks, addSyncLink, setSyncLinkEnabled, deleteSyncLink, runScheduleSync, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
+    getSyncLinks, addSyncLink, setSyncLinkEnabled, deleteSyncLink, runScheduleSync, sendScheduleCheck, getLatestScheduleCheck, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getAllPayRules, replacePayRules,
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,

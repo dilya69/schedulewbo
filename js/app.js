@@ -2399,6 +2399,94 @@ const App = (() => {
   }
 
 
+  // ---- Сверка смен: рассылка в бота перед зарплатой + кто отметился ----
+  const MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+  // с 1-го по 15-е — сверяем прошлый месяц с 16-го; с 16-го — этот месяц с 1 по 15
+  function defaultCheck() {
+    const now = new Date();
+    let range, monthIdx;
+    if (now.getDate() >= 16) {
+      monthIdx = now.getMonth();
+      range = "с 1 по 15";
+    } else {
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      monthIdx = prev.getMonth();
+      const last = new Date(prev.getFullYear(), prev.getMonth() + 1, 0).getDate();
+      range = `с 16 по ${last}`;
+    }
+    const label = `${range} ${MONTHS_GEN[monthIdx]}`;
+    return {
+      title: `Сверка смен ${label}`,
+      body: `Всем добрый вечер!\n\nПросьба сверить свои смены ${label} включительно 🙏\n\nЕсли есть расхождения с графиком — пишите в личку, я поправлю 🙏\n\nЕсли всё хорошо и нареканий нет — нажмите кнопку «Всё в порядке» под этим сообщением.\n\nНужны отметки абсолютно ОТ ВСЕХ!`,
+    };
+  }
+
+  async function openCheckModal() {
+    const def = defaultCheck();
+    openModal("Сверка смен", `
+      <div class="imp-hint">Сообщение уйдёт в бота всем сотрудникам с доступом (кроме Ивана и Светланы). Под ним кнопка «Всё в порядке», ниже будет видно, кто отметился.</div>
+      <label>Текст сообщения</label>
+      <textarea id="f_check_body" rows="9" style="width:100%; box-sizing:border-box; padding:8px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--text); font:inherit; font-size:13px;">${escapeHtml(def.body)}</textarea>
+      <input type="hidden" id="f_check_title" value="${escapeHtml(def.title)}">
+      <button class="imp-apply" id="checkSendBtn" style="margin-top:8px;" onclick="App._checkSend()"><i data-lucide="send"></i> Отправить всем</button>
+      <div id="checkStatus" style="margin-top:14px;"></div>
+    `, null);
+    await _checkReload();
+  }
+
+  async function _checkReload() {
+    const el = document.getElementById("checkStatus");
+    if (!el) return;
+    try {
+      const c = await Api.getLatestScheduleCheck();
+      if (!c) { el.innerHTML = `<div class="center-msg" style="font-size:11px;">Рассылок ещё не было</div>`; return; }
+      const rank = (r) => (r.status === "ok" ? 1 : 0);
+      const reps = c.replies.slice().sort((a, b) => rank(a) - rank(b) || fullName(a.employees).localeCompare(fullName(b.employees), "ru"));
+      const ok = reps.filter((r) => r.status === "ok").length;
+      const when = new Date(c.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      const rows = reps.map((r) => {
+        const mark = r.status === "ok" ? "✅" : r.status === "failed" ? "⚠️ не доставлено" : "⏳";
+        return `<div class="finance-employee"><div class="left"><div class="name" style="font-size:13px;">${escapeHtml(fullName(r.employees) || "—")}</div></div><div class="right"><span>${mark}</span></div></div>`;
+      }).join("");
+      el.innerHTML = `
+        <div style="font-weight:600; font-size:13px;">${escapeHtml(c.title)} • ${when}</div>
+        <div class="imp-hint" style="margin:4px 0 6px;">Отметились: <b>${ok}</b> из ${reps.length}</div>
+        ${ok < reps.length ? `<button class="al-add-btn" id="checkResendBtn" onclick="App._checkResend('${c.id}')">Напомнить не отметившимся</button>` : ""}
+        ${rows}`;
+      refreshIcons();
+    } catch (e) {
+      el.innerHTML = `<div class="center-msg" style="font-size:11px;">Не удалось загрузить: ${escapeHtml(e.message || e)}</div>`;
+    }
+  }
+
+  async function _checkSend() {
+    const body = (document.getElementById("f_check_body")?.value || "").trim();
+    const title = document.getElementById("f_check_title")?.value || "Сверка смен";
+    if (!body) return toast("Введите текст сообщения");
+    const n = state.employees.filter((e) => e.is_active !== false && !isBoss(e) && e.tg_id > 0).length;
+    if (!confirm(`Отправить это сообщение ${n ? n + " сотрудникам" : "всем сотрудникам"} в бота?`)) return;
+    const btn = document.getElementById("checkSendBtn");
+    if (btn) btn.disabled = true;
+    try {
+      const r = await Api.sendScheduleCheck({ title, body });
+      toast(`✅ Отправлено: ${r.sent}${r.failed.length ? " • не дошло: " + r.failed.join(", ") : ""}`);
+      await _checkReload();
+    } catch (e) { toast("🚫 " + (e.message || e)); }
+    finally { if (btn) btn.disabled = false; }
+  }
+
+  async function _checkResend(checkId) {
+    if (!confirm("Отправить напоминание тем, кто ещё не нажал «Всё в порядке»?")) return;
+    const btn = document.getElementById("checkResendBtn");
+    if (btn) btn.disabled = true;
+    try {
+      const r = await Api.sendScheduleCheck({ resend_check_id: checkId });
+      toast(`✅ Напомнили: ${r.sent}${r.failed.length ? " • не дошло: " + r.failed.join(", ") : ""}`);
+      await _checkReload();
+    } catch (e) { toast("🚫 " + (e.message || e)); if (btn) btn.disabled = false; }
+  }
+
   // ---- Приёмка (WB): блок внутри «Зарплаты по сотрудникам» ----
   const _accSum = (n) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${fmtRub(Math.abs(n))}`;
 
@@ -3231,6 +3319,7 @@ csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtD
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     _accPick, _accCalc, _accSet, _accBulk, _accAssign, _accDel, _accDelAll, _accClear, setRoundPay,
+    openCheckModal, _checkSend, _checkResend,
     closeModal,
   };
 })();

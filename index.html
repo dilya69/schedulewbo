@@ -236,6 +236,9 @@
                         <button class="bonus-btn" onclick="App.openBonusFineModal('bonus')"><i data-lucide="plus-circle"></i> Бонус</button>
                         <button class="fine-btn" onclick="App.openBonusFineModal('fine')"><i data-lucide="alert-circle"></i> Штраф</button>
                     </div>
+                    <div class="finance-actions">
+                        <button class="bonus-btn" style="background:#5856d6;" onclick="App.openCheckModal()"><i data-lucide="send"></i> Сверка смен: разослать</button>
+                    </div>
                     <!-- Приёмка WB (сворачиваемо) -->
                     <div class="collapsible-header acc-header" onclick="App.toggleCollapsible('acceptBlock')">
                         <span style="font-weight:600; font-size:12px; color:var(--text);"><i data-lucide="package-check"></i> Приёмка (WB) <span id="accCount" style="color:var(--text-secondary); font-weight:500;"></span></span>

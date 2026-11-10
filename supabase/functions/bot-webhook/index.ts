@@ -315,6 +315,34 @@ async function handleCallback(cb: any) {
       return;
     }
 
+    // «Всё в порядке» под рассылкой «сверьте смены» (рассылает функция broadcast-check)
+    const chk = data.match(/^chk:([0-9a-fA-F-]{36})$/);
+    if (chk) {
+      const r = await fetch(
+        `${SUPABASE_URL}/rest/v1/schedule_check_replies?check_id=eq.${chk[1]}&employee_id=eq.${emp.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            apikey: SERVICE_KEY,
+            Authorization: `Bearer ${SERVICE_KEY}`,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify({ status: "ok", confirmed_at: new Date().toISOString() }),
+        },
+      );
+      const rows = r.ok ? await r.json() : [];
+      if (rows.length) {
+        await tg("editMessageText", {
+          chat_id: chatId,
+          message_id: messageId,
+          text: `${cb.message?.text ?? ""}\n\n✅ Отмечено, спасибо!`,
+          reply_markup: { inline_keyboard: [] },
+        });
+      }
+      return;
+    }
+
     const p = data.match(/^p:(0|1|w)$/);
     if (p) {
       await edit(chatId, messageId, `Выберите ПВЗ (${PERIOD_TITLES[p[1]].toLowerCase()}):`, await pvzKeyboard(p[1]));

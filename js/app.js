@@ -432,9 +432,24 @@ const App = (() => {
   }
 
   // Надбавки сотрудника за период: сумма задана за каждую половину месяца; за «весь месяц» — две половины
+  // Правила начисления надбавок. Новое правило = новая запись здесь + расчёт в allowanceAmount.
+  const ALLOWANCE_RULES = {
+    half_month: { label: "Каждые 2 недели (за 1–15 и за 16–конец)", short: "каждые 2 недели" },
+  };
+  const ruleShort = (r) => (ALLOWANCE_RULES[r] || ALLOWANCE_RULES.half_month).short;
+
+  // сколько надбавка даёт за выбранный период (full / first / second)
+  function allowanceAmount(a, period) {
+    const per = Number(a.amount);
+    switch (a.rule) {
+      case "half_month":
+      default:
+        return per * (!period || period === "full" ? 2 : 1);
+    }
+  }
+
   function allowancesFor(empId, period) {
-    const k = !period || period === "full" ? 2 : 1;
-    return state.allowances.filter((a) => a.employee_id === empId).map((a) => ({ ...a, amount: Number(a.amount) * k }));
+    return state.allowances.filter((a) => a.employee_id === empId).map((a) => ({ ...a, amount: allowanceAmount(a, period) }));
   }
 
   function setPayPeriod(period) {
@@ -2348,15 +2363,15 @@ const App = (() => {
     const byEmp = (id) => state.employees.find((e) => e.id === id);
     const items = state.allowances.filter((a) => byEmp(a.employee_id)?.is_active !== false);
     el.innerHTML = items.map((a) => `
-      <div class="finance-employee" style="padding:8px 12px; margin-bottom:5px;">
+      <div class="finance-employee al-row">
         <div class="left">
           <div class="name" style="font-size:13px;">${escapeHtml(fullName(byEmp(a.employee_id)) || "—")}</div>
-          <div class="details">${escapeHtml(a.kind)}</div>
+          <div class="details">${escapeHtml(a.kind)} • ${escapeHtml(ruleShort(a.rule))}</div>
         </div>
         <div class="right" style="display:flex; align-items:center; gap:8px;">
           <span class="amount">+${Number(a.amount).toLocaleString("ru-RU")} ₽</span>
-          <button class="bf-del" title="Изменить" onclick="App.openAllowanceModal('${a.id}')"><i data-lucide="pencil"></i></button>
-          <button class="bf-del" title="Удалить" onclick="App.deleteAllowanceConfirm('${a.id}')"><i data-lucide="x"></i></button>
+          <button class="al-btn" title="Изменить" onclick="App.openAllowanceModal('${a.id}')"><i data-lucide="pencil"></i></button>
+          <button class="al-btn al-del" title="Удалить" onclick="App.deleteAllowanceConfirm('${a.id}')"><i data-lucide="x"></i></button>
         </div>
       </div>`).join("") || `<div class="center-msg" style="padding:8px 0; font-size:11px;">Надбавок пока нет</div>`;
     refreshIcons();
@@ -2371,16 +2386,19 @@ const App = (() => {
       <label>Сотрудник</label><select id="f_al_emp" ${cur ? "disabled" : ""}>${empOptions}</select>
       <label>Тип</label><input type="text" id="f_al_kind" list="alKinds" placeholder="Тикеты" value="${escapeHtml(cur?.kind || "")}">
       <datalist id="alKinds"><option value="Тикеты"><option value="Приёмка"></datalist>
-      <label>Сумма за каждые 1–15 и 16–конец, ₽</label><input type="number" id="f_al_amount" inputmode="numeric" min="1" placeholder="5000" value="${cur ? Number(cur.amount) : ""}">
+      <label>Правило начисления</label>
+      <select id="f_al_rule">${Object.entries(ALLOWANCE_RULES).map(([k, r]) => `<option value="${k}" ${(cur?.rule || "half_month") === k ? "selected" : ""}>${escapeHtml(r.label)}</option>`).join("")}</select>
+      <label>Сумма, ₽ (за один период по правилу)</label><input type="number" id="f_al_amount" inputmode="numeric" min="1" placeholder="5000" value="${cur ? Number(cur.amount) : ""}">
     `, async () => {
       const empId = document.getElementById("f_al_emp").value;
       const kind = document.getElementById("f_al_kind").value.trim() || "Надбавка";
       const amount = Number(document.getElementById("f_al_amount").value);
+      const rule = document.getElementById("f_al_rule").value;
       if (!empId) return toast("Выберите сотрудника");
       if (!amount || amount <= 0) return toast("Введите корректную сумму");
       try {
-        if (cur) await Api.updateAllowance(cur.id, kind, amount);
-        else await Api.addAllowance(empId, kind, amount);
+        if (cur) await Api.updateAllowance(cur.id, kind, amount, rule);
+        else await Api.addAllowance(empId, kind, amount, rule);
         state.allowances = await Api.getAllowances();
         toast("✅ Надбавка сохранена");
         renderManagement();

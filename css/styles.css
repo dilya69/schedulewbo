@@ -1616,3 +1616,19 @@ button { color: inherit; }
 .employee-card.collapsible.open .emp-chevron { transform: rotate(180deg); }
 .employee-card.collapsible .actions { display: none; flex-basis: 100%; justify-content: flex-end; gap: 10px; padding-top: 8px; margin-top: 8px; border-top: 1px solid rgba(128,128,128,0.2); }
 .employee-card.collapsible.open .actions { display: flex; }
+
+/* Надбавки: кнопка «+ Надбавка» и строки списка */
+.al-add-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border: none; border-radius: 30px; background: #34c759; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+.al-add-btn:active { transform: scale(0.96); }
+.al-add-btn svg.lucide { width: 14px; height: 14px; }
+.finance-employee.al-row { padding: 8px 12px; margin-bottom: 5px; flex-wrap: nowrap; }
+.finance-employee.al-row .left { flex: 1; }
+.finance-employee.al-row .right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.finance-employee.al-row .amount { margin-right: 4px; white-space: nowrap; }
+.al-btn { flex-shrink: 0; width: 30px; height: 30px; padding: 0; border: none; border-radius: 50%; background: rgba(128,128,128,0.15); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: 0.15s; }
+.al-btn:active { transform: scale(0.9); }
+.al-btn.al-del { color: #ff3b30; }
+.al-btn svg.lucide { width: 14px; height: 14px; }
+/* карточка сотрудника: кнопки действий — аккуратные круглые */
+.employee-card.collapsible .actions button { width: 34px; height: 34px; padding: 0; border-radius: 50%; background: rgba(128,128,128,0.15); display: inline-flex; align-items: center; justify-content: center; }
+.employee-card.collapsible .actions button svg.lucide { width: 16px; height: 16px; }

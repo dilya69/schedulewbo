@@ -460,12 +460,12 @@ const Api = (() => {
     if (error) throw error;
     return data || [];
   }
-  async function addAllowance(employee_id, kind, amount) {
-    const { error } = await client.from("employee_allowances").insert({ employee_id, kind, amount });
+  async function addAllowance(employee_id, kind, amount, rule = "half_month") {
+    const { error } = await client.from("employee_allowances").insert({ employee_id, kind, amount, rule });
     if (error) throw error;
   }
-  async function updateAllowance(id, kind, amount) {
-    const { error } = await client.from("employee_allowances").update({ kind, amount }).eq("id", id);
+  async function updateAllowance(id, kind, amount, rule = "half_month") {
+    const { error } = await client.from("employee_allowances").update({ kind, amount, rule }).eq("id", id);
     if (error) throw error;
   }
   async function deleteAllowance(id) {

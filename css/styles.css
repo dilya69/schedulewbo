@@ -1636,3 +1636,8 @@ button { color: inherit; }
 /* быстрые варианты типа надбавки (вместо datalist, который глючит в Telegram) */
 .al-chip { padding: 5px 12px; border: 1px solid rgba(128,128,128,0.35); border-radius: 30px; background: transparent; color: var(--text); font-size: 12px; cursor: pointer; }
 .al-chip:active { background: rgba(128,128,128,0.2); }
+
+/* конструктор типа надбавки */
+.al-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.al-chip.on { background: var(--accent); color: var(--accent-contrast, #fff); border-color: var(--accent); }
+.al-preview { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(128,128,128,0.12); font-size: 14px; }

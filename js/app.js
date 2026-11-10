@@ -62,6 +62,7 @@ const App = (() => {
     pvzPayRules: {},
     payPeriod: "full",
     allowances: [],
+    allowanceTypes: [],
     shifts: [],
     employees: [],
     requests: [],
@@ -126,7 +127,9 @@ const App = (() => {
     await reloadShifts();
     state.employees = await Api.getEmployees();
     state.bonusesFines = state.employee.is_admin ? await Api.getBonusesFines(state.year, state.month) : [];
-    try { state.allowances = await Api.getAllowances(); } catch (e) { console.warn("Надбавки не загрузились:", e); state.allowances = []; }
+    try {
+      [state.allowanceTypes, state.allowances] = await Promise.all([Api.getAllowanceTypes(), Api.getAllowances()]);
+    } catch (e) { console.warn("Надбавки не загрузились:", e); state.allowanceTypes = []; state.allowances = []; }
     state.myRequests = await Api.getMyPendingRequests();
     if (state.employee.is_admin) {
       state.requests = await Api.getPendingRequests();
@@ -432,24 +435,109 @@ const App = (() => {
   }
 
   // Надбавки сотрудника за период: сумма задана за каждую половину месяца; за «весь месяц» — две половины
-  // Правила начисления надбавок. Новое правило = новая запись здесь + расчёт в allowanceAmount.
-  const ALLOWANCE_RULES = {
-    half_month: { label: "Каждые 2 недели (за 1–15 и за 16–конец)", short: "каждые 2 недели" },
-  };
-  const ruleShort = (r) => (ALLOWANCE_RULES[r] || ALLOWANCE_RULES.half_month).short;
+  // ---------- НАДБАВКИ: правила и расчёт ----------
+  // Правило (jsonb в allowance_types.rule):
+  //  pay:  { mode: fixed | per_shift | per_hour | percent, amount }
+  //  when: { type: half_month | month | dates | weekdays, dates:[1..31], weekdays:[1..7] }   (только для fixed)
+  //  cond: { pvz:[id], weekdays:[1..7], hours_from, hours_to, min_shifts }                 (для не-fixed; min_shifts — для всех)
+  const WD_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+  const PAY_MODES = { fixed: "Фикс. сумма", per_shift: "За смену", per_hour: "За час", percent: "% от смены" };
+  const WHEN_TYPES = { half_month: "Каждые 2 недели", month: "Раз в месяц", dates: "По датам", weekdays: "По дням недели" };
 
-  // сколько надбавка даёт за выбранный период (full / first / second)
-  function allowanceAmount(a, period) {
-    const per = Number(a.amount);
-    switch (a.rule) {
-      case "half_month":
-      default:
-        return per * (!period || period === "full" ? 2 : 1);
+  function defaultRule() {
+    return {
+      pay: { mode: "fixed", amount: 0 },
+      when: { type: "half_month", dates: [], weekdays: [] },
+      cond: { pvz: [], weekdays: [], hours_from: null, hours_to: null, min_shifts: null },
+    };
+  }
+  function normRule(r) {
+    const d = defaultRule();
+    r = r || {};
+    return { pay: { ...d.pay, ...(r.pay || {}) }, when: { ...d.when, ...(r.when || {}) }, cond: { ...d.cond, ...(r.cond || {}) } };
+  }
+
+  const wdOfDate = (y, m0, d) => ((new Date(y, m0, d).getDay() + 6) % 7) + 1; // 1=Пн … 7=Вс
+  const dayInPeriod = (d, period) => !period || period === "full" || (period === "first" ? d <= 15 : d >= 16);
+  const fmtRub = (n) => `${Math.round(n).toLocaleString("ru-RU")} ₽`;
+
+  function shiftHours(s) {
+    if (s.duration_minutes) return s.duration_minutes / 60;
+    if (s.start_time && s.end_time) return hoursBetween(String(s.start_time).slice(0, 5), String(s.end_time).slice(0, 5));
+    return 0;
+  }
+
+  // Сколько правило даёт сотруднику за период (full / first / second). override — своя сумма вместо суммы из правила.
+  function ruleAmount(rule, empId, period, override) {
+    const r = normRule(rule);
+    const amt = override !== undefined && override !== null && override !== "" ? Number(override) : Number(r.pay.amount || 0);
+    const c = r.cond;
+    const shifts = state.shifts.filter((s) => {
+      if (s.employee_id !== empId || !inPayPeriod(s.shift_date, period)) return false;
+      if (c.pvz.length && !c.pvz.includes(s.pvz_id)) return false;
+      if (r.pay.mode !== "fixed") {
+        const [y, m, d] = String(s.shift_date).slice(0, 10).split("-").map(Number);
+        if (c.weekdays.length && !c.weekdays.includes(wdOfDate(y, m - 1, d))) return false;
+        const sh = s.start_time ? Number(String(s.start_time).slice(0, 2)) : null;
+        if (c.hours_from !== null && c.hours_from !== "" && sh !== null && sh < Number(c.hours_from)) return false;
+        if (c.hours_to !== null && c.hours_to !== "" && sh !== null && sh >= Number(c.hours_to)) return false;
+      }
+      return true;
+    });
+    if (c.min_shifts && shifts.length < Number(c.min_shifts)) return 0;
+
+    switch (r.pay.mode) {
+      case "per_shift": return amt * shifts.length;
+      case "per_hour": return amt * shifts.reduce((t, s) => t + shiftHours(s), 0);
+      case "percent": return shifts.reduce((t, s) => t + shiftAmount(s, state.pvz.find((p) => p.id === s.pvz_id)), 0) * amt / 100;
+      default: { // fixed
+        const full = !period || period === "full";
+        const days = new Date(state.year, state.month + 1, 0).getDate();
+        let n = 0;
+        if (r.when.type === "month") n = full || period === "second" ? 1 : 0;
+        else if (r.when.type === "dates") n = r.when.dates.filter((d) => d >= 1 && d <= days && dayInPeriod(d, period)).length;
+        else if (r.when.type === "weekdays") {
+          for (let d = 1; d <= days; d++) if (dayInPeriod(d, period) && r.when.weekdays.includes(wdOfDate(state.year, state.month, d))) n++;
+        } else n = full ? 2 : 1; // half_month
+        return amt * n;
+      }
     }
   }
 
+  function ruleSummary(rule, override) {
+    const r = normRule(rule);
+    const amt = override !== undefined && override !== null && override !== "" ? Number(override) : Number(r.pay.amount || 0);
+    const c = r.cond;
+    let t;
+    if (r.pay.mode === "fixed") {
+      const w = r.when.type === "month" ? "раз в месяц"
+        : r.when.type === "dates" ? "в даты: " + (r.when.dates.join(", ") || "—")
+        : r.when.type === "weekdays" ? "по дням: " + (r.when.weekdays.map((n) => WD_SHORT[n - 1]).join(", ") || "—")
+        : "каждые 2 недели";
+      t = `${fmtRub(amt)} ${w}`;
+    } else if (r.pay.mode === "per_shift") t = `${fmtRub(amt)} за смену`;
+    else if (r.pay.mode === "per_hour") t = `${fmtRub(amt)} за час`;
+    else t = `${amt}% от смены`;
+    const cond = [];
+    if (c.pvz.length) cond.push("ПВЗ: " + c.pvz.map((id) => state.pvz.find((p) => p.id === id)?.name || "?").join(", "));
+    if (r.pay.mode !== "fixed" && c.weekdays.length) cond.push("дни: " + c.weekdays.map((n) => WD_SHORT[n - 1]).join(", "));
+    if (r.pay.mode !== "fixed" && ((c.hours_from !== null && c.hours_from !== "") || (c.hours_to !== null && c.hours_to !== ""))) {
+      cond.push(`начало ${c.hours_from !== null && c.hours_from !== "" ? "с " + c.hours_from : ""}${c.hours_to !== null && c.hours_to !== "" ? " до " + c.hours_to : ""} ч`.replace("  ", " "));
+    }
+    if (c.min_shifts) cond.push(`от ${c.min_shifts} смен`);
+    return cond.length ? `${t} • ${cond.join(" • ")}` : t;
+  }
+
+  const typeOf = (a) => state.allowanceTypes.find((t) => t.id === a.type_id);
+
+  // надбавки сотрудника за период: { ...строка, kind, amount (посчитано) }
   function allowancesFor(empId, period) {
-    return state.allowances.filter((a) => a.employee_id === empId).map((a) => ({ ...a, amount: allowanceAmount(a, period) }));
+    return state.allowances.filter((a) => a.employee_id === empId).map((a) => {
+      const t = typeOf(a);
+      if (t) return { ...a, kind: t.name, amount: ruleAmount(t.rule, empId, period, a.amount) };
+      // старая запись без типа: фикс. сумма каждые 2 недели
+      return { ...a, amount: Number(a.amount || 0) * (!period || period === "full" ? 2 : 1) };
+    });
   }
 
   function setPayPeriod(period) {
@@ -792,7 +880,7 @@ const App = (() => {
           <span><i data-lucide="building-2"></i> ${escapeHtml(pvz.name)}</span>
           <span>${pvz.marketplace.toUpperCase()}</span>
         </div>
-        <div class="weekdays">${WEEKDAYS.map((w) => `<span>${w}</span>`).join("")}</div>
+        <div class="weekdays">${WD_SHORT.map((w) => `<span>${w}</span>`).join("")}</div>
         <div class="days-grid">`;
 
       for (let i = 0; i < startOffset; i++) html += `<div class="day-cell empty"></div>`;
@@ -1051,7 +1139,7 @@ const App = (() => {
     const startOffset = firstDay === 0 ? 6 : firstDay - 1;
     const MARK = { full: "🟢", from: "🕔", range: "⏱", off: "🔴" };
 
-    let grid = WEEKDAYS.map((w) => `<span class="wish-wd">${w}</span>`).join("");
+    let grid = WD_SHORT.map((w) => `<span class="wish-wd">${w}</span>`).join("");
     for (let i = 0; i < startOffset; i++) grid += `<span></span>`;
     for (let d = 1; d <= daysInMonth; d++) {
       const e = wd.days[d];
@@ -2358,49 +2446,65 @@ const App = (() => {
 
   // ---- Надбавки: блок вверху «Зарплаты по сотрудникам» ----
   function renderAllowances() {
+    const tEl = document.getElementById("allowanceTypesList");
+    if (tEl) {
+      tEl.innerHTML = state.allowanceTypes.map((t) => `
+        <div class="finance-employee al-row">
+          <div class="left">
+            <div class="name" style="font-size:13px;">${escapeHtml(t.name)}</div>
+            <div class="details">${escapeHtml(ruleSummary(t.rule))}</div>
+          </div>
+          <div class="right"><button class="al-btn" title="Правило" onclick="App.openAllowanceTypeModal('${t.id}')"><i data-lucide="pencil"></i></button></div>
+        </div>`).join("") || `<div class="center-msg" style="padding:8px 0; font-size:11px;">Типов пока нет — нажми «+ Тип»</div>`;
+    }
     const el = document.getElementById("allowancesList");
     if (!el) return;
     const byEmp = (id) => state.employees.find((e) => e.id === id);
     const items = state.allowances.filter((a) => byEmp(a.employee_id)?.is_active !== false);
-    el.innerHTML = items.map((a) => `
+    el.innerHTML = items.map((a) => {
+      const t = typeOf(a);
+      const got = t ? ruleAmount(t.rule, a.employee_id, state.payPeriod, a.amount) : Number(a.amount || 0) * (state.payPeriod === "full" ? 2 : 1);
+      return `
       <div class="finance-employee al-row">
         <div class="left">
           <div class="name" style="font-size:13px;">${escapeHtml(fullName(byEmp(a.employee_id)) || "—")}</div>
-          <div class="details">${escapeHtml(a.kind)} • ${escapeHtml(ruleShort(a.rule))}</div>
+          <div class="details">${escapeHtml(t?.name || a.kind)}${a.amount ? " • своя сумма" : ""}</div>
         </div>
-        <div class="right" style="display:flex; align-items:center; gap:8px;">
-          <span class="amount">+${Number(a.amount).toLocaleString("ru-RU")} ₽</span>
+        <div class="right">
+          <span class="amount">+${fmtRub(got)}</span>
           <button class="al-btn" title="Изменить" onclick="App.openAllowanceModal('${a.id}')"><i data-lucide="pencil"></i></button>
           <button class="al-btn al-del" title="Удалить" onclick="App.deleteAllowanceConfirm('${a.id}')"><i data-lucide="x"></i></button>
         </div>
-      </div>`).join("") || `<div class="center-msg" style="padding:8px 0; font-size:11px;">Надбавок пока нет</div>`;
+      </div>`;
+    }).join("") || `<div class="center-msg" style="padding:8px 0; font-size:11px;">Никому не назначено</div>`;
     refreshIcons();
   }
 
+  // назначить тип надбавки сотруднику
   function openAllowanceModal(id) {
     const cur = id ? state.allowances.find((a) => a.id === id) : null;
+    if (!state.allowanceTypes.length) return toast("Сначала создай тип надбавки (+ Тип)");
     const empOptions = state.employees
       .filter((e) => e.is_active !== false && !isBoss(e))
       .map((e) => `<option value="${e.id}" ${cur?.employee_id === e.id ? "selected" : ""}>${escapeHtml(fullName(e))}</option>`).join("");
-    openModal(cur ? "Изменить надбавку" : "Добавить надбавку", `
+    const typeOptions = state.allowanceTypes
+      .map((t) => `<option value="${t.id}" ${cur?.type_id === t.id ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("");
+    openModal(cur ? "Изменить надбавку" : "Назначить надбавку", `
       <label>Сотрудник</label><select id="f_al_emp" ${cur ? "disabled" : ""}>${empOptions}</select>
-      <label>Тип</label><input type="text" id="f_al_kind" autocomplete="off" placeholder="Тикеты" value="${escapeHtml(cur?.kind || "")}">
-      <div style="display:flex; gap:6px; margin:-4px 0 8px;">
-        ${["Тикеты", "Приёмка"].map((k) => `<button type="button" class="al-chip" onclick="document.getElementById('f_al_kind').value='${k}'">${k}</button>`).join("")}
-      </div>
-      <label>Правило начисления</label>
-      <select id="f_al_rule">${Object.entries(ALLOWANCE_RULES).map(([k, r]) => `<option value="${k}" ${(cur?.rule || "half_month") === k ? "selected" : ""}>${escapeHtml(r.label)}</option>`).join("")}</select>
-      <label>Сумма, ₽ (за один период по правилу)</label><input type="number" id="f_al_amount" inputmode="numeric" min="1" placeholder="5000" value="${cur ? Number(cur.amount) : ""}">
+      <label>Тип надбавки</label><select id="f_al_type">${typeOptions}</select>
+      <label>Своя сумма, ₽ (если пусто — по правилу типа)</label>
+      <input type="number" id="f_al_amount" inputmode="numeric" min="1" placeholder="по правилу" value="${cur?.amount ? Number(cur.amount) : ""}">
     `, async () => {
       const empId = document.getElementById("f_al_emp").value;
-      const kind = document.getElementById("f_al_kind").value.trim() || "Надбавка";
-      const amount = Number(document.getElementById("f_al_amount").value);
-      const rule = document.getElementById("f_al_rule").value;
-      if (!empId) return toast("Выберите сотрудника");
-      if (!amount || amount <= 0) return toast("Введите корректную сумму");
+      const typeId = document.getElementById("f_al_type").value;
+      const t = state.allowanceTypes.find((x) => x.id === typeId);
+      const raw = document.getElementById("f_al_amount").value.trim();
+      const amount = raw ? Number(raw) : null;
+      if (!empId || !t) return toast("Выберите сотрудника и тип");
+      if (raw && (!amount || amount <= 0)) return toast("Введите корректную сумму");
       try {
-        if (cur) await Api.updateAllowance(cur.id, kind, amount, rule);
-        else await Api.addAllowance(empId, kind, amount, rule);
+        if (cur) await Api.updateAllowance(cur.id, typeId, amount, t.name);
+        else await Api.addAllowance(empId, typeId, amount, t.name);
         state.allowances = await Api.getAllowances();
         toast("✅ Надбавка сохранена");
         renderManagement();
@@ -2414,13 +2518,133 @@ const App = (() => {
     const a = state.allowances.find((x) => x.id === id);
     if (!a) return;
     const emp = state.employees.find((e) => e.id === a.employee_id);
-    if (!confirm(`Удалить надбавку «${a.kind}» ${Number(a.amount)} ₽${emp ? " (" + fullName(emp) + ")" : ""}?`)) return;
+    if (!confirm(`Убрать надбавку «${typeOf(a)?.name || a.kind}»${emp ? " у " + fullName(emp) : ""}?`)) return;
     try {
       await Api.deleteAllowance(id);
       state.allowances = await Api.getAllowances();
       renderManagement();
       renderProfile();
     } catch (e) { toast("🚫 " + e.message); }
+  }
+
+  // ---- Конструктор типа надбавки ----
+  let _td = null;   // { id, name, rule, prevEmp, prevPeriod }
+
+  function _tdSync() {
+    if (!_td) return;
+    const g = (id) => document.getElementById(id);
+    if (g("td_name")) _td.name = g("td_name").value.trim();
+    if (g("td_amount")) _td.rule.pay.amount = Number(g("td_amount").value) || 0;
+    if (g("td_dates")) _td.rule.when.dates = [...new Set(g("td_dates").value.split(/[^\d]+/).map(Number).filter((n) => n >= 1 && n <= 31))].sort((a, b) => a - b);
+    if (g("td_hf")) _td.rule.cond.hours_from = g("td_hf").value === "" ? null : Number(g("td_hf").value);
+    if (g("td_ht")) _td.rule.cond.hours_to = g("td_ht").value === "" ? null : Number(g("td_ht").value);
+    if (g("td_min")) _td.rule.cond.min_shifts = g("td_min").value === "" ? null : Number(g("td_min").value);
+    if (g("td_pv_emp")) _td.prevEmp = g("td_pv_emp").value;
+    if (g("td_pv_per")) _td.prevPeriod = g("td_pv_per").value;
+  }
+
+  function _tdPreviewHtml() {
+    if (!_td.prevEmp) return "—";
+    const v = ruleAmount(_td.rule, _td.prevEmp, _td.prevPeriod);
+    return `<b>${fmtRub(v)}</b> <span style="color:var(--text-secondary); font-size:11px;">по сменам за ${MONTHS[state.month].toLowerCase()}</span>`;
+  }
+
+  function typeAct(action, arg) {
+    if (!_td) return;
+    _tdSync();
+    const r = _td.rule;
+    const toggle = (arr, v) => { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); };
+    if (action === "sync") { const el = document.getElementById("tdPreview"); if (el) el.innerHTML = _tdPreviewHtml(); return; }
+    if (action === "mode") r.pay.mode = arg;
+    else if (action === "when") r.when.type = arg;
+    else if (action === "wdWhen") toggle(r.when.weekdays, Number(arg));
+    else if (action === "wdCond") toggle(r.cond.weekdays, Number(arg));
+    else if (action === "pvz") toggle(r.cond.pvz, arg);
+    _renderTypeModal();
+  }
+
+  function _renderTypeModal() {
+    const r = _td.rule;
+    const chip = (label, on, act, arg) => `<button type="button" class="al-chip${on ? " on" : ""}" onclick="App.typeAct('${act}','${arg}')">${escapeHtml(label)}</button>`;
+    const wdChips = (arr, act) => WD_SHORT.map((n, i) => chip(n, arr.includes(i + 1), act, i + 1)).join("");
+    const fixed = r.pay.mode === "fixed";
+    const emps = state.employees.filter((e) => e.is_active !== false && !isBoss(e));
+    if (!emps.some((e) => e.id === _td.prevEmp)) _td.prevEmp = emps[0]?.id || "";
+    const body = `
+      <label>Название</label><input type="text" id="td_name" autocomplete="off" placeholder="Тикеты, Приёмка…" value="${escapeHtml(_td.name)}" onchange="App.typeAct('sync')">
+
+      <label>Как платим</label>
+      <div class="al-chips">${Object.entries(PAY_MODES).map(([k, v]) => chip(v, r.pay.mode === k, "mode", k)).join("")}</div>
+      <label>${r.pay.mode === "percent" ? "Процент от оплаты смены, %" : "Сумма, ₽"}</label>
+      <input type="number" id="td_amount" inputmode="decimal" min="0" placeholder="5000" value="${r.pay.amount || ""}" onchange="App.typeAct('sync')">
+
+      ${fixed ? `
+        <label>Когда платим</label>
+        <div class="al-chips">${Object.entries(WHEN_TYPES).map(([k, v]) => chip(v, r.when.type === k, "when", k)).join("")}</div>
+        ${r.when.type === "dates" ? `<label>Числа месяца (через запятую)</label><input type="text" id="td_dates" inputmode="numeric" placeholder="1, 15" value="${r.when.dates.join(", ")}" onchange="App.typeAct('sync')">` : ""}
+        ${r.when.type === "weekdays" ? `<label>Дни недели (платим за каждый такой день)</label><div class="al-chips">${wdChips(r.when.weekdays, "wdWhen")}</div>` : ""}
+      ` : `<div style="font-size:11px; color:var(--text-secondary); margin:-2px 0 6px;">Считается по каждой подходящей смене сотрудника.</div>`}
+
+      <label>Условия (необязательно)</label>
+      ${state.pvz.length ? `<div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Только на ПВЗ (ничего не выбрано — на всех):</div>
+      <div class="al-chips">${state.pvz.map((p) => chip(p.name, r.cond.pvz.includes(p.id), "pvz", p.id)).join("")}</div>` : ""}
+      ${!fixed ? `
+        <div style="font-size:11px; color:var(--text-secondary); margin:6px 0 4px;">Только в дни (ничего — во все):</div>
+        <div class="al-chips">${wdChips(r.cond.weekdays, "wdCond")}</div>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <div style="flex:1;"><label>Начало смены с, ч</label><input type="number" id="td_hf" min="0" max="23" placeholder="напр. 17" value="${r.cond.hours_from ?? ""}" onchange="App.typeAct('sync')"></div>
+          <div style="flex:1;"><label>до, ч</label><input type="number" id="td_ht" min="1" max="24" placeholder="напр. 22" value="${r.cond.hours_to ?? ""}" onchange="App.typeAct('sync')"></div>
+        </div>` : ""}
+      <label>Минимум смен за период (если не набрал — 0 ₽)</label>
+      <input type="number" id="td_min" min="1" placeholder="без ограничения" value="${r.cond.min_shifts ?? ""}" onchange="App.typeAct('sync')">
+
+      <label>Проверка: сколько получит</label>
+      <div style="display:flex; gap:8px;">
+        <select id="td_pv_emp" style="flex:1.4;" onchange="App.typeAct('sync')">${emps.map((e) => `<option value="${e.id}" ${e.id === _td.prevEmp ? "selected" : ""}>${escapeHtml(fullName(e))}</option>`).join("")}</select>
+        <select id="td_pv_per" style="flex:1;" onchange="App.typeAct('sync')">
+          ${[["full", "Весь месяц"], ["first", "1–15"], ["second", "16–конец"]].map(([k, l]) => `<option value="${k}" ${k === _td.prevPeriod ? "selected" : ""}>${l}</option>`).join("")}
+        </select>
+      </div>
+      <div id="tdPreview" class="al-preview">${_tdPreviewHtml()}</div>
+    `;
+    openModal(_td.id ? "Тип надбавки" : "Новый тип надбавки", body, _saveType,
+      _td.id ? { label: "Удалить", action: _deleteType } : null);
+  }
+
+  async function _saveType() {
+    _tdSync();
+    const r = _td.rule;
+    if (!_td.name) return toast("Введите название");
+    if (state.allowanceTypes.some((t) => t.id !== _td.id && t.name.toLowerCase() === _td.name.toLowerCase())) return toast("Такой тип уже есть");
+    if (!(r.pay.amount > 0)) return toast("Введите сумму");
+    if (r.pay.mode === "fixed" && r.when.type === "dates" && !r.when.dates.length) return toast("Укажите числа месяца");
+    if (r.pay.mode === "fixed" && r.when.type === "weekdays" && !r.when.weekdays.length) return toast("Выберите дни недели");
+    try {
+      if (_td.id) await Api.updateAllowanceType(_td.id, _td.name, r);
+      else await Api.addAllowanceType(_td.name, r);
+      [state.allowanceTypes, state.allowances] = await Promise.all([Api.getAllowanceTypes(), Api.getAllowances()]);
+      toast("✅ Тип надбавки сохранён");
+      renderManagement();
+      renderProfile();
+      closeModal();
+    } catch (e) { toast("🚫 " + e.message); }
+  }
+
+  async function _deleteType() {
+    const used = state.allowances.filter((a) => a.type_id === _td.id).length;
+    if (used) { toast(`Тип назначен сотрудникам (${used}). Сначала убери назначения`); throw new Error("used"); }
+    if (!confirm(`Удалить тип «${_td.name}»?`)) throw new Error("cancel");
+    try {
+      await Api.deleteAllowanceType(_td.id);
+      state.allowanceTypes = await Api.getAllowanceTypes();
+      renderManagement();
+    } catch (e) { toast("🚫 " + e.message); throw e; }
+  }
+
+  function openAllowanceTypeModal(id) {
+    const t = id ? state.allowanceTypes.find((x) => x.id === id) : null;
+    _td = { id: t?.id || null, name: t?.name || "", rule: normRule(t ? JSON.parse(JSON.stringify(t.rule)) : null), prevEmp: "", prevPeriod: state.payPeriod || "full" };
+    _renderTypeModal();
   }
 
   function openBonusFineModal(kind) {
@@ -2989,7 +3213,7 @@ const App = (() => {
     openEmployeeScheduleModal, grantAccess, openChat, toggleEmpCard,
     changeAvatar, _pickAvatar, _pickTelegramPhoto, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
-    openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
+    openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAllowanceTypeModal, typeAct, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
     closeModal,

@@ -460,12 +460,31 @@ const Api = (() => {
     if (error) throw error;
     return data || [];
   }
-  async function addAllowance(employee_id, kind, amount, rule = "half_month") {
-    const { error } = await client.from("employee_allowances").insert({ employee_id, kind, amount, rule });
+  async function addAllowance(employee_id, type_id, amount, kind) {
+    const { error } = await client.from("employee_allowances").insert({ employee_id, type_id, amount: amount || null, kind });
     if (error) throw error;
   }
-  async function updateAllowance(id, kind, amount, rule = "half_month") {
-    const { error } = await client.from("employee_allowances").update({ kind, amount, rule }).eq("id", id);
+  async function updateAllowance(id, type_id, amount, kind) {
+    const { error } = await client.from("employee_allowances").update({ type_id, amount: amount || null, kind }).eq("id", id);
+    if (error) throw error;
+  }
+  async function getAllowanceTypes() {
+    const { data, error } = await client.from("allowance_types").select("*").order("created_at");
+    if (error) throw error;
+    return data || [];
+  }
+  async function addAllowanceType(name, rule) {
+    const { error } = await client.from("allowance_types").insert({ name, rule });
+    if (error) throw error;
+  }
+  async function updateAllowanceType(id, name, rule) {
+    const { error } = await client.from("allowance_types").update({ name, rule }).eq("id", id);
+    if (error) throw error;
+    // имя типа дублируется в назначениях (на случай, если тип удалят) — обновим
+    await client.from("employee_allowances").update({ kind: name }).eq("type_id", id);
+  }
+  async function deleteAllowanceType(id) {
+    const { error } = await client.from("allowance_types").delete().eq("id", id);
     if (error) throw error;
   }
   async function deleteAllowance(id) {
@@ -539,7 +558,7 @@ const Api = (() => {
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
-    addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance,
+    addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance, getAllowanceTypes, addAllowanceType, updateAllowanceType, deleteAllowanceType,
     getNotificationSettings, saveNotificationSettings,
     getWishMonth, setWishMonthEnabled, getWishes, saveMyWish, deleteWish, deleteAllWishes,
   };

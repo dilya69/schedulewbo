@@ -45,20 +45,21 @@ const MAIN_KB = {
 const BTN_SCHEDULE = "📋 График";
 const BTN_MY = "🧑 Мои смены";
 const BTN_SEEN = "🕒 Последний вход"; // только для админов
+const BTN_LOST = "🔎 Потеряшки"; // только для админов
 const REPLY_KB = {
   keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }]],
   resize_keyboard: true,
   is_persistent: true,
 };
 const REPLY_KB_ADMIN = {
-  keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }]],
+  keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }, { text: BTN_LOST }]],
   resize_keyboard: true,
   is_persistent: true,
 };
 // Инлайн-меню: у админов добавляется кнопка «Последний вход».
 const mainKb = (isAdmin: boolean) =>
   isAdmin
-    ? { inline_keyboard: [...MAIN_KB.inline_keyboard, [{ text: BTN_SEEN, callback_data: "seen" }]] }
+    ? { inline_keyboard: [...MAIN_KB.inline_keyboard, [{ text: BTN_SEEN, callback_data: "seen" }, { text: BTN_LOST, callback_data: "lost:14" }]] }
     : MAIN_KB;
 const NO_ACCESS_TEXT = "Нет доступа. Откройте приложение через /start и дождитесь подтверждения администратора.";
 
@@ -356,6 +357,75 @@ async function buildSeen(): Promise<string[]> {
   return chunks;
 }
 
+// «Потеряшки» (для админов): кто давно не выходил на смены. Порог в днях зашит в callback_data и меняется кнопками.
+const LOST_DEFAULT_DAYS = 14;
+const LOST_MAX_DAYS = 365;
+
+function daysBetween(fromYmd: string, toYmd: string): number {
+  return Math.round((Date.parse(`${toYmd}T00:00:00Z`) - Date.parse(`${fromYmd}T00:00:00Z`)) / 86400000);
+}
+
+async function buildLost(days: number): Promise<{ chunks: string[]; kb: unknown }> {
+  const today = todayYmd();
+  const [emps, shifts] = await Promise.all([
+    db("employees?select=id,full_name,real_name,tg_username,tg_id&is_active=eq.true&order=full_name.asc&limit=300"),
+    db("shifts?select=employee_id,shift_date&employee_id=not.is.null&status=in.(assigned,confirmed)&order=shift_date.desc&limit=10000"),
+  ]);
+  const last = new Map<string, string>(); // последняя прошедшая смена
+  const upcoming = new Set<string>(); // есть смена сегодня или позже
+  for (const s of shifts) {
+    if (s.shift_date >= today) upcoming.add(s.employee_id);
+    else if (!last.has(s.employee_id)) last.set(s.employee_id, s.shift_date); // отсортировано по убыванию
+  }
+  const label = (e: any) => nameLink({ ...e, full_name: e.real_name || e.full_name });
+  const lost: { e: any; gap: number; date: string }[] = [];
+  const noShifts: any[] = [];
+  for (const e of emps) {
+    if (upcoming.has(e.id)) continue; // скоро выйдет — не потеряшка
+    const d = last.get(e.id);
+    if (!d) noShifts.push(e);
+    else if (daysBetween(d, today) >= days) lost.push({ e, gap: daysBetween(d, today), date: d });
+  }
+  lost.sort((a, b) => b.gap - a.gap);
+
+  const lines: string[] = [`🔎 <b>Потеряшки</b> — без смен ${days}+ дн.`, ""];
+  for (const l of lost) lines.push(`• ${label(l.e)} — ${l.gap} дн. (последняя ${fmtShort(l.date)})`);
+  if (!lost.length) lines.push("<i>Таких нет 🎉</i>");
+  if (noShifts.length) {
+    lines.push("", "<b>Нет смен в графике:</b>");
+    for (const e of noShifts) lines.push(`• ${label(e)}`);
+  }
+  lines.push("", "<i>Кто уже стоит в графике на сегодня или позже — не показан.</i>");
+
+  const chunks: string[] = [];
+  let cur = "";
+  for (const l of lines) {
+    if (cur && cur.length + l.length + 1 > MAX_LEN) {
+      chunks.push(cur);
+      cur = l;
+    } else {
+      cur = cur ? cur + "\n" + l : l;
+    }
+  }
+  if (cur) chunks.push(cur);
+
+  const mk = (n: number) => `lost:${Math.min(LOST_MAX_DAYS, Math.max(1, n))}`;
+  const preset = (n: number) => ({ text: n === days ? `• ${n} •` : `${n}`, callback_data: mk(n) });
+  const kb = {
+    inline_keyboard: [
+      [preset(7), preset(14), preset(21), preset(30)],
+      [
+        { text: "−1 дн.", callback_data: mk(days - 1) },
+        { text: "+1 дн.", callback_data: mk(days + 1) },
+        { text: "−7", callback_data: mk(days - 7) },
+        { text: "+7", callback_data: mk(days + 7) },
+      ],
+      [{ text: "← Меню", callback_data: "m" }],
+    ],
+  };
+  return { chunks, kb };
+}
+
 async function pvzKeyboard(period: string) {
   const pvz = await loadPvz();
   const rows: any[][] = [[{ text: "🏬 Все ПВЗ", callback_data: `s:${period}:a` }]];
@@ -393,6 +463,14 @@ async function handleCallback(cb: any) {
     if (data === "seen") {
       if (!emp.is_admin) return;
       for (const chunk of await buildSeen()) await sendMessage(chatId, chunk);
+      return;
+    }
+    const lostM = data.match(/^lost:(\d{1,3})$/);
+    if (lostM) {
+      if (!emp.is_admin) return;
+      const days = Math.min(LOST_MAX_DAYS, Math.max(1, Number(lostM[1])));
+      const r = await buildLost(days);
+      await showChunks(chatId, messageId, r.chunks, r.kb);
       return;
     }
 
@@ -637,6 +715,19 @@ Deno.serve(async (req) => {
       } else {
         await touchSeen(msg.from?.id);
         for (const chunk of await buildSeen()) await sendMessage(chatId, chunk);
+      }
+    } else if (text === BTN_LOST || text.startsWith("/lost")) {
+      const emp = await getEmployee(msg.from?.id);
+      if (!emp) {
+        await sendMessage(chatId, NO_ACCESS_TEXT);
+      } else if (!emp.is_admin) {
+        await sendMessage(chatId, "Эта кнопка только для администраторов.");
+      } else {
+        await touchSeen(msg.from?.id);
+        const r = await buildLost(LOST_DEFAULT_DAYS);
+        for (let i = 0; i < r.chunks.length; i++) {
+          await sendMessage(chatId, r.chunks[i], i === r.chunks.length - 1 ? { reply_markup: r.kb } : {});
+        }
       }
     } else {
       await sendMessage(chatId, "Нажмите /start, чтобы открыть график ПВЗ.");

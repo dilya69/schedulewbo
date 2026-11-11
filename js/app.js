@@ -59,7 +59,6 @@ const App = (() => {
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
     pvz: [],
-    pvzPayRules: {},
     payPeriod: "full",
     roundPay: (() => { try { return localStorage.getItem("roundPay") === "1"; } catch (e) { return false; } })(),
     allowances: [],
@@ -125,7 +124,6 @@ const App = (() => {
   async function reloadAll() {
     if (state.demo) return;
     state.pvz = await Api.getPvzList();
-    await reloadPayRules();
     await reloadShifts();
     state.employees = await Api.getEmployees();
     state.bonusesFines = state.employee.is_admin ? await Api.getBonusesFines(state.year, state.month) : [];
@@ -146,14 +144,6 @@ const App = (() => {
       state.notif = null;
     }
     renderAll();
-  }
-
-  async function reloadPayRules() {
-    if (state.demo) return;
-    const rows = await Api.getAllPayRules();
-    const grouped = {};
-    for (const r of rows) (grouped[r.pvz_id] ??= []).push(r);
-    state.pvzPayRules = grouped;
   }
 
   async function reloadShifts() {
@@ -357,59 +347,58 @@ const App = (() => {
     return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
   }
 
+  // ---- ТАРИФЫ ----
+  // Полная смена (от открытия до закрытия ПВЗ) = фиксированная сумма ПВЗ (pvz.full_shift_pay).
+  // Любая другая смена = часы × ставка: 250 ₽/ч, если началась до 17:00, и 200 ₽/ч, если с 17:00. Ставки одни на все ПВЗ.
+  // Стажёр (слово «стажер» в должности) в течение месяца со дня первой смены: полная смена 2700 ₽
+  // (но не больше суммы самого ПВЗ), остальные смены по 200 ₽/ч.
+  const RATE_EARLY = 250, RATE_LATE = 200, RATE_LATE_FROM = 17 * 60;
+  const TRAINEE_FULL = 2700, TRAINEE_HOURLY = 200;
+  const RE_TRAINEE = /стаж[её]р/i;
+
+  function addMonthsYmd(ymd, n) {
+    const [y, m, d] = String(ymd).split("-").map(Number);
+    const total = (m - 1) + n;
+    const ny = y + Math.floor(total / 12), nm = (total % 12) + 1;
+    const last = new Date(ny, nm, 0).getDate();
+    return `${ny}-${String(nm).padStart(2, "0")}-${String(Math.min(d, last)).padStart(2, "0")}`;
+  }
+
+  // Действует ли у сотрудника стажировка на эту дату: месяц со дня первой смены (trainee_from в базе;
+  // пока он не записан — берём самую раннюю смену из загруженных).
+  function isTraineeOn(empId, dateStr) {
+    if (!empId || !dateStr) return false;
+    const e = state.employees.find((x) => x.id === empId);
+    if (!e || !RE_TRAINEE.test(e.position || "")) return false;
+    let from = e.trainee_from;
+    if (!from) from = state.shifts.filter((s) => s.employee_id === empId).map((s) => s.shift_date).sort()[0];
+    if (!from) return false;
+    return dateStr >= from && dateStr < addMonthsYmd(from, 1);
+  }
+
   function shiftAmount(shift, pvz) {
     if (shift.custom_amount !== undefined && shift.custom_amount !== null && shift.custom_amount !== "") {
       return Number(shift.custom_amount);
     }
     if (!pvz) return 0;
 
-    if (shift.duration_minutes) {
-      // смена на несколько часов: часы × часовая ставка (по часовому тарифу ПВЗ, если он задан, иначе обычная)
-      const toM = (t) => { const [h, m] = String(t || "0:0").slice(0, 5).split(":").map(Number); return (h || 0) * 60 + (m || 0); };
-      const s0m = toM(shift.start_time);
-      const cand = (state.pvzPayRules[pvz.id] || [])
-        .filter((r) => r.rate_type === "hourly" && s0m >= toM(r.start_time) && s0m < toM(r.end_time))
-        .sort((a, b) => (toM(a.end_time) - toM(a.start_time)) - (toM(b.end_time) - toM(b.start_time)));
-      return (shift.duration_minutes / 60) * Number(cand.length ? cand[0].amount : (pvz.mid_hourly_rate || 0));
-    }
+    const toM = (t) => { const [h, m] = String(t || "0:0").slice(0, 5).split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+    const trainee = isTraineeOn(shift.employee_id, shift.shift_date);
+    const s0 = toM(shift.start_time);
+    const rate = trainee ? TRAINEE_HOURLY : (s0 < RATE_LATE_FROM ? RATE_EARLY : RATE_LATE);
 
-    const rules = state.pvzPayRules[pvz.id];
-    if (!rules || rules.length === 0) return legacyShiftAmount(shift, pvz);
+    // смена «на N часов» без точного времени: часы × ставка
+    if (shift.duration_minutes) return (shift.duration_minutes / 60) * rate;
 
-    const toMin = (t) => {
-      const [h, m] = String(t || "0:0").slice(0, 5).split(":").map(Number);
-      return (h || 0) * 60 + (m || 0);
-    };
-    const s0 = toMin(shift.start_time), e0 = toMin(shift.end_time);
+    const e0 = toM(shift.end_time);
     if (e0 <= s0) return 0;
-    const hours = (e0 - s0) / 60;
 
-    const exact = rules.find((r) => r.rate_type === "fixed" && toMin(r.start_time) === s0 && toMin(r.end_time) === e0);
-    if (exact) return Number(exact.amount);
-
-    const candidates = rules
-      .filter((r) => r.rate_type === "hourly")
-      .map((r) => ({ ...r, _rs: toMin(r.start_time), _re: toMin(r.end_time) }))
-      .filter((r) => s0 >= r._rs && s0 < r._re);
-
-    if (candidates.length > 0) {
-      candidates.sort((a, b) => (a._re - a._rs) - (b._re - b._rs));
-      return hours * Number(candidates[0].amount);
+    const isFull = s0 === toM(pvz.default_start_time || "09:00") && e0 === toM(pvz.default_end_time || "21:00");
+    if (isFull) {
+      const full = Number(pvz.full_shift_pay || 0);
+      return trainee ? Math.min(TRAINEE_FULL, full) : full;
     }
-
-    return hours * Number(pvz.mid_hourly_rate || 0);
-  }
-
-  function legacyShiftAmount(shift, pvz) {
-    const startStr = (shift.start_time || "").slice(0, 5);
-    const endStr = (shift.end_time || "").slice(0, 5);
-    const openStr = (pvz.default_start_time || "09:00").slice(0, 5);
-    const closeStr = (pvz.default_end_time || "21:00").slice(0, 5);
-    const startHour = Number(startStr.split(":")[0]);
-    const threshold = pvz.evening_threshold ?? 17;
-    if (startStr === openStr && endStr === closeStr) return Number(pvz.full_shift_pay || 0);
-    if (startHour >= threshold) return Number(pvz.evening_pay || 0);
-    return hoursBetween(shift.start_time, shift.end_time) * Number(pvz.mid_hourly_rate || 0);
+    return ((e0 - s0) / 60) * rate;
   }
 
   function inPayPeriod(dateStr, period) {
@@ -1796,6 +1785,8 @@ const App = (() => {
       <label>Имя в календаре (коротко)</label><input type="text" id="f_name" value="${escapeHtml(emp.full_name)}">
       <label>Полное имя (Имя Фамилия)</label><input type="text" id="f_realname" value="${escapeHtml(emp.real_name || "")}">
       <label>Должность</label><input type="text" id="f_position" value="${escapeHtml(emp.position || "")}">
+      <label>Стажёр с (дата первой смены; только если в должности «стажер»)</label>
+      <input type="date" id="f_trainee_from" value="${escapeHtml(emp.trainee_from || "")}">
       <label>Telegram username (без @)</label>
       <input type="text" id="f_username" autocapitalize="none" autocomplete="off" placeholder="ivanov" value="${escapeHtml(emp.tg_username || "")}">
       <label>Активен (доступ в приложение)</label>
@@ -1837,6 +1828,7 @@ const App = (() => {
         full_name: newName,
         real_name: document.getElementById("f_realname").value.trim() || null,
         position: document.getElementById("f_position").value.trim(),
+        trainee_from: document.getElementById("f_trainee_from").value || null,
         tg_username: newUsername || null,
         is_active: newActive,
         is_admin: newAdmin,
@@ -2266,89 +2258,35 @@ const App = (() => {
   }
 
   // ---------------- ТАРИФЫ ПВЗ ----------------
-  let _rateDraft = [];
-  let _rateDraftPvzId = null;
-  let _rateExtra = null; // нижние поля окна тарифов (чтобы не терялись при перерисовке)
-
-  function _saveRateExtra() {
-    const g = (id) => document.getElementById(id)?.value;
-    if (g("f_default_hourly") === undefined) return;
-    _rateExtra = { hourly: g("f_default_hourly"), start: g("f_dstart"), end: g("f_dend") };
-  }
-
   function openPvzRateModal(pvzId) {
     const pvz = state.pvz.find((p) => p.id === pvzId);
     if (!pvz) return;
-    _rateDraftPvzId = pvzId;
-    _rateExtra = null;
-    const existing = state.pvzPayRules[pvzId] || [];
-    _rateDraft = existing.length
-      ? existing.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((r) => ({ ...r }))
-      : [{
-          start_time: (pvz.default_start_time || "09:00").slice(0, 5),
-          end_time: (pvz.default_end_time || "21:00").slice(0, 5),
-          rate_type: "fixed",
-          amount: pvz.full_shift_pay || 3000,
-          label: "Полная смена",
-        }];
-    renderRateModal();
-  }
+    const startVal = (pvz.default_start_time || "09:00").slice(0, 5);
+    const endVal = (pvz.default_end_time || "21:00").slice(0, 5);
 
-  function renderRateModal() {
-    const pvz = state.pvz.find((p) => p.id === _rateDraftPvzId);
-    if (!pvz) return;
-
-    const rowsHtml = _rateDraft.map((r, i) => `
-      <div class="pay-rule-row">
-        <div class="pay-rule-row-top">
-          <input type="text" placeholder="Название (напр. Утро, Вечер)" value="${escapeHtml(r.label || "")}" onchange="App._updateRateDraft(${i}, 'label', this.value)">
-          <button type="button" class="pay-rule-remove" onclick="App._removeRateRow(${i})" title="Удалить правило"><i data-lucide="x"></i></button>
-        </div>
-        <div class="pay-rule-row-grid">
-          <div><label>С</label><input type="time" value="${(r.start_time || "").slice(0,5)}" onchange="App._updateRateDraft(${i}, 'start_time', this.value)"></div>
-          <div><label>До</label><input type="time" value="${(r.end_time || "").slice(0,5)}" onchange="App._updateRateDraft(${i}, 'end_time', this.value)"></div>
-          <div>
-            <label>Тип</label>
-            <select onchange="App._updateRateDraft(${i}, 'rate_type', this.value)">
-              <option value="fixed" ${r.rate_type === "fixed" ? "selected" : ""}>Сумма за смену целиком</option>
-              <option value="hourly" ${r.rate_type === "hourly" ? "selected" : ""}>₽/час (по времени начала смены)</option>
-            </select>
-          </div>
-          <div><label>${r.rate_type === "hourly" ? "₽/час" : "Сумма, ₽"}</label><input type="number" min="0" value="${r.amount}" onchange="App._updateRateDraft(${i}, 'amount', this.value)"></div>
-        </div>
-      </div>
-    `).join("");
-
-    const hourlyVal = _rateExtra?.hourly ?? pvz.mid_hourly_rate ?? 250;
-    const startVal = _rateExtra?.start ?? (pvz.default_start_time || "09:00").slice(0,5);
-    const endVal = _rateExtra?.end ?? (pvz.default_end_time || "21:00").slice(0,5);
-
-    openModal(`Тарифы: ${pvz.name}`, `
+    openModal(`Тариф: ${pvz.name}`, `
       <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; line-height:1.5;">
-        «Фиксированная сумма» — платится, только если смена ТОЧНО совпадает с этим временем от и до. «₽/час» — определяется по ВРЕМЕНИ НАЧАЛА смены: если смена стартовала внутри этого промежутка, вся её продолжительность считается по этой ставке.
+        Полная смена (от открытия до закрытия) — фиксированная сумма. Любая другая смена: часы × 250 ₽/ч, если началась до 17:00, и × 200 ₽/ч, если с 17:00 (ставки общие для всех ПВЗ).
+        Стажёры: полная смена 2700 ₽ (не больше суммы ПВЗ), остальные смены по 200 ₽/ч.
       </div>
-      <div id="payRulesList">${rowsHtml || '<div class="center-msg">Пока нет ни одного тарифа</div>'}</div>
-      <button type="button" class="add-shift-btn" onclick="App._addRateRow()"><i data-lucide="plus"></i> Добавить тариф</button>
-      <label style="margin-top:14px;">Ставка по умолчанию для непокрытого времени, ₽/час</label>
-      <input type="number" id="f_default_hourly" min="0" value="${hourlyVal}">
-      <label>Стандартное открытие ПВЗ</label>
+      <label>Полная смена, ₽</label>
+      <input type="number" id="f_full_pay" min="0" value="${Number(pvz.full_shift_pay || 0)}">
+      <label>Открытие ПВЗ</label>
       <input type="time" id="f_dstart" value="${startVal}">
-      <label>Стандартное закрытие</label>
+      <label>Закрытие ПВЗ</label>
       <input type="time" id="f_dend" value="${endVal}">
       ${pvz.marketplace === "wb" ? `<label>ID ПВЗ в WB (из файла приёмки)</label>
       <input type="text" id="f_wb_id" inputmode="numeric" placeholder="например, 50211720" value="${escapeHtml(pvz.wb_id || "")}">` : ""}
     `, async () => {
-      if (_rateDraft.length === 0) return toast("Добавьте хотя бы один тариф");
-      for (const r of _rateDraft) {
-        if (!r.start_time || !r.end_time) return toast("Заполните время «с» и «до» во всех тарифах");
-        if (r.start_time >= r.end_time) return toast("Время «до» должно быть позже времени «с»");
-        if (!r.amount || Number(r.amount) <= 0) return toast("Укажите сумму/ставку во всех тарифах");
-      }
-      const default_hourly = Number(document.getElementById("f_default_hourly").value) || 0;
+      const full_shift_pay = Number(document.getElementById("f_full_pay").value);
       const default_start_time = document.getElementById("f_dstart").value;
       const default_end_time = document.getElementById("f_dend").value;
+      if (!(full_shift_pay > 0)) return toast("Укажите сумму за полную смену");
+      if (!default_start_time || !default_end_time || default_start_time >= default_end_time) {
+        return toast("Время закрытия должно быть позже открытия");
+      }
       const wbEl = document.getElementById("f_wb_id");
-      const fields = { mid_hourly_rate: default_hourly, default_start_time, default_end_time };
+      const fields = { full_shift_pay, default_start_time, default_end_time };
       if (wbEl) {
         const wb = wbEl.value.trim();
         if (wb && state.pvz.some((p) => p.id !== pvz.id && String(p.wb_id || "").trim() === wb)) return toast("Такой ID WB уже указан у другого ПВЗ");
@@ -2356,10 +2294,8 @@ const App = (() => {
       }
       try {
         await Api.updatePvz(pvz.id, fields);
-        await Api.replacePayRules(pvz.id, _rateDraft);
-        toast("✅ Тарифы обновлены");
+        toast("✅ Тариф обновлён");
         state.pvz = await Api.getPvzList();
-        await reloadPayRules();
         renderManagement();
         renderCalendar();
         renderProfile();
@@ -2367,29 +2303,6 @@ const App = (() => {
       } catch (e) { toast("🚫 " + e.message); }
     });
   }
-
-  function _updateRateDraft(i, field, value) {
-    if (!_rateDraft[i]) return;
-    _rateDraft[i][field] = value;
-    // перерисовка нужна только когда меняется подпись поля («Сумма» / «₽/час»)
-    if (field === "rate_type") {
-      _saveRateExtra();
-      renderRateModal();
-    }
-  }
-
-  function _addRateRow() {
-    _saveRateExtra();
-    _rateDraft.push({ start_time: "09:00", end_time: "18:00", rate_type: "hourly", amount: 200, label: "" });
-    renderRateModal();
-  }
-
-  function _removeRateRow(i) {
-    _saveRateExtra();
-    _rateDraft.splice(i, 1);
-    renderRateModal();
-  }
-
 
   // ---- Сверка смен: рассылка в бота перед зарплатой + кто отметился ----
   const MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
@@ -3306,7 +3219,7 @@ csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtD
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, callEmployee, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
     openEmployeeScheduleModal, grantAccess, openChat, toggleEmpCard,
     changeAvatar, _pickAvatar, _pickTelegramPhoto, openAvatarFrameModal, _pickFrameColor, saveNotificationSettings,
-    openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
+    openPvzRateModal,
     openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
     exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,

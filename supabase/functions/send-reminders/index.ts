@@ -66,7 +66,6 @@ function planMessages(now, shifts, settingsRows, people) {
     const emp = shift.employees;
     if (!emp || !(Number(emp.tg_id) > 0) || emp.is_active === false) continue;
     const st = settingsBy.get(shift.employee_id);
-    if (st && st.push_enabled === false) continue;
 
     if (shift.duration_minutes) continue; // у короткой смены нет точного начала — напоминание «за N минут» не имеет смысла, остаётся утренняя сводка
     const remind = st?.remind_minutes ?? 120;
@@ -103,7 +102,7 @@ function planMessages(now, shifts, settingsRows, people) {
   }
   for (const [empId, list] of todayByEmp) {
     const st = settingsBy.get(empId);
-    if (!st || st.push_enabled === false || !st.daily_time) continue;
+    if (!st || !st.daily_time) continue;
     const emp = list[0].employees;
     if (!emp || !(Number(emp.tg_id) > 0) || emp.is_active === false) continue;
     if (!inWindow(nowMin - toMin(st.daily_time))) continue;

@@ -2017,7 +2017,6 @@ const App = (() => {
       document.getElementById("remindMinutes").value = state.notif.remind_minutes ?? 120;
       document.getElementById("dailyTime").value = state.notif.daily_time?.slice(0,5) || "08:00";
       document.getElementById("repeatMinutes").value = state.notif.repeat_minutes ?? 0;
-      document.getElementById("pushSwitch").classList.toggle("active", state.notif.push_enabled !== false);
     }
     refreshIcons();
   }
@@ -2175,19 +2174,12 @@ const App = (() => {
     }
   }
 
-  async function togglePush() {
-    const el = document.getElementById("pushSwitch");
-    el.classList.toggle("active");
-    await saveNotificationSettings();
-  }
-
   async function saveNotificationSettings() {
     if (state.demo) return;
     const fields = {
       remind_minutes: Number(document.getElementById("remindMinutes").value),
       daily_time: document.getElementById("dailyTime").value,
       repeat_minutes: Number(document.getElementById("repeatMinutes").value),
-      push_enabled: document.getElementById("pushSwitch").classList.contains("active"),
     };
     try {
       await Api.saveNotificationSettings(fields);
@@ -3313,7 +3305,7 @@ csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtD
     _filterEmpPicker, _selectEmp,
     filterEmployees, openAddEmployeeModal, openEditEmployeeModal, callEmployee, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
     openEmployeeScheduleModal, grantAccess, openChat, toggleEmpCard,
-    changeAvatar, _pickAvatar, _pickTelegramPhoto, openAvatarFrameModal, _pickFrameColor, togglePush, saveNotificationSettings,
+    changeAvatar, _pickAvatar, _pickTelegramPhoto, openAvatarFrameModal, _pickFrameColor, saveNotificationSettings,
     openPvzRateModal, _updateRateDraft, _addRateRow, _removeRateRow,
     openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,

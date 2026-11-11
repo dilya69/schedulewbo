@@ -3161,10 +3161,12 @@ csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtD
     const day = now.getDate();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     if (day >= daysInMonth - 5) {
+      // хранится текущий и прошлый месяц: в начале нового месяца удалится ПРОШЛЫЙ
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const daysLeft = daysInMonth - day + 1;
       el.style.display = "block";
-      el.innerHTML = `<i data-lucide="alert-triangle"></i> Через ${daysLeft} дн. (в начале нового месяца) будут удалены смены и финансы за ${MONTHS[now.getMonth()].toLowerCase()}.
-  <button type="button" onclick="App.exportMonth(${now.getFullYear()}, ${now.getMonth()})"><i data-lucide="download"></i> Скачать за ${MONTHS[now.getMonth()].toLowerCase()}</button>`;
+      el.innerHTML = `<i data-lucide="alert-triangle"></i> Через ${daysLeft} дн. (в начале нового месяца) будут удалены смены и финансы за ${MONTHS[prev.getMonth()].toLowerCase()}.
+  <button type="button" onclick="App.exportMonth(${prev.getFullYear()}, ${prev.getMonth()})"><i data-lucide="download"></i> Скачать за ${MONTHS[prev.getMonth()].toLowerCase()}</button>`;
     } else {
       el.style.display = "none";
     }

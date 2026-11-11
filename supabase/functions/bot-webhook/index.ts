@@ -44,11 +44,22 @@ const MAIN_KB = {
 // Постоянные кнопки под полем ввода (появляются после /start и остаются всегда).
 const BTN_SCHEDULE = "📋 График";
 const BTN_MY = "🧑 Мои смены";
+const BTN_SEEN = "🕒 Последний вход"; // только для админов
 const REPLY_KB = {
   keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }]],
   resize_keyboard: true,
   is_persistent: true,
 };
+const REPLY_KB_ADMIN = {
+  keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }]],
+  resize_keyboard: true,
+  is_persistent: true,
+};
+// Инлайн-меню: у админов добавляется кнопка «Последний вход».
+const mainKb = (isAdmin: boolean) =>
+  isAdmin
+    ? { inline_keyboard: [...MAIN_KB.inline_keyboard, [{ text: BTN_SEEN, callback_data: "seen" }]] }
+    : MAIN_KB;
 const NO_ACCESS_TEXT = "Нет доступа. Откройте приложение через /start и дождитесь подтверждения администратора.";
 
 // ---------- Telegram ----------
@@ -130,6 +141,24 @@ async function getEmployee(tgId: number) {
   if (!Number.isInteger(tgId)) return null;
   const rows = await db(`employees?select=id,full_name,is_admin&tg_id=eq.${tgId}&is_active=eq.true&limit=1`);
   return rows[0] ?? null;
+}
+
+// Помечаем время последней активности сотрудника в боте (если поля last_seen_at ещё нет — ошибка игнорируется).
+async function touchSeen(tgId: number) {
+  if (!Number.isInteger(tgId)) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/employees?tg_id=eq.${tgId}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ last_seen_at: new Date().toISOString() }),
+    });
+  } catch (e) {
+    console.error("touchSeen", e);
+  }
 }
 
 async function loadPvz(onlyActive = true) {
@@ -281,6 +310,52 @@ async function buildMy(empId: string, offset: number) {
   return { text, kb };
 }
 
+function fmtSeen(iso: string): string {
+  const d = new Date(iso);
+  const ymd = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ }).format(d);
+  const time = new Intl.DateTimeFormat("ru-RU", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).format(d);
+  const today = todayYmd();
+  if (ymd === today) return `сегодня в ${time}`;
+  if (ymd === addDays(today, -1)) return `вчера в ${time}`;
+  return `${ymd.slice(8, 10)}.${ymd.slice(5, 7)} в ${time}`;
+}
+
+// Список «кто когда последний раз заходил» (для админов): свежие сверху.
+async function buildSeen(): Promise<string[]> {
+  const rows = await db(
+    "employees?select=full_name,real_name,tg_username,tg_id,last_seen_at&is_active=eq.true&order=last_seen_at.desc.nullslast,full_name.asc&limit=300",
+  );
+  const label = (e: any) => nameLink({ ...e, full_name: e.real_name || e.full_name });
+  const seen = rows.filter((e) => e.last_seen_at);
+  const unknown = rows.filter((e) => !e.last_seen_at && Number(e.tg_id) > 0);
+  const never = rows.filter((e) => !e.last_seen_at && !(Number(e.tg_id) > 0));
+
+  const lines: string[] = ["🕒 <b>Последний вход</b>", ""];
+  for (const e of seen) lines.push(`• ${label(e)} — ${fmtSeen(e.last_seen_at)}`);
+  if (!seen.length) lines.push("<i>Пока никто не заходил после включения учёта.</i>");
+  if (unknown.length) {
+    lines.push("", "<b>Нет данных</b> (заходили раньше, чем появился учёт):");
+    for (const e of unknown) lines.push(`• ${label(e)}`);
+  }
+  if (never.length) {
+    lines.push("", "<b>Ещё не открывали бота:</b>");
+    for (const e of never) lines.push(`• ${label(e)}`);
+  }
+
+  const chunks: string[] = [];
+  let cur = "";
+  for (const l of lines) {
+    if (cur && cur.length + l.length + 1 > MAX_LEN) {
+      chunks.push(cur);
+      cur = l;
+    } else {
+      cur = cur ? cur + "\n" + l : l;
+    }
+  }
+  if (cur) chunks.push(cur);
+  return chunks;
+}
+
 async function pvzKeyboard(period: string) {
   const pvz = await loadPvz();
   const rows: any[][] = [[{ text: "🏬 Все ПВЗ", callback_data: `s:${period}:a` }]];
@@ -304,14 +379,20 @@ async function handleCallback(cb: any) {
     return;
   }
   await tg("answerCallbackQuery", { callback_query_id: cb.id });
+  await touchSeen(cb.from?.id);
 
   try {
     if (data === "n") {
-      await sendMessage(chatId, MENU_TEXT, { reply_markup: MAIN_KB });
+      await sendMessage(chatId, MENU_TEXT, { reply_markup: mainKb(!!emp.is_admin) });
       return;
     }
     if (data === "m") {
-      await edit(chatId, messageId, MENU_TEXT, MAIN_KB);
+      await edit(chatId, messageId, MENU_TEXT, mainKb(!!emp.is_admin));
+      return;
+    }
+    if (data === "seen") {
+      if (!emp.is_admin) return;
+      for (const chunk of await buildSeen()) await sendMessage(chatId, chunk);
       return;
     }
 
@@ -515,6 +596,8 @@ Deno.serve(async (req) => {
     const text: string = msg.text ?? "";
 
     if (text.startsWith("/start")) {
+      const me = await getEmployee(msg.from?.id);
+      await touchSeen(msg.from?.id);
       await sendMessage(
         chatId,
         "👋 Добро пожаловать в <b>График ПВЗ</b>!\n\nНажмите кнопку ниже, чтобы открыть расписание.",
@@ -527,21 +610,33 @@ Deno.serve(async (req) => {
           },
         },
       );
-      await sendMessage(chatId, "Кнопки меню всегда под полем ввода 👇", { reply_markup: REPLY_KB });
+      await sendMessage(chatId, "Кнопки меню всегда под полем ввода 👇", { reply_markup: me?.is_admin ? REPLY_KB_ADMIN : REPLY_KB });
     } else if (text.startsWith("/schedule") || text === BTN_SCHEDULE) {
       const emp = await getEmployee(msg.from?.id);
       if (!emp) {
         await sendMessage(chatId, NO_ACCESS_TEXT);
       } else {
-        await sendMessage(chatId, MENU_TEXT, { reply_markup: MAIN_KB });
+        await touchSeen(msg.from?.id);
+        await sendMessage(chatId, MENU_TEXT, { reply_markup: mainKb(!!emp.is_admin) });
       }
     } else if (text === BTN_MY) {
       const emp = await getEmployee(msg.from?.id);
       if (!emp) {
         await sendMessage(chatId, NO_ACCESS_TEXT);
       } else {
+        await touchSeen(msg.from?.id);
         const my = await buildMy(emp.id, 0);
         await sendMessage(chatId, my.text, { reply_markup: my.kb });
+      }
+    } else if (text === BTN_SEEN || text.startsWith("/seen")) {
+      const emp = await getEmployee(msg.from?.id);
+      if (!emp) {
+        await sendMessage(chatId, NO_ACCESS_TEXT);
+      } else if (!emp.is_admin) {
+        await sendMessage(chatId, "Эта кнопка только для администраторов.");
+      } else {
+        await touchSeen(msg.from?.id);
+        for (const chunk of await buildSeen()) await sendMessage(chatId, chunk);
       }
     } else {
       await sendMessage(chatId, "Нажмите /start, чтобы открыть график ПВЗ.");

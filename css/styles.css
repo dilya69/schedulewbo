@@ -496,7 +496,7 @@ body {
     margin-bottom: 2px;
 }
 
-.days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; container-type: inline-size; }
+.days-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; container-type: inline-size; }
 
 .day-cell {
     display: flex;
@@ -859,12 +859,12 @@ body {
 .day-cell .name-chip {
     width: 100%;
     /* размер от ширины самого календаря (а не окна браузера): на телефоне ~8px, на компе растёт вместе с календарём */
-    font-size: clamp(7px, 1.85cqw, 13px);
+    font-size: var(--chip-fs, clamp(7px, 1.85cqw, 13px));
     font-weight: 800;
     color: #fff;
     border-radius: 3px;
-    padding: 1px 2px;
-    line-height: 1.1;
+    padding: 1px 1px;
+    line-height: 1.15;
     text-align: center;
     overflow: visible;
     white-space: nowrap;
@@ -1179,7 +1179,7 @@ span.chip-pending-dot { cursor: default; }
     body { padding: 0; }
     .header { padding: 10px 14px 8px; }
     .day-cell { min-height: 62px; font-size: 10px; }
-    .day-cell .name-chip { font-size: 8px; }
+    .day-cell .name-chip { font-size: var(--chip-fs, 8px); }
     .profile-header { flex-direction: column; text-align: center; }
     .finance-employee { flex-direction: column; align-items: stretch; gap: 6px; }
     .finance-employee .right { justify-content: flex-start; }
@@ -1190,7 +1190,7 @@ span.chip-pending-dot { cursor: default; }
 @media (max-width: 350px) {
     .day-cell { min-height: 54px; font-size: 9px; }
     .day-cell .chip-free, .day-cell .chip-pending-dot { width: 10px; height: 10px; min-width: 10px; font-size: 7px; }
-    .day-cell .name-chip { font-size: 7px; }
+    .day-cell .name-chip { font-size: var(--chip-fs, 7px); }
     .header h1 { font-size: 14px; }
     .admin-toggle span { display: none; }
     .pvz-grid { grid-template-columns: 1fr; }

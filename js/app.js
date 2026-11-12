@@ -880,7 +880,32 @@ const App = (() => {
     html += `</div>`;
     container.innerHTML = html;
     refreshIcons();
+    fitChipNames();
   }
+
+  // Подгоняет размер имён в календаре: самый крупный шрифт, при котором самое длинное имя
+  // помещается в ячейку целиком (без переноса и многоточия). Размер общий на весь ПВЗ, чтобы было ровно.
+  const CHIP_FS_MIN = 7, CHIP_FS_MAX = 12;
+  function fitChipNames() {
+    document.querySelectorAll(".days-grid").forEach((grid) => {
+      const chips = grid.querySelectorAll(".name-chip");
+      if (!chips.length) return;
+      grid.style.setProperty("--chip-fs", "10px");
+      let ratio = Infinity;
+      chips.forEach((c) => {
+        const avail = c.parentElement ? c.parentElement.clientWidth : 0;
+        c.style.width = "max-content";
+        const need = c.getBoundingClientRect().width;
+        c.style.width = "";
+        if (avail > 0 && need > 0) ratio = Math.min(ratio, avail / need);
+      });
+      if (!isFinite(ratio)) return;
+      const fs = Math.max(CHIP_FS_MIN, Math.min(CHIP_FS_MAX, Math.floor(10 * ratio * 0.97 * 2) / 2));
+      grid.style.setProperty("--chip-fs", fs + "px");
+    });
+  }
+  let chipFitTimer = null;
+  window.addEventListener("resize", () => { clearTimeout(chipFitTimer); chipFitTimer = setTimeout(fitChipNames, 150); });
 
 
   // ---------------- ПОЖЕЛАНИЯ ПО ГРАФИКУ ----------------

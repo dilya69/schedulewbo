@@ -881,27 +881,30 @@ const App = (() => {
     container.innerHTML = html;
     refreshIcons();
     fitChipNames();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitChipNames);
   }
 
-  // Подгоняет размер имён в календаре: самый крупный шрифт, при котором самое длинное имя
-  // помещается в ячейку целиком (без переноса и многоточия). Размер общий на весь ПВЗ, чтобы было ровно.
-  const CHIP_FS_MIN = 7, CHIP_FS_MAX = 12;
+  // Подгоняет размер каждого имени в календаре: самый крупный шрифт, при котором имя помещается
+  // в ячейку целиком (без переноса и многоточия). Короткие имена получаются крупнее длинных.
+  const CHIP_FS_MIN = 7, CHIP_FS_MAX = 13;
+  function chipNeed(c, fs) {
+    c.style.fontSize = fs + "px";
+    c.style.width = "max-content";
+    const w = c.getBoundingClientRect().width;
+    c.style.width = "";
+    return w;
+  }
   function fitChipNames() {
-    document.querySelectorAll(".days-grid").forEach((grid) => {
-      const chips = grid.querySelectorAll(".name-chip");
-      if (!chips.length) return;
-      grid.style.setProperty("--chip-fs", "10px");
-      let ratio = Infinity;
-      chips.forEach((c) => {
-        const avail = c.parentElement ? c.parentElement.clientWidth : 0;
-        c.style.width = "max-content";
-        const need = c.getBoundingClientRect().width;
-        c.style.width = "";
-        if (avail > 0 && need > 0) ratio = Math.min(ratio, avail / need);
-      });
-      if (!isFinite(ratio)) return;
-      const fs = Math.max(CHIP_FS_MIN, Math.min(CHIP_FS_MAX, Math.floor(10 * ratio * 0.97 * 2) / 2));
-      grid.style.setProperty("--chip-fs", fs + "px");
+    document.querySelectorAll(".days-grid .name-chip").forEach((c) => {
+      const avail = c.parentElement ? c.parentElement.clientWidth : 0;
+      if (avail <= 0) return;
+      const need10 = chipNeed(c, 10);
+      if (need10 <= 0) return;
+      let fs = Math.max(CHIP_FS_MIN, Math.min(CHIP_FS_MAX, Math.floor(10 * (avail / need10) * 0.94 * 2) / 2));
+      // проверка по факту: если всё равно не влезает (шрифт, округления), уменьшаем шагами
+      let guard = 12;
+      while (fs > CHIP_FS_MIN && chipNeed(c, fs) > avail - 1 && guard-- > 0) fs -= 0.5;
+      c.style.fontSize = fs + "px";
     });
   }
   let chipFitTimer = null;

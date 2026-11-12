@@ -508,7 +508,7 @@ body {
     font-weight: 500;
     background: var(--card-bg);
     color: var(--text);
-    padding: 4px 2px;
+    padding: 4px 1px;
     min-height: 68px;
     position: relative;
     transition: all 0.2s;
@@ -1654,3 +1654,6 @@ button { color: inherit; }
 .al-btn.acc-no { background: #ff3b30; color: #fff; }
 .acc-state { font-size: 10.5px; font-weight: 600; color: var(--text-secondary); }
 .acc-state.counted { color: #34c759; }
+
+/* календарь шире: меньше боковых полей, чтобы именам хватало места */
+#tab1 .calendar-wrapper { margin: 0 -8px; }

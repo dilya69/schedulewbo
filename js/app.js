@@ -886,7 +886,7 @@ const App = (() => {
 
   // Подгоняет размер каждого имени в календаре: самый крупный шрифт, при котором имя помещается
   // в ячейку целиком (без переноса и многоточия). Короткие имена получаются крупнее длинных.
-  const CHIP_FS_MIN = 7, CHIP_FS_MAX = 13;
+  const CHIP_FS_MIN = 5, CHIP_FS_MAX = 13;
   function chipNeed(c, fs) {
     c.style.fontSize = fs + "px";
     c.style.width = "max-content";
@@ -898,13 +898,17 @@ const App = (() => {
     document.querySelectorAll(".days-grid .name-chip").forEach((c) => {
       const avail = c.parentElement ? c.parentElement.clientWidth : 0;
       if (avail <= 0) return;
+      c.style.fontWeight = ""; c.style.letterSpacing = "";
       const need10 = chipNeed(c, 10);
       if (need10 <= 0) return;
       let fs = Math.max(CHIP_FS_MIN, Math.min(CHIP_FS_MAX, Math.floor(10 * (avail / need10) * 0.94 * 2) / 2));
       // проверка по факту: если всё равно не влезает (шрифт, округления), уменьшаем шагами
-      let guard = 12;
+      let guard = 20;
       while (fs > CHIP_FS_MIN && chipNeed(c, fs) > avail - 1 && guard-- > 0) fs -= 0.5;
       c.style.fontSize = fs + "px";
+      // у длинных имён шрифт помельче: делаем его чуть тоньше и плотнее, чтобы читался
+      c.style.fontWeight = fs < 8 ? "700" : "";
+      c.style.letterSpacing = fs < 8 ? "-0.2px" : "";
     });
   }
   let chipFitTimer = null;

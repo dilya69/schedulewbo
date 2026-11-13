@@ -776,10 +776,10 @@ async function handleHelp(msg: any, chat: any, arg: string | undefined) {
 
 async function buildToday(arg?: string): Promise<string[]> {
   const a = (arg ?? "").trim();
-  if (!a) return await buildSchedule("0", "a", true);
+  if (!a) return await buildSchedule("0", "a", false);
   const found = matchPvz(a, await loadPvz());
   if (!found.length) return [`Не нашла ПВЗ «${esc(a.slice(0, 40))}». Например: /today Тургенева или /today Некрасовский Ozon`];
-  return await buildSchedule("0", "a", true, found.map((p: any) => p.id));
+  return await buildSchedule("0", "a", false, found.map((p: any) => p.id));
 }
 
 // ---------- /need — «нужен человек на смену» ----------
@@ -1160,7 +1160,7 @@ async function handleGroupMessage(msg: any) {
     if (!chat.today_on || !(await getEmployee(msg.from?.id))) return;
     const chunks = await buildToday(mt[1]);
     for (const c of chunks) {
-      await sendMessage(chatId, c, { reply_parameters: { message_id: msg.message_id, allow_sending_without_reply: true } });
+      await sendMessage(chatId, c, { disable_notification: true, reply_parameters: { message_id: msg.message_id, allow_sending_without_reply: true } });
     }
     return;
   }
@@ -1190,7 +1190,7 @@ async function runTick() {
       const at = toMin(c.morning_time);
       if (c.morning_on && c.morning_last !== today && minutes >= at && minutes < at + 120) {
         await dbReq("PATCH", `help_chats?chat_id=eq.${c.chat_id}`, { morning_last: today });
-        const chunks = await buildSchedule("0", "a", true);
+        const chunks = await buildSchedule("0", "a", false);
         const hasShifts = !chunks.every((x) => x.includes("<i>смен нет</i>"));
         if (hasShifts) {
           chunks[0] = chunks[0].replace("📅 <b>Сегодня", "☀️ <b>Доброе утро! Сегодня");

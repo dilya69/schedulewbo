@@ -264,7 +264,7 @@ async function buildSchedule(period: string, pvzId: string, plain = false, onlyI
 
   const range = from === to ? `${title}, ${fmtDay(from)}` : `${title}: ${fmtDay(from)} – ${fmtDay(to)}`;
   let header = `📅 <b>${range}</b>`;
-  if (pvzId !== "a") header += `\n🏬 ${esc(selected[0]?.name ?? "ПВЗ")}`;
+  if (pvzId !== "a") header += `\n${mpDot(selected[0])} ${esc(selected[0]?.name ?? "ПВЗ")}`;
 
   const blocks: string[] = [];
   for (let date = from; date <= to; date = addDays(date, 1)) {
@@ -274,7 +274,7 @@ async function buildSchedule(period: string, pvzId: string, plain = false, onlyI
       for (const p of selected) {
         const ps = day.filter((s: any) => s.pvz_id === p.id);
         if (!ps.length) continue;
-        lines.push(`🏬 <b>${esc(p.name)}</b>${p.marketplace ? ` (${esc(p.marketplace)})` : ""}`);
+        lines.push(`${mpDot(p)} <b>${esc(p.name)}</b>${p.marketplace ? ` (${esc(p.marketplace)})` : ""}`);
         for (const s of ps) lines.push(shiftLine(s, names));
       }
     } else {
@@ -285,6 +285,12 @@ async function buildSchedule(period: string, pvzId: string, plain = false, onlyI
   }
   return splitBlocks(header, blocks);
 }
+
+// кружок по площадке: Ozon — синий, WB — фиолетово-розовый
+const mpDot = (p: any) => {
+  const m = String(p?.marketplace ?? "").toLowerCase();
+  return m === "ozon" ? "🔵" : m === "wb" ? "🟣" : "⚪";
+};
 
 async function buildMy(empId: string, offset: number) {
   const mon = addDays(mondayOf(todayYmd()), offset * 7);

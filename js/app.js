@@ -2339,23 +2339,39 @@ const App = (() => {
   // ---- Сверка смен: рассылка в бота перед зарплатой + кто отметился ----
   const MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 
-  // с 1-го по 15-е — сверяем прошлый месяц с 16-го; с 16-го — этот месяц с 1 по 15
+  // период сверки считается от текущей даты: 1–15 числа → «с 1 по 15» этого месяца,
+  // с 16-го → «с 16 по последний день» этого месяца (30 или 31, в феврале 28/29)
+  function checkPeriod(date = new Date()) {
+    const y = date.getFullYear(), m = date.getMonth();
+    const first = date.getDate() <= 15;
+    const last = new Date(y, m + 1, 0).getDate();
+    return {
+      label: `${first ? "с 1 по 15" : `с 16 по ${last}`} ${MONTHS_GEN[m]}`,
+      end: new Date(y, m, first ? 15 : last), // день зарплаты
+    };
+  }
+
+  // сверка актуальна, пока не наступил день зарплаты (15-е или последний день месяца)
+  function isCheckActive(createdAt) {
+    const end = checkPeriod(new Date(createdAt)).end;
+    const t = new Date();
+    return new Date(t.getFullYear(), t.getMonth(), t.getDate()) < end;
+  }
+
+  // ссылка на Яну (кому писать при расхождениях): t.me по её username
+  function yanaLink() {
+    const y = (state.employees || []).find((e) => isYana(e) && e.is_active !== false);
+    const u = String(y?.tg_username || "").replace(/^@/, "");
+    return /^[A-Za-z0-9_]{4,32}$/.test(u) ? `https://t.me/${u}` : "";
+  }
+
   function defaultCheck() {
-    const now = new Date();
-    let range, monthIdx;
-    if (now.getDate() >= 16) {
-      monthIdx = now.getMonth();
-      range = "с 1 по 15";
-    } else {
-      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      monthIdx = prev.getMonth();
-      const last = new Date(prev.getFullYear(), prev.getMonth() + 1, 0).getDate();
-      range = `с 16 по ${last}`;
-    }
-    const label = `${range} ${MONTHS_GEN[monthIdx]}`;
+    const { label } = checkPeriod();
+    const link = yanaLink();
+    const contact = link ? `пишите Яне: ${link}` : "пишите Яне в личку";
     return {
       title: `Сверка смен ${label}`,
-      body: `Всем добрый вечер!\n\nПросьба сверить свои смены ${label} включительно 🙏\n\nЕсли есть расхождения с графиком — пишите в личку, я поправлю 🙏\n\nЕсли всё хорошо и нареканий нет — нажмите кнопку «Всё в порядке» под этим сообщением.\n\nНужны отметки абсолютно ОТ ВСЕХ!`,
+      body: `Всем добрый вечер!\n\nПросьба сверить свои смены ${label} включительно 🙏\n\nЕсли есть расхождения с графиком — ${contact} 🙏\n\nЕсли всё хорошо и нареканий нет — нажмите кнопку «Всё в порядке» под этим сообщением.\n\nНужны отметки абсолютно ОТ ВСЕХ!`,
     };
   }
 
@@ -2377,7 +2393,8 @@ const App = (() => {
     if (!el) return;
     try {
       const c = await Api.getLatestScheduleCheck();
-      if (!c) { el.innerHTML = `<div class="center-msg" style="font-size:11px;">Рассылок ещё не было</div>`; return; }
+      // в день зарплаты старая сверка очищается: список «кто отметился» больше не нужен
+      if (!c || !isCheckActive(c.created_at)) { el.innerHTML = `<div class="center-msg" style="font-size:11px;">Активной сверки нет</div>`; return; }
       const rank = (r) => (r.status === "ok" ? 1 : 0);
       const reps = c.replies.slice().sort((a, b) => rank(a) - rank(b) || fullName(a.employees).localeCompare(fullName(b.employees), "ru"));
       const ok = reps.filter((r) => r.status === "ok").length;

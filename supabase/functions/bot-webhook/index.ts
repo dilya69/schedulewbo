@@ -523,6 +523,7 @@ async function handleCallback(cb: any) {
           chat_id: chatId,
           message_id: messageId,
           text: `${cb.message?.text ?? ""}\n\n✅ Отмечено, спасибо!`,
+          link_preview_options: { is_disabled: true },
           reply_markup: { inline_keyboard: [] },
         });
       }

@@ -48,6 +48,22 @@ async function isAdminCaller(req: Request): Promise<boolean> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Короткий текст напоминания не отметившимся: период берём из заголовка рассылки
+// («Сверка смен с 1 по 15 ноября»), а ссылка на Яну — t.me по её username в таблице employees.
+async function reminderText(title: string): Promise<string> {
+  const label = String(title ?? "").replace(/^Сверка смен\s*/i, "").trim();
+  let contact = "пишите Яне в личку";
+  try {
+    const { data } = await db.from("employees").select("tg_username").ilike("full_name", "яна").eq("is_active", true).limit(1);
+    const u = String(data?.[0]?.tg_username ?? "").replace(/^@/, "");
+    if (/^[A-Za-z0-9_]{4,32}$/.test(u)) contact = `пишите Яне: https://t.me/${u}`;
+  } catch (e) {
+    console.error("yana lookup", e);
+  }
+  const what = label ? `свои смены ${label} включительно` : "свои смены";
+  return `Сверьте ${what}, как можно скорее 🙏\nЕсли есть расхождения — ${contact}`;
+}
+
 // обычный текст без разметки: так сообщение потом без потерь редактируется при нажатии кнопки
 async function sendCheck(chatId: number, text: string, checkId: string): Promise<number | null> {
   try {
@@ -57,6 +73,7 @@ async function sendCheck(chatId: number, text: string, checkId: string): Promise
       body: JSON.stringify({
         chat_id: chatId,
         text,
+        link_preview_options: { is_disabled: true },
         reply_markup: { inline_keyboard: [[{ text: "✅ Всё в порядке", callback_data: `chk:${checkId}` }]] },
       }),
     });
@@ -109,11 +126,14 @@ Deno.serve(async (req) => {
       if (e3) throw e3;
     }
 
+    // при напоминании шлём короткий текст, а не всю рассылку заново
+    const text = input.resend_check_id ? await reminderText(check.title) : check.body;
+
     let sent = 0;
     const failed: string[] = [];
     for (const t of targets) {
       if (!t.tg_id || t.tg_id <= 0) { failed.push(t.full_name || "?"); continue; }
-      const mid = await sendCheck(t.tg_id, check.body, check.id);
+      const mid = await sendCheck(t.tg_id, text, check.id);
       if (mid) {
         sent++;
         await db.from("schedule_check_replies").update({ status: "sent", tg_chat_id: t.tg_id, message_id: mid, sent_at: new Date().toISOString() }).eq("check_id", check.id).eq("employee_id", t.id);

@@ -1263,10 +1263,15 @@ async function bcDropDraft(tgId: number) {
   await dbReq("DELETE", `bot_drafts?tg_id=eq.${tgId}`);
 }
 
-// Кому вообще можно написать: активные сотрудники с Telegram, кроме самого автора.
-async function bcCandidates(authorId: string): Promise<any[]> {
-  const emps = await db("employees?select=id,full_name,tg_id&is_active=eq.true&tg_id=gt.0&order=full_name.asc&limit=300");
-  return emps.filter((e: any) => e.id !== authorId);
+// Кому вообще можно написать: активные сотрудники с Telegram (автор тоже в списке, можно отправить себе).
+async function bcCandidates(_authorId: string): Promise<any[]> {
+  return await db("employees?select=id,full_name,tg_id&is_active=eq.true&tg_id=gt.0&order=full_name.asc&limit=300");
+}
+
+// Активные сотрудники, которые ещё не открывали бота: написать им нельзя.
+async function bcNoBot(): Promise<string[]> {
+  const rows = await db("employees?select=full_name,tg_id&is_active=eq.true&order=full_name.asc&limit=300");
+  return rows.filter((e: any) => !(Number(e.tg_id) > 0)).map((e: any) => e.full_name);
 }
 
 // Кто работает на каком ПВЗ: смотрим смены за последние 30 дней и на 45 дней вперёд.
@@ -1313,9 +1318,11 @@ async function bcShowPick(chatId: number, messageId: number | null, emp: any, dr
     { text: `Далее → (${selected.size})`, callback_data: "bc:go" },
   ]);
 
+  const noBot = await bcNoBot();
   const text =
     `📢 <b>Рассылка</b>\nОтметьте, кому отправить. Кнопка с названием ПВЗ отмечает всех, кто там работает.\n\n` +
-    `Выбрано: <b>${selected.size}</b>${warn ? `\n⚠️ ${warn}` : ""}`;
+    `Выбрано: <b>${selected.size}</b>${warn ? `\n⚠️ ${warn}` : ""}` +
+    (noBot.length ? `\n\n<i>Нет в боте, не получат (${noBot.length}): ${esc(noBot.join(", "))}</i>` : "");
   const kb = { inline_keyboard: rows };
   if (messageId) await edit(chatId, messageId, text, kb);
   else await sendMessage(chatId, text, { reply_markup: kb });

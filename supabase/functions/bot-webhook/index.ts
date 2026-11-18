@@ -52,20 +52,21 @@ const BTN_SCHEDULE = "📋 График";
 const BTN_MY = "🧑 Мои смены";
 const BTN_SEEN = "🕒 Последний вход"; // только для админов
 const BTN_LOST = "🔎 Потеряшки"; // только для админов
+const BTN_BCAST = "📢 Рассылка"; // только для админов
 const REPLY_KB = {
   keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }]],
   resize_keyboard: true,
   is_persistent: true,
 };
 const REPLY_KB_ADMIN = {
-  keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }, { text: BTN_LOST }]],
+  keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }, { text: BTN_LOST }], [{ text: BTN_BCAST }]],
   resize_keyboard: true,
   is_persistent: true,
 };
 // Инлайн-меню: у админов добавляется кнопка «Последний вход».
 const mainKb = (isAdmin: boolean) =>
   isAdmin
-    ? { inline_keyboard: [...MAIN_KB.inline_keyboard, [{ text: BTN_SEEN, callback_data: "seen" }, { text: BTN_LOST, callback_data: "lost:14" }]] }
+    ? { inline_keyboard: [...MAIN_KB.inline_keyboard, [{ text: BTN_SEEN, callback_data: "seen" }, { text: BTN_LOST, callback_data: "lost:14" }], [{ text: BTN_BCAST, callback_data: "bc:new" }]] }
     : MAIN_KB;
 const NO_ACCESS_TEXT = "Нет доступа. Откройте приложение через /start и дождитесь подтверждения администратора.";
 
@@ -479,6 +480,15 @@ async function handleCallback(cb: any) {
   await touchSeen(cb.from?.id);
 
   try {
+    if (data.startsWith("bc:")) {
+      try {
+        await handleBroadcastCallback(cb, emp, chatId, messageId);
+      } catch (e) {
+        console.error("broadcast callback error", e);
+        await sendMessage(chatId, "⚠️ Не получилось выполнить действие с рассылкой. Попробуйте ещё раз или начните заново: «📢 Рассылка».");
+      }
+      return;
+    }
     if (data === "n") {
       await sendMessage(chatId, MENU_TEXT, { reply_markup: mainKb(!!emp.is_admin) });
       return;
@@ -1219,6 +1229,337 @@ async function runTick() {
 
 // ---------- Вход ----------
 
+// ---------- Рассылка от админа: «📢 Рассылка» ----------
+//
+// Админ нажимает «📢 Рассылка» → отмечает получателей (всех, по ПВЗ или людей по одному) → пишет текст →
+// смотрит предпросмотр с подписью «— Имя» → «Отправить». Сотрудникам приходит сообщение с кнопкой «Принял(а)».
+// Черновик хранится в bot_drafts (один на админа). Статус («кто принял») и «Напомнить» — под итогом рассылки.
+
+const BC_MAX_LEN = 3500;
+const BC_DRAFT_TTL_MS = 24 * 3600 * 1000;
+
+const bcFmtTime = (iso: string) =>
+  new Intl.DateTimeFormat("ru-RU", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+
+async function bcGetDraft(tgId: number): Promise<any | null> {
+  const rows = await db(`bot_drafts?select=*&tg_id=eq.${tgId}&limit=1`);
+  const d = rows[0] ?? null;
+  if (d && Date.now() - Date.parse(d.updated_at) > BC_DRAFT_TTL_MS) {
+    await bcDropDraft(tgId);
+    return null;
+  }
+  return d;
+}
+
+async function bcSaveDraft(tgId: number, patch: Record<string, unknown>): Promise<any> {
+  const body = { ...patch, updated_at: new Date().toISOString() };
+  const rows = await dbReq("PATCH", `bot_drafts?tg_id=eq.${tgId}`, body);
+  if (rows.length) return rows[0];
+  const [row] = await dbReq("POST", "bot_drafts", { tg_id: tgId, step: "pick", employee_ids: [], ...body });
+  return row;
+}
+
+async function bcDropDraft(tgId: number) {
+  await dbReq("DELETE", `bot_drafts?tg_id=eq.${tgId}`);
+}
+
+// Кому вообще можно написать: активные сотрудники с Telegram, кроме самого автора.
+async function bcCandidates(authorId: string): Promise<any[]> {
+  const emps = await db("employees?select=id,full_name,tg_id&is_active=eq.true&tg_id=gt.0&order=full_name.asc&limit=300");
+  return emps.filter((e: any) => e.id !== authorId);
+}
+
+// Кто работает на каком ПВЗ: смотрим смены за последние 30 дней и на 45 дней вперёд.
+async function bcPvzMembers(): Promise<{ pvz: any[]; members: Map<string, Set<string>> }> {
+  const today = todayYmd();
+  const [pvz, shifts] = await Promise.all([
+    loadPvz(),
+    db(
+      `shifts?select=pvz_id,employee_id&employee_id=not.is.null&status=in.(assigned,confirmed)` +
+        `&shift_date=gte.${addDays(today, -30)}&shift_date=lte.${addDays(today, 45)}&limit=10000`,
+    ),
+  ]);
+  const members = new Map<string, Set<string>>();
+  for (const s of shifts) {
+    if (!members.has(s.pvz_id)) members.set(s.pvz_id, new Set());
+    members.get(s.pvz_id)!.add(s.employee_id);
+  }
+  return { pvz, members };
+}
+
+async function bcShowPick(chatId: number, messageId: number | null, emp: any, draft: any, warn = "") {
+  const cands = await bcCandidates(emp.id);
+  const candIds = new Set(cands.map((e: any) => e.id));
+  const selected = new Set<string>((draft.employee_ids ?? []).filter((id: string) => candIds.has(id)));
+  const { pvz, members } = await bcPvzMembers();
+
+  const rows: any[][] = [[
+    { text: "👥 Выбрать всех", callback_data: "bc:a" },
+    { text: "Снять всех", callback_data: "bc:n" },
+  ]];
+  const pvzBtns = pvz
+    .map((p: any) => {
+      const ids = [...(members.get(p.id) ?? [])].filter((id) => candIds.has(id));
+      if (!ids.length) return null;
+      const all = ids.every((id) => selected.has(id));
+      return { text: `${all ? "✅ " : "🏬 "}${p.name}`, callback_data: `bc:p:${p.id}` };
+    })
+    .filter(Boolean) as any[];
+  for (let i = 0; i < pvzBtns.length; i += 2) rows.push(pvzBtns.slice(i, i + 2));
+  const empBtns = cands.map((e: any) => ({ text: `${selected.has(e.id) ? "✅ " : ""}${e.full_name}`, callback_data: `bc:e:${e.id}` }));
+  for (let i = 0; i < empBtns.length; i += 2) rows.push(empBtns.slice(i, i + 2));
+  rows.push([
+    { text: "✖ Отмена", callback_data: "bc:x" },
+    { text: `Далее → (${selected.size})`, callback_data: "bc:go" },
+  ]);
+
+  const text =
+    `📢 <b>Рассылка</b>\nОтметьте, кому отправить. Кнопка с названием ПВЗ отмечает всех, кто там работает.\n\n` +
+    `Выбрано: <b>${selected.size}</b>${warn ? `\n⚠️ ${warn}` : ""}`;
+  const kb = { inline_keyboard: rows };
+  if (messageId) await edit(chatId, messageId, text, kb);
+  else await sendMessage(chatId, text, { reply_markup: kb });
+}
+
+const bcPromptKb = (hasBody: boolean) => ({
+  inline_keyboard: [
+    [{ text: "← К получателям", callback_data: "bc:back" }, { text: "✖ Отмена", callback_data: "bc:x" }],
+    ...(hasBody ? [[{ text: "← К предпросмотру", callback_data: "bc:pv" }]] : []),
+  ],
+});
+
+async function bcShowPrompt(chatId: number, messageId: number, draft: any) {
+  const n = (draft.employee_ids ?? []).length;
+  await edit(
+    chatId,
+    messageId,
+    `✍️ Напишите текст рассылки одним сообщением.\nПолучателей: <b>${n}</b>. Подпись «— ваше имя» добавлю сам.`,
+    bcPromptKb(!!draft.body),
+  );
+}
+
+async function bcPreview(chatId: number, messageId: number | null, emp: any, draft: any) {
+  const names = (await bcCandidates(emp.id))
+    .filter((e: any) => (draft.employee_ids ?? []).includes(e.id))
+    .map((e: any) => e.full_name);
+  let list = names.join(", ");
+  if (list.length > 500) list = list.slice(0, 500).replace(/,[^,]*$/, "") + "…";
+  const text =
+    `📢 <b>Предпросмотр</b>\n\n${esc(draft.body ?? "")}\n\n— ${esc(emp.full_name)}\n\n` +
+    `<i>Получатели (${names.length}): ${esc(list)}</i>`;
+  const kb = {
+    inline_keyboard: [
+      [{ text: `📤 Отправить (${names.length})`, callback_data: "bc:send" }],
+      [{ text: "✏️ Изменить текст", callback_data: "bc:edit" }, { text: "👥 Получатели", callback_data: "bc:back" }],
+      [{ text: "✖ Отмена", callback_data: "bc:x" }],
+    ],
+  };
+  if (messageId) await edit(chatId, messageId, text, kb);
+  else await sendMessage(chatId, text, { reply_markup: kb });
+}
+
+// Админ в личке пишет текст рассылки (если черновик ждёт текст).
+async function bcHandleText(msg: any, emp: any): Promise<boolean> {
+  const draft = await bcGetDraft(msg.from.id);
+  if (!draft || draft.step !== "text") return false;
+  const body = String(msg.text ?? "").trim();
+  if (!body) return true;
+  if (body.length > BC_MAX_LEN) {
+    await sendMessage(msg.chat.id, `Текст слишком длинный (${body.length} из ${BC_MAX_LEN} символов). Сократите и пришлите ещё раз.`);
+    return true;
+  }
+  const d = await bcSaveDraft(msg.from.id, { body, step: "preview" });
+  await bcPreview(msg.chat.id, null, emp, d);
+  return true;
+}
+
+// Начало рассылки (кнопка под полем ввода или команда /broadcast).
+async function bcStart(chatId: number, messageId: number | null, emp: any, tgId: number) {
+  const d = await bcSaveDraft(tgId, { step: "pick", employee_ids: [], body: null });
+  await bcShowPick(chatId, messageId, emp, d);
+}
+
+async function bcDeliver(chatId: number, text: string, bid: string): Promise<number | null> {
+  const j = await tgJson("sendMessage", {
+    chat_id: chatId,
+    text,
+    link_preview_options: { is_disabled: true },
+    reply_markup: { inline_keyboard: [[{ text: "✅ Принял(а)", callback_data: `bc:ok:${bid}` }]] },
+  });
+  return j.ok ? (j.result?.message_id ?? null) : null;
+}
+
+const bcStatusKb = (id: string) => ({
+  inline_keyboard: [
+    [{ text: "🔔 Напомнить не ответившим", callback_data: `bc:rm:${id}` }],
+    [{ text: "🔄 Обновить", callback_data: `bc:st:${id}` }],
+  ],
+});
+
+async function bcStatus(chatId: number, messageId: number, id: string) {
+  const [b] = await db(`broadcasts?select=*&id=eq.${id}&limit=1`);
+  if (!b) { await edit(chatId, messageId, "Рассылка не найдена."); return; }
+  const rows = await db(`broadcast_replies?select=status,employees:employee_id(full_name)&broadcast_id=eq.${id}`);
+  const by = (st: string) => rows.filter((r: any) => r.status === st).map((r: any) => r.employees?.full_name ?? "?");
+  const ok = by("ok"), wait = by("sent"), fail = by("failed");
+  const lines = [`📊 <b>Рассылка от ${bcFmtTime(b.created_at)}</b>`, `<i>${esc(String(b.body).slice(0, 120))}${b.body.length > 120 ? "…" : ""}</i>`, ""];
+  lines.push(`✅ Приняли (${ok.length}): ${ok.length ? esc(ok.join(", ")) : "—"}`);
+  lines.push(`⏳ Не ответили (${wait.length}): ${wait.length ? esc(wait.join(", ")) : "—"}`);
+  if (fail.length) lines.push(`❌ Не доставлено (${fail.length}): ${esc(fail.join(", "))} — не запускали бота или заблокировали его`);
+  await edit(chatId, messageId, lines.join("\n"), bcStatusKb(id));
+}
+
+async function handleBroadcastCallback(cb: any, emp: any, chatId: number, messageId: number) {
+  const data: string = cb.data ?? "";
+  const tgId: number = cb.from.id;
+
+  // сотрудник нажал «Принял(а)»
+  const ok = data.match(/^bc:ok:([0-9a-fA-F-]{36})$/);
+  if (ok) {
+    const rows = await dbReq("PATCH", `broadcast_replies?broadcast_id=eq.${ok[1]}&employee_id=eq.${emp.id}`, {
+      status: "ok",
+      confirmed_at: new Date().toISOString(),
+    });
+    if (rows.length) {
+      await tg("editMessageText", {
+        chat_id: chatId,
+        message_id: messageId,
+        text: `${cb.message?.text ?? ""}\n\n✅ Принято, спасибо!`,
+        link_preview_options: { is_disabled: true },
+        reply_markup: { inline_keyboard: [] },
+      });
+    }
+    return;
+  }
+
+  // всё остальное — только для админов
+  if (!emp.is_admin) return;
+
+  if (data === "bc:new") return await bcStart(chatId, messageId, emp, tgId);
+
+  const stM = data.match(/^bc:st:([0-9a-fA-F-]{36})$/);
+  if (stM) return await bcStatus(chatId, messageId, stM[1]);
+
+  const rmM = data.match(/^bc:rm:([0-9a-fA-F-]{36})$/);
+  if (rmM) {
+    const [b] = await db(`broadcasts?select=*&id=eq.${rmM[1]}&limit=1`);
+    if (!b) return;
+    const rows = await db(
+      `broadcast_replies?select=employee_id,employees:employee_id(full_name,tg_id,is_active)&broadcast_id=eq.${rmM[1]}&status=neq.ok`,
+    );
+    let sent = 0;
+    for (const r of rows) {
+      const e = r.employees;
+      if (!e?.tg_id || e.tg_id <= 0 || e.is_active === false) continue;
+      const mid = await bcDeliver(e.tg_id, `🔔 Напоминание\n\n${b.body}\n\n— ${b.author_name}`, b.id);
+      if (mid) {
+        sent++;
+        await dbReq("PATCH", `broadcast_replies?broadcast_id=eq.${b.id}&employee_id=eq.${r.employee_id}`, {
+          status: "sent", tg_chat_id: e.tg_id, message_id: mid, sent_at: new Date().toISOString(),
+        });
+      }
+      await new Promise((res) => setTimeout(res, 60));
+    }
+    await sendMessage(chatId, sent ? `🔔 Напомнил ещё раз: ${sent} чел.` : "Некому напоминать — все уже приняли или недоступны.");
+    return;
+  }
+
+  const draft = await bcGetDraft(tgId);
+  if (!draft) {
+    await edit(chatId, messageId, "Черновик рассылки устарел. Нажмите «📢 Рассылка», чтобы начать заново.");
+    return;
+  }
+
+  if (data === "bc:x") {
+    await bcDropDraft(tgId);
+    await edit(chatId, messageId, "Рассылка отменена.");
+    return;
+  }
+
+  const toggle = async (ids: string[], on: boolean | null) => {
+    const cur = new Set<string>(draft.employee_ids ?? []);
+    const turnOn = on ?? !ids.every((id) => cur.has(id));
+    for (const id of ids) turnOn ? cur.add(id) : cur.delete(id);
+    return await bcSaveDraft(tgId, { employee_ids: [...cur] });
+  };
+
+  if (data === "bc:a") return await bcShowPick(chatId, messageId, emp, await toggle((await bcCandidates(emp.id)).map((e: any) => e.id), true));
+  if (data === "bc:n") return await bcShowPick(chatId, messageId, emp, await bcSaveDraft(tgId, { employee_ids: [] }));
+
+  const eM = data.match(/^bc:e:([0-9a-fA-F-]{36})$/);
+  if (eM) return await bcShowPick(chatId, messageId, emp, await toggle([eM[1]], null));
+
+  const pM = data.match(/^bc:p:([0-9a-fA-F-]{36})$/);
+  if (pM) {
+    const { members } = await bcPvzMembers();
+    const cands = new Set((await bcCandidates(emp.id)).map((e: any) => e.id));
+    const ids = [...(members.get(pM[1]) ?? [])].filter((id) => cands.has(id));
+    return await bcShowPick(chatId, messageId, emp, await toggle(ids, null));
+  }
+
+  if (data === "bc:back") {
+    const d = await bcSaveDraft(tgId, { step: "pick" });
+    return await bcShowPick(chatId, messageId, emp, d);
+  }
+
+  if (data === "bc:go") {
+    const cands = new Set((await bcCandidates(emp.id)).map((e: any) => e.id));
+    const ids = (draft.employee_ids ?? []).filter((id: string) => cands.has(id));
+    if (!ids.length) return await bcShowPick(chatId, messageId, emp, draft, "Отметьте хотя бы одного получателя.");
+    const d = await bcSaveDraft(tgId, { employee_ids: ids, step: draft.body ? "preview" : "text" });
+    return draft.body ? await bcPreview(chatId, messageId, emp, d) : await bcShowPrompt(chatId, messageId, d);
+  }
+
+  if (data === "bc:edit") {
+    const d = await bcSaveDraft(tgId, { step: "text" });
+    return await bcShowPrompt(chatId, messageId, d);
+  }
+
+  if (data === "bc:pv") {
+    const d = await bcSaveDraft(tgId, { step: "preview" });
+    return await bcPreview(chatId, messageId, emp, d);
+  }
+
+  if (data === "bc:send") {
+    if (draft.step !== "preview" || !draft.body) {
+      await edit(chatId, messageId, "Сначала напишите текст. Нажмите «📢 Рассылка».");
+      return;
+    }
+    // сразу сбрасываем черновик: двойное нажатие «Отправить» не задвоит рассылку
+    await bcDropDraft(tgId);
+    const targets = (await bcCandidates(emp.id)).filter((e: any) => (draft.employee_ids ?? []).includes(e.id));
+    if (!targets.length) { await edit(chatId, messageId, "Некому отправлять."); return; }
+    const [b] = await dbReq("POST", "broadcasts", { author_id: emp.id, author_name: emp.full_name, body: draft.body });
+    await dbReq("POST", "broadcast_replies", targets.map((t: any) => ({ broadcast_id: b.id, employee_id: t.id, status: "sent" })));
+    await edit(chatId, messageId, `⏳ Отправляю… (${targets.length})`);
+
+    const text = `${draft.body}\n\n— ${emp.full_name}`;
+    let sent = 0;
+    const failed: string[] = [];
+    for (const t of targets) {
+      const mid = await bcDeliver(t.tg_id, text, b.id);
+      if (mid) {
+        sent++;
+        await dbReq("PATCH", `broadcast_replies?broadcast_id=eq.${b.id}&employee_id=eq.${t.id}`, {
+          tg_chat_id: t.tg_id, message_id: mid, sent_at: new Date().toISOString(),
+        });
+      } else {
+        failed.push(t.full_name);
+        await dbReq("PATCH", `broadcast_replies?broadcast_id=eq.${b.id}&employee_id=eq.${t.id}`, { status: "failed" });
+      }
+      await new Promise((res) => setTimeout(res, 60)); // не упираемся в лимиты Telegram
+    }
+    await edit(
+      chatId,
+      messageId,
+      `✅ Отправлено: <b>${sent}</b> из ${targets.length}` +
+        (failed.length ? `\n❌ Не дошло: ${esc(failed.join(", "))} (не запускали бота или заблокировали его)` : ""),
+      { inline_keyboard: [[{ text: "📊 Кто принял", callback_data: `bc:st:${b.id}` }]] },
+    );
+    return;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("ok");
 
@@ -1265,6 +1606,12 @@ Deno.serve(async (req) => {
 
     const chatId = msg.chat.id;
     const text: string = msg.text ?? "";
+
+    // админ пишет текст рассылки (после выбора получателей)
+    if (text && !text.startsWith("/") && ![BTN_SCHEDULE, BTN_MY, BTN_SEEN, BTN_LOST, BTN_BCAST].includes(text)) {
+      const me = await getEmployee(msg.from?.id);
+      if (me?.is_admin && (await bcHandleText(msg, me))) return new Response("ok");
+    }
 
     if (text.startsWith("/start")) {
       const me = await getEmployee(msg.from?.id);
@@ -1318,6 +1665,16 @@ Deno.serve(async (req) => {
       } else {
         await touchSeen(msg.from?.id);
         for (const chunk of await buildSeen()) await sendMessage(chatId, chunk);
+      }
+    } else if (text === BTN_BCAST || text.startsWith("/broadcast")) {
+      const emp = await getEmployee(msg.from?.id);
+      if (!emp) {
+        await sendMessage(chatId, NO_ACCESS_TEXT);
+      } else if (!emp.is_admin) {
+        await sendMessage(chatId, "Эта кнопка только для администраторов.");
+      } else {
+        await touchSeen(msg.from?.id);
+        await bcStart(chatId, null, emp, msg.from.id);
       }
     } else if (text === BTN_LOST || text.startsWith("/lost")) {
       const emp = await getEmployee(msg.from?.id);

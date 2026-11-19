@@ -403,12 +403,11 @@ const Admin = (() => {
 
   async function init() {
     const boot = $("boot");
-    // сразу на весь экран (Telegram 8.0+; в старых клиентах просто раскрываем окно)
+    // обычное окно Telegram (можно сворачивать, двигать, прижимать к краям); полноэкранный режим не включаем
     try {
       const tg = window.Telegram?.WebApp;
       if (tg) {
         tg.ready(); tg.expand();
-        if (tg.isVersionAtLeast?.("8.0") && !tg.isFullscreen) tg.requestFullscreen();
         tg.disableVerticalSwipes?.();
       }
     } catch (e) { /* не получилось — останется обычное окно */ }

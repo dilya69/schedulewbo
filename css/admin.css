@@ -111,3 +111,7 @@ tr.det td{background:#F8F9FC;padding:6px 14px 16px 38px}
 .dh{font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 6px}
 .dr{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #EEF0F4;font-size:13px}
 .dr .dot{margin-right:8px;width:8px;height:8px}
+.mtag.adm{background:#FDE7EF;color:#BE185D}.mtag.cam{background:#E0F5F0;color:#0F766E}
+.tbl .acts{text-align:right;white-space:nowrap}.tbl .acts .btn{margin-left:6px;padding:6px 12px}
+.lnk{color:#2F5BD6;text-decoration:none}.lnk:hover{text-decoration:underline}
+.tbl td .mut{font-size:12px;margin-top:1px}

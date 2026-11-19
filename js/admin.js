@@ -153,7 +153,7 @@ const Admin = (() => {
   function modal(title, body, onOk, okText) {
     const m = $("modal");
     m.innerHTML = `<div class="mback" data-mclose></div><div class="mbox"><div class="mtitle">${esc(title)}</div><div class="mbody">${body}</div>
-      <div class="mfoot"><button class="btn" data-mclose>Отмена</button>${onOk ? `<button class="btn ok" id="mok">${esc(okText || "Сохранить")}</button>` : ""}</div></div>`;
+      <div class="mfoot"><button class="btn" data-mclose>${onOk ? "Отмена" : "Закрыть"}</button>${onOk ? `<button class="btn ok" id="mok">${esc(okText || "Сохранить")}</button>` : ""}</div></div>`;
     m.classList.add("on");
     if (onOk) $("mok").onclick = async () => { if ((await onOk()) !== false) closeModal(); };
     const f = m.querySelector("input,select,textarea");

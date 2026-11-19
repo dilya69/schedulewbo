@@ -1205,7 +1205,9 @@ async function runTick() {
         const hasShifts = !chunks.every((x) => x.includes("<i>смен нет</i>"));
         if (hasShifts) {
           chunks[0] = chunks[0].replace("📅 <b>Сегодня", "☀️ <b>Доброе утро! Сегодня");
-          for (const t of chunks) await sendMessage(c.chat_id, t, { disable_notification: true });
+          // в группах с темами шлём в выбранную тему (help_chats.morning_thread_id); если не задана — как раньше
+          const threadExtra = c.morning_thread_id ? { message_thread_id: Number(c.morning_thread_id) } : {};
+          for (const t of chunks) await sendMessage(c.chat_id, t, { disable_notification: true, ...threadExtra });
         }
       }
       // напоминание по /help, если никто не откликнулся

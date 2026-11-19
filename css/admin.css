@@ -115,3 +115,12 @@ tr.det td{background:#F8F9FC;padding:6px 14px 16px 38px}
 .tbl .acts{text-align:right;white-space:nowrap}.tbl .acts .btn{margin-left:6px;padding:6px 12px}
 .lnk{color:#2F5BD6;text-decoration:none}.lnk:hover{text-decoration:underline}
 .tbl td .mut{font-size:12px;margin-top:1px}
+.mtag.okt{background:#DCFCE7;color:#15803D}.mtag.badt{background:#FEE2E2;color:#B91C1C}
+.drop,.staged{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 22px;margin-bottom:14px;max-width:1200px;border:2px dashed #D5D9E3;box-shadow:none;border-radius:18px}
+.drop.hot{border-color:#6C86E8;background:#F3F6FF}
+.staged{border:1px solid #C9D3F5;background:#F7F9FF}
+.bulk{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.bulk button{border:1px solid #E1E4EB;background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600}
+.bulk button:hover{background:var(--bg)}.bulk button.no{color:#C0292E}
+.tbl.pay tr.skipped td{opacity:.55}
+button:disabled{opacity:.5;cursor:default}

@@ -142,3 +142,6 @@ button:disabled{opacity:.5;cursor:default}
 .pv{flex-wrap:wrap;max-width:1200px}
 .pvfacts{display:flex;gap:26px;min-width:260px}.pvfacts div{display:flex;flex-direction:column;gap:2px;font-size:14px}.pvfacts .mut{font-size:12px}
 .pvbtn{display:flex;gap:8px;margin-left:auto}
+/* ---- пожелания ---- */
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;max-width:1200px}
+.wcard{padding:16px 18px}.wcom{margin-top:10px;padding:10px 12px;border-radius:12px;background:#F6F7FA;font-size:13px}

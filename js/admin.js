@@ -10,8 +10,8 @@ const Admin = (() => {
   const PALETTE = ["#FACC15","#F97316","#EF4444","#EC4899","#A855F7","#8B5CF6","#3B82F6","#06B6D4","#14B8A6","#16A34A","#84CC16","#64748B"];
   const QUICK = [["с 17","Приходит к 17:00"],["до 19","Уходит в 19:00"],["с 9 до 17","Часть смены по времени"],["2ч","Короткая смена на 2 часа"],["?","Свободная смена, ждёт отклика"]];
   const GROUPS = [
-    { k: "g1", l: "Смены", it: [["cal", "График"], ["req", "Заявки на смены"], ["check", "Сверка смен"]] },
-    { k: "g2", l: "Люди и деньги", it: [["emp", "Сотрудники"], ["pay", "Зарплата"], ["tickets", "Тикеты"], ["bonus", "Бонусы и штрафы"], ["acc", "Приёмка WB"]] },
+    { k: "g1", l: "Смены", it: [["cal", "График"], ["req", "Заявки на смены"], ["wish", "Пожелания по графику"], ["check", "Сверка смен"]] },
+    { k: "g2", l: "Люди и деньги", it: [["emp", "Сотрудники"], ["act", "Активность"], ["pay", "Зарплата"], ["tickets", "Тикеты"], ["bonus", "Бонусы и штрафы"], ["acc", "Приёмка WB"]] },
     { k: "g3", l: "Данные", it: [["import", "Импорт из Excel"], ["export", "Экспорт"]] },
   ];
   const IN_APP = { check: "Сверка смен", pay: "Зарплата", tickets: "Тикеты", bonus: "Бонусы и штрафы", acc: "Приёмка WB", import: "Импорт из Excel", export: "Экспорт" };
@@ -196,7 +196,7 @@ const Admin = (() => {
     const rows = dayShifts(p.id, sel).map((s) => {
       const lb = timeLabel(s, p);
       const who = s.employee_id ? `${esc(s.employees?.full_name || "?")} · ${lb || "вся смена"}` : "Свободная смена";
-      return `<div class="row"><span>${who}</span><button class="sm" data-x="${s.id}" data-tip="Убрать смену" style="padding:3px 9px">✕</button></div>`;
+      return `<div class="row"><span>${who}</span><span style="display:flex;gap:4px"><button class="sm" data-act="shift-edit:${s.id}" data-tip="Изменить смену" style="padding:3px 9px">✎</button><button class="sm" data-x="${s.id}" data-tip="Убрать смену" style="padding:3px 9px">✕</button></span></div>`;
     }).join("");
     const dow = WD[new Date(S.year, S.month, sel).getDay()];
 
@@ -211,7 +211,8 @@ const Admin = (() => {
       <div style="display:flex;gap:8px"><input class="fld" id="q" list="emps" value="${esc(S.q)}" placeholder="Имя, с 17, до 19, 2ч…" aria-label="Смена" autocomplete="off"><button class="sm d" data-add>Добавить</button></div>
       <datalist id="emps">${S.employees.filter((e) => e.is_active !== false).map((e) => `<option value="${esc(e.full_name)}">`).join("")}</datalist>
       <div style="margin:12px 0 6px;display:flex;gap:6px;flex-wrap:wrap">${QUICK.map((k) => `<button class="sm" data-q="${k[0]}" data-tip="${k[1]}">${k[0]}</button>`).join("")}</div>
-      <div style="margin-top:10px">${rows || '<div class="mut" style="padding:10px 0">В этот день смен нет</div>'}</div></div></div>`;
+      <div style="margin-top:10px">${rows || '<div class="mut" style="padding:10px 0">В этот день смен нет</div>'}</div>
+      <button class="btn" data-act="shift-edit:" style="margin-top:12px;width:100%">+ Смена с настройками (время, сумма)</button></div></div>`;
   }
 
   async function addShift() {

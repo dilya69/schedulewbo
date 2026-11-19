@@ -237,6 +237,14 @@ const Api = (() => {
     }
   }
 
+  // даты назначенных смен всех сотрудников (для «Потеряшек» в админке): от новых к старым
+  async function getAssignedShiftDates() {
+    const { data, error } = await client.from("shifts").select("employee_id, shift_date")
+      .not("employee_id", "is", null).in("status", ["assigned", "confirmed"]).order("shift_date", { ascending: false }).limit(10000);
+    if (error) throw error;
+    return data || [];
+  }
+
   async function deleteShift(id) {
     const { error } = await client.from("shifts").delete().eq("id", id);
     if (error) throw error;
@@ -588,7 +596,7 @@ const Api = (() => {
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
-    addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance, getAllowanceTypes, getAcceptance, upsertAcceptance, setAcceptanceStatus, deleteAcceptance, addAllowanceType, updateAllowanceType, deleteAllowanceType,
+    getAssignedShiftDates, addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance, getAllowanceTypes, getAcceptance, upsertAcceptance, setAcceptanceStatus, deleteAcceptance, addAllowanceType, updateAllowanceType, deleteAllowanceType,
     getNotificationSettings, saveNotificationSettings,
     getWishMonth, setWishMonthEnabled, getWishes, saveMyWish, deleteWish, deleteAllWishes,
   };

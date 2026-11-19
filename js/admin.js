@@ -371,6 +371,15 @@ const Admin = (() => {
 
   async function init() {
     const boot = $("boot");
+    // сразу на весь экран (Telegram 8.0+; в старых клиентах просто раскрываем окно)
+    try {
+      const tg = window.Telegram?.WebApp;
+      if (tg) {
+        tg.ready(); tg.expand();
+        if (tg.isVersionAtLeast?.("8.0") && !tg.isFullscreen) tg.requestFullscreen();
+        tg.disableVerticalSwipes?.();
+      }
+    } catch (e) { /* не получилось — останется обычное окно */ }
     try {
       const r = await Api.login();
       if (r.demo) { boot.innerHTML = "Откройте админку из Telegram (лучше в Telegram Desktop на компьютере): вход идёт через бота."; return; }

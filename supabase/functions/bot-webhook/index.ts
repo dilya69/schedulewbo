@@ -62,7 +62,7 @@ const REPLY_KB = {
   is_persistent: true,
 };
 const REPLY_KB_ADMIN = {
-  keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }, { text: BTN_LOST }], [{ text: BTN_BCAST }]],
+  keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }, { text: BTN_LOST }], [{ text: BTN_BCAST }, { text: "🖥 Админка", web_app: { url: ADMIN_URL } }]],
   resize_keyboard: true,
   is_persistent: true,
 };

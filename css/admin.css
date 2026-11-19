@@ -71,3 +71,6 @@ h1{margin:0;font-size:28px;letter-spacing:-.025em}
 .empty{padding:28px;text-align:center;color:var(--mut)}
 .err{color:#C0292E;font-size:13px;margin-top:8px}
 
+/* в полноэкранном режиме Telegram рисует свои кнопки поверх страницы — отступ под них */
+body{padding-top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px))}
+aside{top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));height:calc(100vh - var(--tg-safe-area-inset-top,0px) - var(--tg-content-safe-area-inset-top,0px))}

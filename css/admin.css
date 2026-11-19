@@ -124,3 +124,6 @@ tr.det td{background:#F8F9FC;padding:6px 14px 16px 38px}
 .bulk button:hover{background:var(--bg)}.bulk button.no{color:#C0292E}
 .tbl.pay tr.skipped td{opacity:.55}
 button:disabled{opacity:.5;cursor:default}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start;max-width:1200px}
+@media(max-width:1000px){.two{grid-template-columns:1fr}}
+.progress{height:8px;border-radius:99px;background:#EEF0F4;overflow:hidden}.progress i{display:block;height:100%;background:#16A34A;border-radius:99px}

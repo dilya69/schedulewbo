@@ -115,7 +115,7 @@
     const pending = decidable.filter((a) => a.status === "pending").length;
     const wbPvz = S.pvz.filter((p) => p.marketplace === "wb");
     const st = C.staged;
-    const upload = `<div class="card drop" id="accDrop"><div><b>Файлы приёмки с сайта WB</b><div class="mut">Перетащи сюда .xlsx (можно сразу несколько, по одному на ПВЗ) или выбери. В зарплату идут только дни с 16-го числа.</div></div>
+    const upload = `<div class="card drop" id="accDrop"><div><b>Файлы приёмки с сайта WB</b><div class="mut">Перетащи сюда .xlsx (можно сразу несколько, по одному на ПВЗ) или выбери. Считаются все дни месяца, в зарплату приёмка добавляется только в конце месяца (вторая выплата).</div></div>
       <div class="ag"><button class="p" data-act="acc-pick">Выбрать файлы</button></div>
       <input type="file" id="accFile" accept=".xlsx,.xls,.csv" multiple style="display:none"></div>`;
     const staged = st ? `<div class="card staged"><div><b>Загружено:</b> файлов ${st.files}, строк ${st.rows.length}${st.errors.length ? `<div class="neg" style="margin-top:6px;font-size:13px">${st.errors.slice(0, 5).map(esc).join("<br>")}${st.errors.length > 5 ? `<br>…и ещё ${st.errors.length - 5}` : ""}</div>` : ""}</div>
@@ -180,14 +180,13 @@
       const months = [...new Set(st.rows.map((r) => r.date.slice(0, 7)))];
       const shifts = [];
       for (const ym of months) shifts.push(...(await Api.getShiftsForMonth(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1)));
-      const early = st.rows.filter((r) => Number(r.date.slice(8, 10)) < Acceptance.FROM_DAY).length;
-      const records = Acceptance.buildRecords(st.rows.filter((r) => Number(r.date.slice(8, 10)) >= Acceptance.FROM_DAY), pvzList, shifts);
-      if (!records.length) { C.staged = null; toast("В файле нет дней с 16-го числа — считать нечего"); return; }
+      const records = Acceptance.buildRecords(st.rows, pvzList, shifts);
+      if (!records.length) { C.staged = null; toast("В файле нет строк — считать нечего"); return; }
       await Api.upsertAcceptance(records);
       C.staged = null;
       const unknown = new Set(records.filter((r) => !r.pvz_id).map((r) => r.wb_pvz_id)).size;
       const other = records.filter((r) => Number(r.bonus_date.slice(0, 4)) !== S.year || Number(r.bonus_date.slice(5, 7)) - 1 !== S.month).length;
-      toast(`✅ Посчитано: ${records.length}${early ? ` • дней до 16-го пропущено: ${early}` : ""}${unknown ? ` • ПВЗ не найдено: ${unknown}` : ""}${other ? ` • за другие месяцы: ${other}` : ""}`);
+      toast(`✅ Посчитано: ${records.length}${unknown ? ` • ПВЗ не найдено: ${unknown}` : ""}${other ? ` • за другие месяцы: ${other}` : ""}`);
     } catch (e) { toast("🚫 " + (e.message || e)); }
     finally { C.busy = false; await refresh().catch(() => A.render()); }
   });

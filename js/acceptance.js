@@ -4,7 +4,7 @@
 //
 // Файл с сайта WB: колонки «ID ПВЗ», «Регион», «Адрес», «Дата» (ДД.ММ.ГГГГ), «Мотивация за скорость приемки».
 // Сумма может быть отрицательной (просрочка поставки).
-// Сумма за день делится поровну между теми, кто в этот день на этом ПВЗ работал с 9 утра.
+// Сумма за день делится поровну между теми, чья смена на этом ПВЗ в этот день началась в 9, 10, 11 или 12 часов.
 // ============================================================
 const Acceptance = (() => {
   const clean = (s) => String(s ?? "").replace(/ /g, " ").replace(/\s+/g, " ").trim();
@@ -12,11 +12,11 @@ const Acceptance = (() => {
   const pad2 = (n) => String(n).padStart(2, "0");
   const toMin = (t) => { const [h, m] = String(t || "0:0").slice(0, 5).split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 
-  // «С утра» = смена началась в 9:00 или раньше. Короткие смены «на N часов» (без точного времени) не считаются.
-  const MORNING_START = "09:00";
-  // В зарплату идёт только приёмка с 16-го числа включительно до конца месяца
-  const FROM_DAY = 16;
-  const dayOf = (d) => Number(String(d).slice(8, 10));
+  // «Утро» = смена началась с 9:00 до 12:59 (то есть в 9, 10, 11 или 12 часов).
+  // Короткие смены «на N часов» (без точного времени) не считаются.
+  const MORNING_FROM = "09:00";
+  const MORNING_TO = "12:59";
+  // Приёмка считается за все дни месяца, а в зарплату уходит только во второй выплате (в конце месяца)
 
   // дата из ячейки: «01.08.2026», «2026-08-01», число-серийник Excel или Date
   function parseDate(v) {
@@ -88,13 +88,14 @@ const Acceptance = (() => {
     return [...map.values()].sort((a, b) => a.date.localeCompare(b.date) || a.wbId.localeCompare(b.wbId));
   }
 
-  // кто в этот день на этом ПВЗ работал с утра
+  // кто в этот день на этом ПВЗ начал смену в 9, 10, 11 или 12 часов
   function morningEmployees(shifts, pvzId, date) {
     const ids = new Set();
     for (const s of shifts) {
       if (s.pvz_id !== pvzId || String(s.shift_date).slice(0, 10) !== date || !s.employee_id) continue;
       if (s.duration_minutes) continue;
-      if (toMin(s.start_time) <= toMin(MORNING_START)) ids.add(s.employee_id);
+      const st = toMin(s.start_time);
+      if (st >= toMin(MORNING_FROM) && st <= toMin(MORNING_TO)) ids.add(s.employee_id);
     }
     return [...ids];
   }
@@ -127,18 +128,18 @@ const Acceptance = (() => {
     });
   }
 
-  // сколько засчитанной приёмки у сотрудника за период (first | second | full); дни до 16-го не учитываются
+  // сколько засчитанной приёмки у сотрудника за период (first | second | full): за весь месяц, но только во второй выплате и за месяц целиком
   function sumFor(records, employeeId, period) {
     let sum = 0;
     if (period === "first") return 0;
     for (const a of records) {
-      if (a.status !== "counted" || dayOf(a.bonus_date) < FROM_DAY) continue;
+      if (a.status !== "counted") continue;
       for (const s of a.shares || []) if (s.employee_id === employeeId) sum += Number(s.amount);
     }
     return Math.round(sum * 100) / 100;
   }
 
-  return { FROM_DAY, parseWorkbook, mergeRows, buildRecords, morningEmployees, splitShares, sumFor, parseDate, parseAmount };
+  return { parseWorkbook, mergeRows, buildRecords, morningEmployees, splitShares, sumFor, parseDate, parseAmount };
 })();
 
 if (typeof module !== "undefined") module.exports = Acceptance;

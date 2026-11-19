@@ -422,6 +422,18 @@ const Api = (() => {
     if (error) throw error;
   }
 
+  // рабочие чаты бота (/settings): список и правка настроек
+  async function getHelpChats() {
+    const { data, error } = await client.from("help_chats").select("*").order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+  async function updateHelpChat(chatId, patch) {
+    const { data, error } = await client.from("help_chats").update(patch).eq("chat_id", chatId).select().single();
+    if (error) throw error;
+    return data;
+  }
+
   async function updateEmployee(id, fields) {
     const { error } = await client.from("employees").update(fields).eq("id", id);
     if (error) throw error;
@@ -607,7 +619,7 @@ const Api = (() => {
     getSyncLinks, addSyncLink, setSyncLinkEnabled, deleteSyncLink, runScheduleSync, sendScheduleCheck, getLatestScheduleCheck, getBroadcasts, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
-    getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
+    getEmployees, getHelpChats, updateHelpChat, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,
     getAssignedShiftDates, addBonusFine, getBonusesFines, deleteBonusFine, getAllowances, addAllowance, updateAllowance, deleteAllowance, getAllowanceTypes, getAcceptance, upsertAcceptance, setAcceptanceStatus, deleteAcceptance, addAllowanceType, updateAllowanceType, deleteAllowanceType,
     getNotificationSettings, saveNotificationSettings,
     getWishMonth, setWishMonthEnabled, getWishes, saveMyWish, deleteWish, deleteAllWishes,

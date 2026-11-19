@@ -56,13 +56,14 @@ const BTN_MY = "🧑 Мои смены";
 const BTN_SEEN = "🕒 Последний вход"; // только для админов
 const BTN_LOST = "🔎 Потеряшки"; // только для админов
 const BTN_BCAST = "📢 Рассылка"; // только для админов
+const BTN_ADMIN = "🖥 Админка"; // только для админов; открывает сообщение с инлайн-кнопкой (из кнопки клавиатуры Telegram не передаёт данные для входа)
 const REPLY_KB = {
   keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }]],
   resize_keyboard: true,
   is_persistent: true,
 };
 const REPLY_KB_ADMIN = {
-  keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }, { text: BTN_LOST }], [{ text: BTN_BCAST }, { text: "🖥 Админка", web_app: { url: ADMIN_URL } }]],
+  keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }, { text: BTN_LOST }], [{ text: BTN_BCAST }, { text: BTN_ADMIN }]],
   resize_keyboard: true,
   is_persistent: true,
 };
@@ -1620,7 +1621,7 @@ Deno.serve(async (req) => {
     const text: string = msg.text ?? "";
 
     // админ пишет текст рассылки (после выбора получателей)
-    if (text && !text.startsWith("/") && ![BTN_SCHEDULE, BTN_MY, BTN_SEEN, BTN_LOST, BTN_BCAST].includes(text)) {
+    if (text && !text.startsWith("/") && ![BTN_SCHEDULE, BTN_MY, BTN_SEEN, BTN_LOST, BTN_BCAST, BTN_ADMIN].includes(text)) {
       const me = await getEmployee(msg.from?.id);
       if (me?.is_admin && (await bcHandleText(msg, me))) return new Response("ok");
     }
@@ -1642,7 +1643,7 @@ Deno.serve(async (req) => {
         },
       );
       await sendMessage(chatId, "Кнопки меню всегда под полем ввода 👇", { reply_markup: me?.is_admin ? REPLY_KB_ADMIN : REPLY_KB });
-    } else if (text.startsWith("/admin")) {
+    } else if (text.startsWith("/admin") || text === BTN_ADMIN) {
       const me = await getEmployee(msg.from?.id);
       if (me?.is_admin) {
         await sendMessage(chatId, "🖥 <b>Админка для компьютера</b>\nЛучше открывать в Telegram Desktop.", {

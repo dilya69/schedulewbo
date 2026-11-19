@@ -171,7 +171,7 @@
     } catch (e) { toast("🚫 Не удалось отправить файл: " + (e.message || e)); }
   }
 
-  A.pay = { shiftAmount, rub, isBoss, csvRow, sendCsv, money };
+  A.pay = { shiftAmount, rub, isBoss, csvRow, sendCsv, money, inPeriod, bfIn, getPeriod: () => P.period, setPeriod: (v) => { P.period = v; }, enter };
   A.section("pay", { view, enter });
   A.act("pay-period", (v) => { P.period = v; P.open = null; A.render(); });
   A.act("pay-open", (id) => { P.open = P.open === id ? null : id; A.render(); });

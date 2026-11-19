@@ -122,6 +122,18 @@ const Api = (() => {
     return body; // { check_id, sent, failed: [имена] }
   }
 
+  // последние рассылки из бота («📢 Рассылка») со списком, кто принял
+  async function getBroadcasts(limit = 10) {
+    const { data: list, error } = await client.from("broadcasts").select("*").order("created_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    if (!list?.length) return [];
+    const { data: rows, error: e2 } = await client.from("broadcast_replies")
+      .select("broadcast_id, employee_id, status, confirmed_at, employees:employee_id(full_name, real_name)")
+      .in("broadcast_id", list.map((b) => b.id));
+    if (e2) throw e2;
+    return list.map((b) => ({ ...b, replies: (rows || []).filter((r) => r.broadcast_id === b.id) }));
+  }
+
   // последняя рассылка со списком, кто отметился
   async function getLatestScheduleCheck() {
     const { data: c, error } = await client.from("schedule_checks").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -592,7 +604,7 @@ const Api = (() => {
 
   return {
     login, getCurrentEmployee, isReady, sendFileToMe,
-    getSyncLinks, addSyncLink, setSyncLinkEnabled, deleteSyncLink, runScheduleSync, sendScheduleCheck, getLatestScheduleCheck, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
+    getSyncLinks, addSyncLink, setSyncLinkEnabled, deleteSyncLink, runScheduleSync, sendScheduleCheck, getLatestScheduleCheck, getBroadcasts, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,

@@ -8,6 +8,9 @@
 // Тело запроса:
 //   { title, body }          — новая рассылка всем
 //   { resend_check_id }      — повторить тем, кто ещё не нажал «Всё в порядке»
+//   { kind: "broadcast", body, employee_ids, author_id } — обычная рассылка выбранным сотрудникам с подписью
+//                              автора и кнопкой «Принял(а)» (то же, что кнопка «📢 Рассылка» в боте)
+//   { resend_broadcast_id }  — напомнить тем, кто ещё не нажал «Принял(а)»
 //
 // Секреты: BOT_TOKEN (уже есть). SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY Supabase подставляет сам.
 // Деплой: supabase functions deploy broadcast-check --no-verify-jwt
@@ -86,11 +89,82 @@ async function sendCheck(chatId: number, text: string, checkId: string): Promise
   }
 }
 
+// сообщение рассылки из бота: кнопка «Принял(а)» (нажатие обрабатывает bot-webhook, bc:ok:<id>)
+async function sendBc(chatId: number, text: string, bid: string): Promise<number | null> {
+  try {
+    const r = await fetch(`${API}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        link_preview_options: { is_disabled: true },
+        reply_markup: { inline_keyboard: [[{ text: "✅ Принял(а)", callback_data: `bc:ok:${bid}` }]] },
+      }),
+    });
+    const j = await r.json();
+    if (!j.ok) { console.error("sendMessage", JSON.stringify(j)); return null; }
+    return j.result?.message_id ?? null;
+  } catch (e) {
+    console.error("sendMessage", e);
+    return null;
+  }
+}
+
+async function markSent(bid: string, empId: string, tgId: number, mid: number) {
+  await db.from("broadcast_replies").update({ status: "sent", tg_chat_id: tgId, message_id: mid, sent_at: new Date().toISOString() }).eq("broadcast_id", bid).eq("employee_id", empId);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
     if (!(await isAdminCaller(req))) return json({ error: "forbidden" }, 403);
     const input = await req.json().catch(() => ({}));
+
+    // ---- обычная рассылка выбранным сотрудникам ----
+    if (input.kind === "broadcast") {
+      const body = String(input.body ?? "").trim();
+      if (!body) return json({ error: "Пустой текст" }, 400);
+      const ids: string[] = Array.isArray(input.employee_ids) ? input.employee_ids.map(String) : [];
+      if (!ids.length) return json({ error: "Выберите получателей" }, 400);
+      const { data: author } = await db.from("employees").select("id, full_name, is_admin").eq("id", String(input.author_id ?? "")).maybeSingle();
+      if (!author || !author.is_admin) return json({ error: "Автор не найден" }, 400);
+      const { data: emps, error: e1 } = await db.from("employees").select("id, full_name, tg_id").eq("is_active", true).gt("tg_id", 0).in("id", ids);
+      if (e1) throw e1;
+      const targets = emps ?? [];
+      if (!targets.length) return json({ error: "Некому отправлять" }, 400);
+      const { data: b, error: e2 } = await db.from("broadcasts").insert({ author_id: author.id, author_name: author.full_name, body }).select().single();
+      if (e2) throw e2;
+      const { error: e3 } = await db.from("broadcast_replies").insert(targets.map((t: any) => ({ broadcast_id: b.id, employee_id: t.id, status: "sent" })));
+      if (e3) throw e3;
+      const text = `${body}\n\n— ${author.full_name}`;
+      let sent = 0;
+      const failed: string[] = [];
+      for (const t of targets) {
+        const mid = await sendBc(t.tg_id, text, b.id);
+        if (mid) { sent++; await markSent(b.id, t.id, t.tg_id, mid); }
+        else { failed.push(t.full_name || "?"); await db.from("broadcast_replies").update({ status: "failed" }).eq("broadcast_id", b.id).eq("employee_id", t.id); }
+        await sleep(60);
+      }
+      return json({ ok: true, broadcast_id: b.id, sent, failed });
+    }
+
+    // ---- напоминание не принявшим ----
+    if (input.resend_broadcast_id) {
+      const { data: b } = await db.from("broadcasts").select("*").eq("id", input.resend_broadcast_id).maybeSingle();
+      if (!b) return json({ error: "Рассылка не найдена" }, 404);
+      const { data: rows } = await db.from("broadcast_replies").select("employee_id, employees:employee_id(full_name, tg_id, is_active)").eq("broadcast_id", b.id).neq("status", "ok");
+      let sent = 0;
+      const failed: string[] = [];
+      for (const r of rows ?? []) {
+        const e: any = (r as any).employees;
+        if (!e?.tg_id || e.tg_id <= 0 || e.is_active === false) continue;
+        const mid = await sendBc(e.tg_id, `🔔 Напоминание\n\n${b.body}\n\n— ${b.author_name}`, b.id);
+        if (mid) { sent++; await markSent(b.id, (r as any).employee_id, e.tg_id, mid); } else failed.push(e.full_name || "?");
+        await sleep(60);
+      }
+      return json({ ok: true, broadcast_id: b.id, sent, failed });
+    }
 
     let check: any;
     let targets: any[];

@@ -74,3 +74,40 @@ h1{margin:0;font-size:28px;letter-spacing:-.025em}
 /* в полноэкранном режиме Telegram рисует свои кнопки поверх страницы — отступ под них */
 body{padding-top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px))}
 aside{top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));height:calc(100vh - var(--tg-safe-area-inset-top,0px) - var(--tg-content-safe-area-inset-top,0px))}
+/* ---- окно ---- */
+.modal{display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center}
+.modal.on{display:flex}
+.mback{position:absolute;inset:0;background:rgba(16,24,40,.45)}
+.mbox{position:relative;background:#fff;border-radius:20px;padding:22px 24px;width:min(440px,92vw);max-height:90vh;overflow:auto;box-shadow:0 24px 60px rgba(16,24,40,.3)}
+.mtitle{font-size:18px;font-weight:700;margin-bottom:14px}
+.mbody label{display:block;font-size:12px;font-weight:700;color:var(--mut);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.04em}
+.mbody input,.mbody select,.mbody textarea{width:100%;border:1px solid #E1E4EB;border-radius:12px;padding:10px 12px;font-size:14px;font-family:inherit;background:#fff}
+.mbody input:focus,.mbody select:focus,.mbody textarea:focus{outline:2px solid #C9D3F5;border-color:#6C86E8}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+/* ---- переключатель периода ---- */
+.seg{display:inline-flex;gap:3px;padding:4px;border:1px solid #E1E4EB;border-radius:14px;background:#fff}
+.seg button{border:0;background:none;padding:8px 16px;font-size:13px;font-weight:600;border-radius:10px;color:#3A4250}
+.seg button:hover{background:var(--bg)}.seg button.on{background:var(--ink);color:#fff}
+/* ---- карточки-итоги ---- */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:16px;max-width:900px}
+.stat{padding:16px 20px}.stat .big{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:4px}
+/* ---- таблица зарплаты ---- */
+.tcard{overflow:hidden;max-width:1200px}
+.tbl.pay th.num,.tbl.pay td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tbl.pay th{background:#FAFBFD}
+.tbl.pay tbody tr.er{cursor:pointer}
+.tbl.pay tbody tr.er:hover{background:#F7F8FB}
+.tbl.pay tbody tr.er.open{background:#F3F5FB}
+.tbl.pay tfoot td{border-top:2px solid var(--line);border-bottom:0;background:#FAFBFD;padding:14px}
+.tot{font-weight:700}
+.dash{color:#B6BCC8}
+.pos{color:#15803D}.neg{color:#C0292E}
+.chev2{display:inline-block;width:14px;color:var(--mut);transition:transform .15s}
+tr.open .chev2{transform:rotate(90deg)}
+.mtag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;margin-right:4px;background:#EEF0F6;color:#3A4250}
+.mtag.wb{background:#F1E7FB;color:#6B21A8}.mtag.ozon{background:#E0EEFF;color:#1D4ED8}.mtag.tr{background:#FFF4DC;color:#7A4B00}
+tr.det td{background:#F8F9FC;padding:6px 14px 16px 38px}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.dh{font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 6px}
+.dr{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #EEF0F4;font-size:13px}
+.dr .dot{margin-right:8px;width:8px;height:8px}

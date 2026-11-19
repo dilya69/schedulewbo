@@ -25,6 +25,9 @@ const Admin = (() => {
   try { S.closed = JSON.parse(localStorage.getItem("adm-closed") || "{}"); } catch (e) { /* без памяти */ }
   try { S.pvzId = localStorage.getItem("adm-pvz") || null; } catch (e) { /* без памяти */ }
 
+  // разделы и действия, которые подключают другие файлы (admin-pay.js и т.д.)
+  const SECS = {};
+  const ACTS = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const pad2 = (n) => String(n).padStart(2, "0");
@@ -128,13 +131,35 @@ const Admin = (() => {
   function render() {
     $("side").innerHTML = nav();
     const views = { cal: viewCal, req: viewReq, emp: viewEmp, pvz: viewPvz };
-    $("main").innerHTML = (views[S.sec] || viewOther)();
+    $("main").innerHTML = (SECS[S.sec]?.view || views[S.sec] || viewOther)();
     const q = $("q");
     if (q) {
       q.addEventListener("input", (e) => { S.q = e.target.value; });
       q.addEventListener("keydown", (e) => { if (e.key === "Enter") addShift(); });
     }
   }
+
+  async function go(sec) {
+    S.sec = sec;
+    render();
+    const d = SECS[sec];
+    if (d?.enter) {
+      try { await d.enter(); } catch (e) { toast("🚫 " + (e.message || e)); }
+      if (S.sec === sec) render();
+    }
+  }
+
+  // ---------- окно ----------
+  function modal(title, body, onOk, okText) {
+    const m = $("modal");
+    m.innerHTML = `<div class="mback" data-mclose></div><div class="mbox"><div class="mtitle">${esc(title)}</div><div class="mbody">${body}</div>
+      <div class="mfoot"><button class="btn" data-mclose>Отмена</button>${onOk ? `<button class="btn ok" id="mok">${esc(okText || "Сохранить")}</button>` : ""}</div></div>`;
+    m.classList.add("on");
+    if (onOk) $("mok").onclick = async () => { if ((await onOk()) !== false) closeModal(); };
+    const f = m.querySelector("input,select,textarea");
+    if (f) f.focus();
+  }
+  function closeModal() { const m = $("modal"); m.classList.remove("on"); m.innerHTML = ""; }
 
   // ---------- График ----------
   function pvzTabs(net) {
@@ -232,7 +257,7 @@ const Admin = (() => {
     const d = new Date(S.year, S.month + delta, 1);
     S.year = d.getFullYear(); S.month = d.getMonth();
     S.sel = isCurrentMonth() ? now.getDate() : 1;
-    try { await loadShifts(); } catch (e) { toast("🚫 " + (e.message || e)); }
+    try { await loadShifts(); await SECS[S.sec]?.enter?.(); } catch (e) { toast("🚫 " + (e.message || e)); }
     render();
   }
 
@@ -349,11 +374,17 @@ const Admin = (() => {
 
   // ---------- события ----------
   function onClick(e) {
+    if (e.target.closest("[data-mclose]")) return closeModal();
+    const a = e.target.closest("[data-act]");
+    if (a) {
+      const [name, ...rest] = a.dataset.act.split(":");
+      if (ACTS[name]) return void ACTS[name](rest.join(":"), a, e);
+    }
     const t = e.target.closest("[data-g],[data-s],[data-p],[data-d],[data-c],[data-x],[data-q],[data-add],[data-today],[data-m],[data-freemonth],[data-sync],[data-ra],[data-rr],[data-addpvz]");
     if (!t) return;
     const d = t.dataset;
     if (d.g) { S.closed[d.g] = !S.closed[d.g]; try { localStorage.setItem("adm-closed", JSON.stringify(S.closed)); } catch (_) { /* */ } render(); }
-    else if (d.s) { S.sec = d.s; render(); }
+    else if (d.s) go(d.s);
     else if (d.p) { S.pvzId = d.p; try { localStorage.setItem("adm-pvz", d.p); } catch (_) { /* */ } render(); }
     else if (d.d) { S.sel = +d.d; render(); }
     else if (d.c) { const [id, c] = d.c.split("|"); setColor(id, c); }
@@ -396,7 +427,12 @@ const Admin = (() => {
     }
   }
 
-  return { init, parseInput, timeLabel };
+  return {
+    init, parseInput, timeLabel, S, MONTHS, WD, SECS, ACTS, $, esc, pad2, ymd, tint, fullName, toast, render, go, modal, closeModal,
+    setMonth: changeMonth, loadShifts,
+    section: (id, def) => { SECS[id] = def; },
+    act: (name, fn) => { ACTS[name] = fn; },
+  };
 })();
 
 if (typeof window !== "undefined") window.addEventListener("DOMContentLoaded", Admin.init);

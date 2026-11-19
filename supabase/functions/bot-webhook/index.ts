@@ -2,7 +2,8 @@
 // supabase/functions/bot-webhook/index.ts
 //
 // Обрабатывает апдейты от Telegram (устанавливается как webhook бота).
-// /start    — кнопка запуска мини-приложения (+ кнопка «График в чате»).
+// /start    — кнопка запуска мини-приложения (+ кнопка «График в чате»; админам — «Админка»).
+// /admin    — (админы) кнопка открытия админки для компьютера (admin.html).
 // /schedule — график прямо в чате: Сегодня / Завтра / Неделя (все ПВЗ или один)
 //             и «Мои смены» с листанием по неделям. Сообщение редактируется на месте.
 // В группах: /help <текст> (+фото) — бот заменяет сообщение на «Помогите пожалуйста найти <текст>»
@@ -23,6 +24,8 @@
 
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN")!;
 const WEBAPP_URL = Deno.env.get("WEBAPP_URL")!;
+// Страница админки для компьютера (admin.html рядом с index.html). Можно переопределить секретом ADMIN_URL.
+const ADMIN_URL = Deno.env.get("ADMIN_URL") ?? new URL("admin.html", WEBAPP_URL).toString();
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TZ = Deno.env.get("APP_TZ") ?? "Europe/Moscow";
@@ -1633,11 +1636,21 @@ Deno.serve(async (req) => {
             inline_keyboard: [
               [{ text: "📅 Открыть график", web_app: { url: WEBAPP_URL } }],
               [{ text: "📋 График в чате", callback_data: "n" }],
+              ...(me?.is_admin ? [[{ text: "🖥 Админка (для компьютера)", web_app: { url: ADMIN_URL } }]] : []),
             ],
           },
         },
       );
       await sendMessage(chatId, "Кнопки меню всегда под полем ввода 👇", { reply_markup: me?.is_admin ? REPLY_KB_ADMIN : REPLY_KB });
+    } else if (text.startsWith("/admin")) {
+      const me = await getEmployee(msg.from?.id);
+      if (me?.is_admin) {
+        await sendMessage(chatId, "🖥 <b>Админка для компьютера</b>\nЛучше открывать в Telegram Desktop.", {
+          reply_markup: { inline_keyboard: [[{ text: "Открыть админку", web_app: { url: ADMIN_URL } }]] },
+        });
+      } else {
+        await sendMessage(chatId, NO_ACCESS_TEXT);
+      }
     } else if (RE_TODAY.test(text)) {
       const emp = await getEmployee(msg.from?.id);
       if (!emp) {

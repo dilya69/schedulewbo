@@ -115,7 +115,8 @@ const Admin = (() => {
 
   // ---------- каркас ----------
   function nav() {
-    let h = '<div class="brand">Смены ПВЗ</div>';
+    const fsOn = !!(window.Telegram?.WebApp?.isFullscreen || document.fullscreenElement);
+    let h = `<div class="brand" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span>Смены ПВЗ</span><button class="fsbtn" data-fs="1" title="${fsOn ? "Обычное окно" : "Полный экран"}" style="border:1px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;font-size:16px;cursor:pointer">${fsOn ? "⤡" : "⛶"}</button></div>`;
     GROUPS.forEach((g) => {
       const cl = S.closed[g.k];
       h += `<button class="grp ${cl ? "closed" : ""}" data-g="${g.k}"><span>${g.l}</span><span class="chev">›</span></button><div class="items ${cl ? "closed" : ""}">`;
@@ -125,9 +126,7 @@ const Admin = (() => {
       });
       h += "</div>";
     });
-    const fsOn = !!(window.Telegram?.WebApp?.isFullscreen || document.fullscreenElement);
-    return h + `<div class="foot"><button class="nav ${S.sec === "pvz" ? "on" : ""}" data-s="pvz">Управление ПВЗ</button>
-      <button class="nav" data-fs="1" data-tip="Полный экран / обычное окно"><span>${fsOn ? "⤡ Обычное окно" : "⛶ Полный экран"}</span></button></div>`;
+    return h + `<div class="foot"><button class="nav ${S.sec === "pvz" ? "on" : ""}" data-s="pvz">Управление ПВЗ</button></div>`;
   }
 
   function render() {

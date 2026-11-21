@@ -62,7 +62,7 @@
       ? C.chats.map(chatCard).join("")
       : `<div class="card side"><div class="dh" style="margin-top:0">Чат не подключён</div><div class="mut">Добавь бота в рабочую группу и напиши там <b>/help_here</b> (от имени админа). После этого чат появится здесь.</div></div>`;
     return `<div class="head"><h1>Чат бота</h1></div><div class="two">${left}${whoCard()}</div>
-      <div class="mut" style="max-width:1200px;margin-top:6px">Меню команд «/» в самом чате обновится, когда выключенные или включённые команды перезапишет сам бот (в чате команда /settings делает это сразу). Сами команды перестают работать сразу.</div>`;
+      <div class="mut" style="max-width:1200px;margin-top:6px">Меню команд «/» в чате обновляется сразу после переключения команды (может понадобиться пара секунд или переоткрыть чат).</div>`;
   }
 
   async function patchChat(chatId, patch) {
@@ -71,6 +71,11 @@
       const c = await Api.updateHelpChat(chatId, patch);
       C.chats = C.chats.map((x) => (String(x.chat_id) === String(chatId) ? { ...x, ...c } : x));
       toast("✅ Сохранено");
+      // меню «/» в самом чате перезаписывает серверная функция (как /settings в чате)
+      if ("help_on" in patch || "today_on" in patch || "need_on" in patch) {
+        try { await Api.sendScheduleCheck({ kind: "refresh_commands", chat_id: Number(chatId) }); }
+        catch (e) { toast("Сохранено, но меню «/» в чате не обновилось: " + (e.message || e)); }
+      }
     } catch (e) { toast("🚫 " + (e.message || e)); }
     C.busy = false; A.render();
   }

@@ -11,6 +11,8 @@
 //   { kind: "broadcast", body, employee_ids, author_id } — обычная рассылка выбранным сотрудникам с подписью
 //                              автора и кнопкой «Принял(а)» (то же, что кнопка «📢 Рассылка» в боте)
 //   { resend_broadcast_id }  — напомнить тем, кто ещё не нажал «Принял(а)»
+//   { kind: "refresh_commands", chat_id } — перезаписать меню команд «/» в рабочем чате по его настройкам
+//                              (вызывает админка после переключения /help, /today, /need)
 //
 // Секреты: BOT_TOKEN (уже есть). SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY Supabase подставляет сам.
 // Деплой: supabase functions deploy broadcast-check --no-verify-jwt
@@ -120,6 +122,26 @@ Deno.serve(async (req) => {
   try {
     if (!(await isAdminCaller(req))) return json({ error: "forbidden" }, 403);
     const input = await req.json().catch(() => ({}));
+
+    // ---- меню команд «/» в рабочем чате: то же, что refreshCommands в bot-webhook ----
+    if (input.kind === "refresh_commands") {
+      const chatId = Number(input.chat_id);
+      if (!chatId) return json({ error: "Не указан чат" }, 400);
+      const { data: c } = await db.from("help_chats").select("*").eq("chat_id", chatId).maybeSingle();
+      if (!c) return json({ error: "Чат не подключён" }, 404);
+      const commands: { command: string; description: string }[] = [];
+      if (c.help_on) commands.push({ command: "help", description: "Позвать тех, кто смотрит камеры" });
+      if (c.today_on) commands.push({ command: "today", description: "Кто сегодня на смене" });
+      if (c.need_on) commands.push({ command: "need", description: "Нужен человек на смену" });
+      const r = await fetch(`${API}/setMyCommands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commands, scope: { type: "chat", chat_id: chatId } }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!j.ok) { console.error("setMyCommands", JSON.stringify(j)); return json({ error: "Telegram не принял меню" }, 502); }
+      return json({ ok: true, commands: commands.map((x) => x.command) });
+    }
 
     // ---- обычная рассылка выбранным сотрудникам ----
     if (input.kind === "broadcast") {

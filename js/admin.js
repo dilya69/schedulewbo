@@ -382,7 +382,7 @@ const Admin = (() => {
       const [name, ...rest] = a.dataset.act.split(":");
       if (ACTS[name]) return void ACTS[name](rest.join(":"), a, e);
     }
-    const t = e.target.closest("[data-g],[data-s],[data-p],[data-d],[data-c],[data-x],[data-q],[data-add],[data-today],[data-m],[data-freemonth],[data-sync],[data-ra],[data-rr],[data-addpvz]");
+    const t = e.target.closest("[data-g],[data-s],[data-p],[data-d],[data-c],[data-x],[data-q],[data-add],[data-today],[data-m],[data-freemonth],[data-sync],[data-ra],[data-rr],[data-addpvz],[data-fs]");
     if (!t) return;
     const d = t.dataset;
     if (d.g) { S.closed[d.g] = !S.closed[d.g]; try { localStorage.setItem("adm-closed", JSON.stringify(S.closed)); } catch (_) { /* */ } render(); }

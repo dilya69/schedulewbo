@@ -1813,6 +1813,9 @@ const App = (() => {
     const phoneField = (isBoss(emp) || isYana(emp))
       ? `<label>Телефон</label><input type="tel" id="f_phone" inputmode="tel" placeholder="+7 900 000-00-00" value="${escapeHtml(emp.phone || "")}">`
       : "";
+    const pvzAll = (state.pvz || []).filter((p) => p.is_active !== false);
+    const camScope = emp.help_pvz_ids?.length ? emp.help_pvz_ids : pvzAll.map((p) => p.id);
+    const camBox = `<div id="f_cam_pvz" style="display:${emp.camera_access ? "" : "none"}"><label>На каких ПВЗ звать (камеры)</label>${pvzAll.map((p) => `<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin:4px 0;cursor:pointer"><input type="checkbox" class="f_campvz" value="${p.id}" style="width:auto;margin:0" ${camScope.includes(p.id) ? "checked" : ""}> ${escapeHtml(p.name)}</label>`).join("")}</div>`;
     openModal(`Редактировать: ${fullName(emp)}`, `
       <label>Имя в календаре (коротко)</label><input type="text" id="f_name" value="${escapeHtml(emp.full_name)}">
       <label>Полное имя (Имя Фамилия)</label><input type="text" id="f_realname" value="${escapeHtml(emp.real_name || "")}">
@@ -1829,7 +1832,8 @@ const App = (() => {
       <input type="text" id="f_birthday" inputmode="numeric" maxlength="5" placeholder="25.03" value="${fmtBirthday(emp)}">
       ${phoneField}
       <label>Доступ к камерам (бот зовёт по /помогите)</label>
-      <select id="f_camera"><option value="false" ${!emp.camera_access ? "selected" : ""}>Нет</option><option value="true" ${emp.camera_access ? "selected" : ""}>Да</option></select>
+      <select id="f_camera" onchange="document.getElementById('f_cam_pvz').style.display=this.value==='true'?'':'none'"><option value="false" ${!emp.camera_access ? "selected" : ""}>Нет</option><option value="true" ${emp.camera_access ? "selected" : ""}>Да</option></select>
+      ${camBox}
     `, async () => {
       const newName = document.getElementById("f_name").value.trim();
       const newUsername = document.getElementById("f_username").value.trim().replace(/^@/, "");
@@ -1856,6 +1860,13 @@ const App = (() => {
         return toast("Нельзя снять права или доступ у самого себя");
       }
       const phoneEl = document.getElementById("f_phone");
+      const camOn = document.getElementById("f_camera").value === "true";
+      let help_pvz_ids = emp.help_pvz_ids ?? null;
+      if (camOn) {
+        const ids = [...document.querySelectorAll(".f_campvz:checked")].map((x) => x.value);
+        if (!ids.length) return toast("Выберите хотя бы один ПВЗ для камер");
+        help_pvz_ids = ids.length === pvzAll.length ? null : ids;
+      }
       const fields = {
         full_name: newName,
         real_name: document.getElementById("f_realname").value.trim() || null,
@@ -1865,7 +1876,8 @@ const App = (() => {
         is_active: newActive,
         is_admin: newAdmin,
         birth_day, birth_month,
-        camera_access: document.getElementById("f_camera").value === "true",
+        camera_access: camOn,
+        help_pvz_ids,
       };
       if (phoneEl) fields.phone = phoneEl.value.trim() || null;
       try {

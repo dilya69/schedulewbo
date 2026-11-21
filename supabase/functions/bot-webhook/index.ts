@@ -3,7 +3,7 @@
 //
 // Обрабатывает апдейты от Telegram (устанавливается как webhook бота).
 // /start    — кнопка запуска мини-приложения (+ кнопка «График в чате»; админам — «Админка»).
-// /admin    — (админы) кнопка открытия админки для компьютера (admin.html).
+// /admin    — (админы) закрепляет в чате сообщение с кнопкой «Открыть» (админка для компьютера, admin.html) + кнопка меню «Админка».
 // /schedule — график прямо в чате: Сегодня / Завтра / Неделя (все ПВЗ или один)
 //             и «Мои смены» с листанием по неделям. Сообщение редактируется на месте.
 // В группах: /help <текст> (+фото) — бот заменяет сообщение на «Помогите пожалуйста найти <текст>»
@@ -1646,9 +1646,22 @@ Deno.serve(async (req) => {
     } else if (text.startsWith("/admin") || text === BTN_ADMIN) {
       const me = await getEmployee(msg.from?.id);
       if (me?.is_admin) {
-        await sendMessage(chatId, "🖥 <b>Админка для компьютера</b>\nЛучше открывать в Telegram Desktop.", {
-          reply_markup: { inline_keyboard: [[{ text: "Открыть админку", web_app: { url: ADMIN_URL } }]] },
+        // кнопка «Админка» рядом с полем ввода (только в этом чате)
+        await tg("setChatMenuButton", {
+          chat_id: chatId,
+          menu_button: { type: "web_app", text: "Админка", web_app: { url: ADMIN_URL } },
         });
+        // закреплённое сообщение с кнопкой «Открыть»: старые закрепы снимаем, чтобы не копились
+        await tg("unpinAllChatMessages", { chat_id: chatId });
+        const sent = await tgJson("sendMessage", {
+          chat_id: chatId,
+          text: "🖥 <b>Админка для компьютера</b>\nНажмите «Открыть» (лучше в Telegram Desktop).",
+          parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
+          reply_markup: { inline_keyboard: [[{ text: "Открыть", web_app: { url: ADMIN_URL } }]] },
+        });
+        const mid = sent?.result?.message_id;
+        if (mid) await tg("pinChatMessage", { chat_id: chatId, message_id: mid, disable_notification: true });
       } else {
         await sendMessage(chatId, NO_ACCESS_TEXT);
       }

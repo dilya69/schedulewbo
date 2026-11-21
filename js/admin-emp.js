@@ -83,6 +83,9 @@
     const emp = byId(id);
     if (!emp) return;
     const sel = (cur, name) => `<select id="${name}"><option value="false" ${!cur ? "selected" : ""}>Нет</option><option value="true" ${cur ? "selected" : ""}>Да</option></select>`;
+    const pvzAll = (S.pvz || []).filter((p) => p.is_active !== false);
+    const camScope = emp.help_pvz_ids?.length ? emp.help_pvz_ids : pvzAll.map((p) => p.id);
+    const camBox = `<div id="f_cam_pvz" style="display:${emp.camera_access ? "" : "none"}"><label>На каких ПВЗ звать (камеры)</label>${pvzAll.map((p) => `<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin:4px 0;cursor:pointer"><input type="checkbox" class="f_campvz" value="${p.id}" style="width:auto;margin:0" ${camScope.includes(p.id) ? "checked" : ""}> ${esc(p.name)}</label>`).join("")}</div>`;
     A.modal(`Редактировать: ${fullName(emp)}`, `
       <label>Имя в календаре (коротко)</label><input type="text" id="f_name" value="${esc(emp.full_name)}">
       <label>Полное имя (Имя Фамилия)</label><input type="text" id="f_realname" value="${esc(emp.real_name || "")}">
@@ -93,7 +96,8 @@
       <label>Администратор</label>${sel(emp.is_admin, "f_admin")}
       <label>День рождения (ДД.ММ)</label><input type="text" id="f_birthday" maxlength="5" placeholder="25.03" value="${bday(emp)}">
       ${isBoss(emp) || isYana(emp) ? `<label>Телефон</label><input type="tel" id="f_phone" placeholder="+7 900 000-00-00" value="${esc(emp.phone || "")}">` : ""}
-      <label>Доступ к камерам (бот зовёт по /помогите)</label>${sel(emp.camera_access, "f_camera")}`, async () => {
+      <label>Доступ к камерам (бот зовёт по /помогите)</label>${sel(emp.camera_access, "f_camera").replace("<select ", `<select onchange="document.getElementById('f_cam_pvz').style.display=this.value==='true'?'':'none'" `)}
+      ${camBox}`, async () => {
       const name = $v("f_name").trim();
       const user = $v("f_username").trim().replace(/^@/, "");
       if (!name) { toast("Введите имя"); return false; }
@@ -109,9 +113,16 @@
       }
       const active = $v("f_active") === "true", admin = $v("f_admin") === "true";
       if (id === A.S.me.id && (!admin || !active)) { toast("Нельзя снять права или доступ у самого себя"); return false; }
+      const camOn = $v("f_camera") === "true";
+      let help_pvz_ids = emp.help_pvz_ids ?? null;
+      if (camOn) {
+        const ids = [...document.querySelectorAll(".f_campvz:checked")].map((x) => x.value);
+        if (!ids.length) { toast("Выберите хотя бы один ПВЗ для камер"); return false; }
+        help_pvz_ids = ids.length === pvzAll.length ? null : ids;
+      }
       const fields = {
         full_name: name, real_name: $v("f_realname").trim() || null, position: $v("f_position").trim(), trainee_from: $v("f_trainee_from") || null,
-        tg_username: user || null, is_active: active, is_admin: admin, birth_day, birth_month, camera_access: $v("f_camera") === "true",
+        tg_username: user || null, is_active: active, is_admin: admin, birth_day, birth_month, camera_access: camOn, help_pvz_ids,
       };
       const ph = document.getElementById("f_phone");
       if (ph) fields.phone = ph.value.trim() || null;

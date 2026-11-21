@@ -3,7 +3,7 @@
 //
 // Обрабатывает апдейты от Telegram (устанавливается как webhook бота).
 // /start    — кнопка запуска мини-приложения (+ кнопка «График в чате»; админам — «Админка»).
-// /admin    — (админы) закрепляет в чате сообщение с кнопкой «Открыть» (админка для компьютера, admin.html) + кнопка меню «Админка».
+// /admin    — (админы) закрепляет в чате сообщение с кнопкой «Открыть» (админка для компьютера, admin.html).
 // /schedule — график прямо в чате: Сегодня / Завтра / Неделя (все ПВЗ или один)
 //             и «Мои смены» с листанием по неделям. Сообщение редактируется на месте.
 // В группах: /help <текст> (+фото) — бот заменяет сообщение на «Помогите пожалуйста найти <текст>»
@@ -1629,6 +1629,11 @@ Deno.serve(async (req) => {
     if (text.startsWith("/start")) {
       const me = await getEmployee(msg.from?.id);
       await touchSeen(msg.from?.id);
+      // кнопка меню рядом с полем ввода всегда открывает обычное приложение (возвращает её, если была другая)
+      await tg("setChatMenuButton", {
+        chat_id: chatId,
+        menu_button: { type: "web_app", text: "График", web_app: { url: WEBAPP_URL } },
+      });
       await sendMessage(
         chatId,
         "👋 Добро пожаловать в <b>График ПВЗ</b>!\n\nНажмите кнопку ниже, чтобы открыть расписание.",
@@ -1646,11 +1651,6 @@ Deno.serve(async (req) => {
     } else if (text.startsWith("/admin") || text === BTN_ADMIN) {
       const me = await getEmployee(msg.from?.id);
       if (me?.is_admin) {
-        // кнопка «Админка» рядом с полем ввода (только в этом чате)
-        await tg("setChatMenuButton", {
-          chat_id: chatId,
-          menu_button: { type: "web_app", text: "Админка", web_app: { url: ADMIN_URL } },
-        });
         // закреплённое сообщение с кнопкой «Открыть»: старые закрепы снимаем, чтобы не копились
         await tg("unpinAllChatMessages", { chat_id: chatId });
         const sent = await tgJson("sendMessage", {

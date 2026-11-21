@@ -1651,6 +1651,12 @@ Deno.serve(async (req) => {
     } else if (text.startsWith("/admin") || text === BTN_ADMIN) {
       const me = await getEmployee(msg.from?.id);
       if (me?.is_admin) {
+        // если сообщение с кнопкой уже закреплено — новое не шлём
+        const chatInfo = await tgJson("getChat", { chat_id: chatId });
+        if (String(chatInfo?.result?.pinned_message?.text ?? "").startsWith("🖥 Админка для компьютера")) {
+          await sendMessage(chatId, "📌 Админка уже закреплена вверху чата — нажмите «Открыть» в закреплённом сообщении.");
+          return new Response("ok");
+        }
         // закреплённое сообщение с кнопкой «Открыть»: старые закрепы снимаем, чтобы не копились
         await tg("unpinAllChatMessages", { chat_id: chatId });
         const sent = await tgJson("sendMessage", {

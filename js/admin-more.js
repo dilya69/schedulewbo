@@ -68,7 +68,7 @@
     const today = mskToday(), last = new Map(), upcoming = new Set();
     for (const s of X.dates) { if (s.shift_date >= today) upcoming.add(s.employee_id); else if (!last.has(s.employee_id)) last.set(s.employee_id, s.shift_date); }
     const lost = [], none = [];
-    for (const e of S.employees.filter((x) => x.is_active !== false)) {
+    for (const e of S.employees.filter((x) => x.is_active !== false && !/^начальник/i.test(String(x.position || "").trim()))) {
       if (upcoming.has(e.id)) continue;
       const d = last.get(e.id);
       if (!d) none.push(e); else if (daysBetween(d, today) >= X.days) lost.push({ e, gap: daysBetween(d, today), date: d });

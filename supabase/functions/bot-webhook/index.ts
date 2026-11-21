@@ -389,7 +389,7 @@ function daysBetween(fromYmd: string, toYmd: string): number {
 async function buildLost(days: number): Promise<{ chunks: string[]; kb: unknown }> {
   const today = todayYmd();
   const [emps, shifts] = await Promise.all([
-    db("employees?select=id,full_name,real_name,tg_username,tg_id&is_active=eq.true&order=full_name.asc&limit=300"),
+    db("employees?select=id,full_name,real_name,tg_username,tg_id,position&is_active=eq.true&order=full_name.asc&limit=300"),
     db("shifts?select=employee_id,shift_date&employee_id=not.is.null&status=in.(assigned,confirmed)&order=shift_date.desc&limit=10000"),
   ]);
   const last = new Map<string, string>(); // последняя прошедшая смена
@@ -402,6 +402,7 @@ async function buildLost(days: number): Promise<{ chunks: string[]; kb: unknown 
   const lost: { e: any; gap: number; date: string }[] = [];
   const noShifts: any[] = [];
   for (const e of emps) {
+    if (/^начальник/i.test(String(e.position || "").trim())) continue; // начальники в потеряшки не попадают
     if (upcoming.has(e.id)) continue; // скоро выйдет — не потеряшка
     const d = last.get(e.id);
     if (!d) noShifts.push(e);

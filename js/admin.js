@@ -125,7 +125,9 @@ const Admin = (() => {
       });
       h += "</div>";
     });
-    return h + `<div class="foot"><button class="nav ${S.sec === "pvz" ? "on" : ""}" data-s="pvz">Управление ПВЗ</button></div>`;
+    const fsOn = !!(window.Telegram?.WebApp?.isFullscreen || document.fullscreenElement);
+    return h + `<div class="foot"><button class="nav ${S.sec === "pvz" ? "on" : ""}" data-s="pvz">Управление ПВЗ</button>
+      <button class="nav" data-fs="1" data-tip="Полный экран / обычное окно"><span>${fsOn ? "⤡ Обычное окно" : "⛶ Полный экран"}</span></button></div>`;
   }
 
   function render() {
@@ -399,6 +401,18 @@ const Admin = (() => {
     else if (d.ra) resolveReq(d.ra, "approve");
     else if (d.rr) resolveReq(d.rr, "reject");
     else if (t.hasAttribute("data-addpvz")) addPvz();
+    else if (t.hasAttribute("data-fs")) toggleFullscreen();
+  }
+
+  function toggleFullscreen() {
+    const tg = window.Telegram?.WebApp;
+    try {
+      if (tg?.requestFullscreen) {
+        if (tg.isFullscreen) tg.exitFullscreen(); else tg.requestFullscreen();
+      } else if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen?.();
+    } catch (e) { toast("🚫 Полный экран недоступен в этой версии Telegram"); }
+    setTimeout(() => { $("side").innerHTML = nav(); }, 400);
   }
 
   async function init() {
@@ -409,6 +423,9 @@ const Admin = (() => {
       if (tg) {
         tg.ready(); tg.expand();
         tg.disableVerticalSwipes?.();
+        const resync = () => { const sd = $("side"); if (sd && S.me) sd.innerHTML = nav(); };
+        tg.onEvent?.("fullscreenChanged", resync);
+        tg.onEvent?.("fullscreenFailed", () => toast("🚫 Telegram не дал включить полный экран"));
       }
     } catch (e) { /* не получилось — останется обычное окно */ }
     try {

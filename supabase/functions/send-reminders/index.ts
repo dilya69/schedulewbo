@@ -161,7 +161,10 @@ async function sendMessage(chatId, text) {
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // только cron (секрет лежит в bot_secrets, наружу недоступен)
+  const { data: sec } = await supabase.from("bot_secrets").select("value").eq("key", "cron").maybeSingle();
+  if (!sec?.value || req.headers.get("x-cron-secret") !== sec.value) return new Response("forbidden", { status: 403 });
   const now = new Date();
   const { ymd: today } = mskNow(now);
 

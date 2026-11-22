@@ -404,8 +404,10 @@ const Api = (() => {
   }
 
   // ---------- СОТРУДНИКИ ----------
+  // явный список: зарплатные колонки (default_rate, rating, pay_type, fixed_salary) закрыты от чтения
+  const EMP_COLS = "id,tg_id,tg_username,full_name,position,avatar_emoji,is_admin,is_active,created_at,avatar_frame,sheet_alias,avatar_photo_url,avatar_use_photo,birth_day,birth_month,phone,camera_access,real_name,last_seen_at,trainee_from,help_pvz_ids";
   async function getEmployees() {
-    const { data, error } = await client.from("employees").select("*").order("full_name");
+    const { data, error } = await client.from("employees").select(EMP_COLS).order("full_name");
     if (error) throw error;
     return data;
   }

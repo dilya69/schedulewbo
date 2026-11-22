@@ -100,7 +100,10 @@ async function sendDocumentToChat(chatId: number, filename: string, content: str
   await fetch(`${API}/sendDocument`, { method: "POST", body: form });
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // только cron (секрет лежит в bot_secrets, наружу недоступен)
+  const { data: sec } = await supabase.from("bot_secrets").select("value").eq("key", "cron").maybeSingle();
+  if (!sec?.value || req.headers.get("x-cron-secret") !== sec.value) return new Response("forbidden", { status: 403 });
   try {
     const now = new Date();
     let month = now.getMonth();

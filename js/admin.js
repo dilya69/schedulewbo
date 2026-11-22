@@ -98,13 +98,80 @@ const Admin = (() => {
   }
 
   // ---------- данные ----------
-  async function loadShifts() { S.shifts = await Api.getShiftsForMonth(S.year, S.month); }
+  // смены на сегодня живут отдельно от просматриваемого месяца: блок «Сегодня» виден всегда
+  const monthKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+  async function loadShifts() {
+    S.shifts = await Api.getShiftsForMonth(S.year, S.month);
+    if (S.year === new Date().getFullYear() && S.month === new Date().getMonth()) { S.todayShifts = S.shifts; S.todayKey = monthKey(new Date()); }
+  }
+  async function loadToday() {
+    const t = new Date();
+    if (S.year === t.getFullYear() && S.month === t.getMonth()) { S.todayShifts = S.shifts; }
+    else S.todayShifts = await Api.getShiftsForMonth(t.getFullYear(), t.getMonth());
+    S.todayKey = monthKey(t);
+  }
   async function loadRequests() { S.requests = await Api.getPendingRequests(); }
   async function loadAll() {
     S.pvz = await Api.getPvzList();
     if (!S.pvz.find((p) => p.id === S.pvzId)) S.pvzId = S.pvz[0]?.id || null;
     S.employees = await Api.getEmployees();
     await Promise.all([loadShifts(), loadRequests()]);
+    await loadToday();
+  }
+
+  // ---------- Сегодня: кто на смене, по адресам ----------
+  // «Ярославский 1 WB» и «Ярославский 1 Ozon» -> один адрес «Ярославский 1»
+  const MP_TOK = new Set(["wb", "ozon", "вб", "озон", "wildberries"]);
+  const addrKey = (name) => String(name || "").toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9 ]/g, " ").split(" ")
+    .filter((t) => t && !MP_TOK.has(t)).map((t) => t.replace(/^к(\d+)$/, "$1")).join(" ");
+  const addrLabel = (name) => String(name || "").replace(/(^|\s)(wb|ozon|вб|озон|wildberries)(?=\s|$)/gi, " ").replace(/\s+/g, " ").trim() || String(name || "");
+
+  function todayBlock() {
+    const t = new Date();
+    const k = ymd(t.getFullYear(), t.getMonth(), t.getDate());
+    if (S.todayKey !== monthKey(t) && !S.todayLoading) { // страница открыта с прошлого месяца — подтянуть заново
+      S.todayLoading = true;
+      loadToday().catch(() => {}).finally(() => { S.todayLoading = false; if (S.sec === "cal") render(); });
+    }
+    const list = (S.todayShifts || []).filter((s) => s.shift_date === k);
+    const groups = [];
+    const byKey = {};
+    S.pvz.forEach((p) => {
+      const key = addrKey(p.name);
+      if (!byKey[key]) { byKey[key] = { label: addrLabel(p.name), items: [] }; groups.push(byKey[key]); }
+      byKey[key].items.push(p);
+    });
+    const people = new Set(list.filter((s) => s.employee_id).map((s) => s.employee_id)).size;
+    const free = list.filter((s) => !s.employee_id).length;
+    const cards = groups.map((g) => {
+      g.items.sort((a, b) => (a.marketplace === b.marketplace ? 0 : a.marketplace === "wb" ? -1 : 1));
+      const rows = g.items.map((p) => {
+        const sh = list.filter((s) => s.pvz_id === p.id)
+          .sort((a, b) => (a.employee_id ? 0 : 1) - (b.employee_id ? 0 : 1) || a.start_time.localeCompare(b.start_time));
+        const chips = sh.map((s) => {
+          if (!s.employee_id) return s.status === "pending" ? '<span class="ch pend">? есть отклики</span>' : '<span class="ch q">? свободна</span>';
+          const lb = timeLabel(s, p);
+          return `<span class="ch" style="background:${tint(p.color, 42)}">${esc(s.employees?.full_name || "?")}${lb ? ` <i>${lb}</i>` : ""}</span>`;
+        }).join("");
+        return `<button class="trow ${p.id === S.pvzId ? "on" : ""}" data-tp="${p.id}" style="border-left-color:${p.color};${p.id === S.pvzId ? `background:${tint(p.color, 14)}` : ""}" data-tip="Открыть график этого ПВЗ">
+          <span class="mtag ${p.marketplace === "wb" ? "wb" : "ozon"}">${p.marketplace === "wb" ? "WB" : "Ozon"}</span>
+          <span class="tpeople">${chips || '<span class="mut">никого</span>'}</span></button>`;
+      }).join("");
+      return `<div class="tg"><div class="tgt">${esc(g.label)}</div>${rows}</div>`;
+    }).join("");
+    return `<div class="card today"><div class="thead"><div class="ttl2"><span class="tbadge">Сегодня</span><b>${WD[t.getDay()]}, ${t.getDate()} ${MONTHS_GEN[t.getMonth()]}</b></div>
+      <div style="display:flex;gap:8px"><span class="pill">На смене: ${people}</span>${free ? `<span class="pill" style="background:#FFF4DC;color:#7A4B00;border-color:#F0D79A">${free} свободных</span>` : ""}</div></div>
+      <div class="tgrid">${cards}</div></div>`;
+  }
+
+  function openToday(id) {
+    const t = new Date();
+    S.pvzId = id;
+    try { localStorage.setItem("adm-pvz", id); } catch (_) { /* */ }
+    const same = S.year === t.getFullYear() && S.month === t.getMonth();
+    S.year = t.getFullYear(); S.month = t.getMonth(); S.sel = t.getDate();
+    if (same) return render();
+    loadShifts().then(render).catch((er) => toast("🚫 " + er.message));
   }
   const isCurrentMonth = () => S.year === now.getFullYear() && S.month === now.getMonth();
   function dayShifts(pvzId, d) {
@@ -204,7 +271,7 @@ const Admin = (() => {
     return `<div class="head"><div class="ttl"><i class="dot" style="width:16px;height:16px;background:${c}"></i><h1>${MONTHS[S.month]} · ${esc(p.name)} ${p.marketplace === "wb" ? "WB" : "Ozon"}</h1>
       <div class="stp"><button data-m="-1" data-tip="Предыдущий месяц">‹</button><button data-today style="font-size:13px;padding:0 10px" data-tip="К сегодняшнему дню">Сегодня</button><button data-m="1" data-tip="Следующий месяц">›</button></div></div>
       <div class="ag"><button data-freemonth data-tip="Создать свободные смены на дни, где смен ещё нет">Создать свободные смены</button><button data-sync data-tip="Загрузить график из файла по ссылкам автоимпорта">Обновить из Excel</button></div></div>
-      <div class="nets"><div class="netrow"><span class="net">WB</span>${pvzTabs("wb")}</div><div class="netrow"><span class="net">Ozon</span>${pvzTabs("ozon")}</div></div>
+      ${todayBlock()}<div class="nets"><div class="netrow"><span class="net">WB</span>${pvzTabs("wb")}</div><div class="netrow"><span class="net">Ozon</span>${pvzTabs("ozon")}</div></div>
       <div class="layout"><div><div class="sum"><span class="pill">${total} смен</span><span class="pill" data-tip="Смены без сотрудника, на них можно откликнуться" style="background:#FFF4DC;color:#7A4B00;border-color:#F0D79A">${free} свободных</span></div>
       <div class="card calbox" style="background:${tint(c, 10)}"><div class="grid" style="margin-bottom:6px">${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((x) => `<div class="dow">${x}</div>`).join("")}</div><div class="grid">${cells}</div></div></div>
       <div class="card side"><div style="display:flex;align-items:center;gap:8px"><i class="dot" style="background:${c}"></i><b style="font-size:16px">${dow}, ${sel} ${MONTHS_GEN[S.month]}</b></div>
@@ -382,10 +449,11 @@ const Admin = (() => {
       const [name, ...rest] = a.dataset.act.split(":");
       if (ACTS[name]) return void ACTS[name](rest.join(":"), a, e);
     }
-    const t = e.target.closest("[data-g],[data-s],[data-p],[data-d],[data-c],[data-x],[data-q],[data-add],[data-today],[data-m],[data-freemonth],[data-sync],[data-ra],[data-rr],[data-addpvz],[data-fs]");
+    const t = e.target.closest("[data-g],[data-s],[data-p],[data-d],[data-c],[data-x],[data-q],[data-add],[data-today],[data-m],[data-freemonth],[data-sync],[data-ra],[data-rr],[data-addpvz],[data-fs],[data-tp]");
     if (!t) return;
     const d = t.dataset;
-    if (d.g) { S.closed[d.g] = !S.closed[d.g]; try { localStorage.setItem("adm-closed", JSON.stringify(S.closed)); } catch (_) { /* */ } render(); }
+    if (d.tp) openToday(d.tp);
+    else if (d.g) { S.closed[d.g] = !S.closed[d.g]; try { localStorage.setItem("adm-closed", JSON.stringify(S.closed)); } catch (_) { /* */ } render(); }
     else if (d.s) go(d.s);
     else if (d.p) { S.pvzId = d.p; try { localStorage.setItem("adm-pvz", d.p); } catch (_) { /* */ } render(); }
     else if (d.d) { S.sel = +d.d; render(); }

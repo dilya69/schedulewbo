@@ -181,19 +181,47 @@ const Admin = (() => {
   }
 
   // ---------- каркас ----------
+  // иконки Lucide (lucide.dev), вшиты в код, чтобы ничего не грузить из сети
+  const LI = {
+    g1: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    g2: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+    g3: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
+    cal: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>',
+    req: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+    wish: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+    check: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    emp: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    act: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+    bcast: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+    pay: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    tickets: '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/>',
+    bonus: '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+    acc: '<path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/>',
+    import: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M12 12v6M15 15l-3-3-3 3"/>',
+    export: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+    botchat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    pvz: '<path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/>',
+    close: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M16 15l-3-3 3-3"/>',
+    open: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M14 9l3 3-3 3"/>',
+  };
+  const ico = (k) => `<svg class="li" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LI[k] || ""}</svg>`;
+  try { S.rail = localStorage.getItem("adm-rail") === "1"; } catch (e) { /* без памяти */ }
+
   function nav() {
+    $("app").classList.toggle("rail", !!S.rail);
     const fsOn = !!(window.Telegram?.WebApp?.isFullscreen || document.fullscreenElement);
-    let h = `<div class="brand" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span>Смены ПВЗ</span><button class="fsbtn" data-fs="1" title="${fsOn ? "Обычное окно" : "Полный экран"}" style="border:1px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;font-size:16px;cursor:pointer">${fsOn ? "⤡" : "⛶"}</button></div>`;
+    let h = `<div class="brand"><span class="lbl">Смены ПВЗ</span><button class="fsbtn" data-fs="1" data-rt="${fsOn ? "Обычное окно" : "Полный экран"}" title="${fsOn ? "Обычное окно" : "Полный экран"}">${fsOn ? "⤡" : "⛶"}</button><button class="railbtn" data-rail="1" data-rt="${S.rail ? "Развернуть меню" : "Свернуть меню"}" aria-label="${S.rail ? "Развернуть меню" : "Свернуть меню"}">${ico(S.rail ? "open" : "close")}</button></div>`;
     GROUPS.forEach((g) => {
       const cl = S.closed[g.k];
-      h += `<button class="grp ${cl ? "closed" : ""}" data-g="${g.k}"><span>${g.l}</span><span class="chev">›</span></button><div class="items ${cl ? "closed" : ""}">`;
+      h += `<button class="grp ${cl ? "closed" : ""}" data-g="${g.k}" data-rt="${g.l}"><span class="gi">${ico(g.k)}</span><span class="lbl">${g.l}</span><span class="chev">›</span></button><div class="items ${cl ? "closed" : ""}">`;
       g.it.forEach(([id, name]) => {
-        const badge = id === "req" && S.requests.length ? `<span class="badge" data-tip="Новых заявок: ${S.requests.length}">${S.requests.length}</span>` : "";
-        h += `<button class="nav ${S.sec === id ? "on" : ""}" data-s="${id}">${name}${badge}</button>`;
+        const n = id === "req" ? S.requests.length : 0;
+        const badge = n ? `<span class="badge" data-tip="Новых заявок: ${n}">${n}</span>` : "";
+        h += `<button class="nav ${S.sec === id ? "on" : ""}" data-s="${id}" data-rt="${name}">${ico(id)}<span class="lbl">${name}</span>${badge}</button>`;
       });
       h += "</div>";
     });
-    return h + `<div class="foot"><button class="nav ${S.sec === "pvz" ? "on" : ""}" data-s="pvz">Управление ПВЗ</button></div>`;
+    return h + `<div class="foot"><button class="nav ${S.sec === "pvz" ? "on" : ""}" data-s="pvz" data-rt="Управление ПВЗ">${ico("pvz")}<span class="lbl">Управление ПВЗ</span></button></div>`;
   }
 
   function render() {
@@ -442,6 +470,21 @@ const Admin = (() => {
     return `<div class="head"><h1>${name}</h1></div><div class="card side" style="max-width:520px">Этот раздел пока работает в мини-приложении в Telegram. Сюда он переедет следующим.</div>`;
   }
 
+  // подсказка у иконок в свёрнутом меню (обычный title/tooltip обрезался бы из-за прокрутки панели)
+  let rt = null;
+  function hideRt() { if (rt) rt.classList.remove("on"); }
+  document.addEventListener("mouseover", (e) => {
+    const el = e.target.closest && e.target.closest("[data-rt]");
+    if (!el || !S.rail || !el.closest("#side")) return hideRt();
+    if (!rt) { rt = document.createElement("div"); rt.className = "rtip"; document.body.appendChild(rt); }
+    const r = el.getBoundingClientRect();
+    rt.textContent = el.dataset.rt;
+    rt.style.left = r.right + 10 + "px";
+    rt.style.top = r.top + r.height / 2 + "px";
+    rt.classList.add("on");
+  });
+  document.addEventListener("mouseout", (e) => { if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest("[data-rt]")) hideRt(); });
+
   // ---------- события ----------
   function onClick(e) {
     if (e.target.closest("[data-mclose]")) return closeModal();
@@ -450,10 +493,12 @@ const Admin = (() => {
       const [name, ...rest] = a.dataset.act.split(":");
       if (ACTS[name]) return void ACTS[name](rest.join(":"), a, e);
     }
-    const t = e.target.closest("[data-g],[data-s],[data-p],[data-d],[data-c],[data-x],[data-q],[data-add],[data-today],[data-m],[data-freemonth],[data-sync],[data-ra],[data-rr],[data-addpvz],[data-fs],[data-tp]");
+    const t = e.target.closest("[data-rail],[data-g],[data-s],[data-p],[data-d],[data-c],[data-x],[data-q],[data-add],[data-today],[data-m],[data-freemonth],[data-sync],[data-ra],[data-rr],[data-addpvz],[data-fs],[data-tp]");
     if (!t) return;
     const d = t.dataset;
     if (d.tp) openToday(d.tp);
+    else if (d.rail) { S.rail = !S.rail; try { localStorage.setItem("adm-rail", S.rail ? "1" : "0"); } catch (_) { /* */ } hideRt(); $("side").innerHTML = nav(); }
+    else if (d.g && S.rail) return;
     else if (d.g) { S.closed[d.g] = !S.closed[d.g]; try { localStorage.setItem("adm-closed", JSON.stringify(S.closed)); } catch (_) { /* */ } render(); }
     else if (d.s) go(d.s);
     else if (d.p) { S.pvzId = d.p; try { localStorage.setItem("adm-pvz", d.p); } catch (_) { /* */ } render(); }

@@ -486,8 +486,13 @@ const Admin = (() => {
   document.addEventListener("mouseout", (e) => { if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest("[data-rt]")) hideRt(); });
 
   // ---------- события ----------
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && $("modal")?.classList.contains("on")) { e.preventDefault(); closeModal(); }
+  });
   function onClick(e) {
     if (e.target.closest("[data-mclose]")) return closeModal();
+    // клик мимо панели, по пустому месту (не по кнопке, ссылке, полю и т. п.)
+    if ($("modal")?.classList.contains("on") && e.target.isConnected && !e.target.closest("#modal, button, a, input, select, textarea, label, [data-act], [data-s], [data-p], [data-d], [data-c], [data-x], [data-q], [data-add], [data-today], [data-m], [data-g], [data-rail], [data-fs], [data-tp], #toast, .toast")) return closeModal();
     const a = e.target.closest("[data-act]");
     if (a) {
       const [name, ...rest] = a.dataset.act.split(":");

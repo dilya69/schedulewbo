@@ -220,14 +220,15 @@ const Admin = (() => {
   // ---------- окно ----------
   function modal(title, body, onOk, okText) {
     const m = $("modal");
-    m.innerHTML = `<div class="mback" data-mclose></div><div class="mbox"><div class="mtitle">${esc(title)}</div><div class="mbody">${body}</div>
+    m.innerHTML = `<div class="mbox"><div class="mhead"><div class="mtitle">${esc(title)}</div><button class="mx" data-mclose aria-label="Закрыть">✕</button></div><div class="mbody">${body}</div>
       <div class="mfoot"><button class="btn" data-mclose>${onOk ? "Отмена" : "Закрыть"}</button>${onOk ? `<button class="btn ok" id="mok">${esc(okText || "Сохранить")}</button>` : ""}</div></div>`;
-    m.classList.add("on");
+    m.classList.add("on"); $("app").classList.add("pan");
+    m.scrollTop = 0;
     if (onOk) $("mok").onclick = async () => { if ((await onOk()) !== false) closeModal(); };
     const f = m.querySelector("input,select,textarea");
     if (f) f.focus();
   }
-  function closeModal() { const m = $("modal"); m.classList.remove("on"); m.innerHTML = ""; }
+  function closeModal() { const m = $("modal"); m.classList.remove("on"); m.innerHTML = ""; $("app").classList.remove("pan"); }
 
   // ---------- График ----------
   function pvzTabs(net) {

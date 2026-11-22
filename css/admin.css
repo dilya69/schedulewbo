@@ -74,16 +74,19 @@ h1{margin:0;font-size:28px;letter-spacing:-.025em}
 /* в полноэкранном режиме Telegram рисует свои кнопки поверх страницы — отступ под них */
 body{padding-top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px))}
 aside{top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));height:calc(100vh - var(--tg-safe-area-inset-top,0px) - var(--tg-content-safe-area-inset-top,0px))}
-/* ---- окно ---- */
-.modal{display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center}
-.modal.on{display:flex}
-.mback{position:absolute;inset:0;background:rgba(16,24,40,.45)}
-.mbox{position:relative;background:#fff;border-radius:20px;padding:22px 24px;width:min(440px,92vw);max-height:90vh;overflow:auto;box-shadow:0 24px 60px rgba(16,24,40,.3)}
-.mtitle{font-size:18px;font-weight:700;margin-bottom:14px}
+/* ---- правая панель действий (бывшее окно) ---- */
+.app.pan{grid-template-columns:232px minmax(0,1fr) 360px}
+.modal{display:none;position:sticky;top:0;height:100vh;overflow:auto;background:#fff;border-left:1px solid var(--line);padding:20px 20px 24px}
+.modal.on{display:block}
+.mbox{position:relative}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.mx{border:0;background:none;font-size:16px;color:var(--mut);width:30px;height:30px;border-radius:10px;flex-shrink:0}.mx:hover{background:var(--bg)}
+@media(max-width:1000px){.app.pan{grid-template-columns:232px minmax(0,1fr)}.modal{position:fixed;right:0;top:0;width:min(380px,92vw);z-index:40;box-shadow:-12px 0 40px rgba(16,24,40,.2)}}
+.mtitle{font-size:18px;font-weight:700;margin-bottom:8px}
 .mbody label{display:block;font-size:12px;font-weight:700;color:var(--mut);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.04em}
 .mbody input,.mbody select,.mbody textarea{width:100%;border:1px solid #E1E4EB;border-radius:12px;padding:10px 12px;font-size:14px;font-family:inherit;background:#fff}
 .mbody input:focus,.mbody select:focus,.mbody textarea:focus{outline:2px solid #C9D3F5;border-color:#6C86E8}
-.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;position:sticky;bottom:-24px;background:#fff;padding:12px 0 4px}
 /* ---- переключатель периода ---- */
 .seg{display:inline-flex;gap:3px;padding:4px;border:1px solid #E1E4EB;border-radius:14px;background:#fff}
 .seg button{border:0;background:none;padding:8px 16px;font-size:13px;font-weight:600;border-radius:10px;color:#3A4250}
@@ -154,7 +157,7 @@ button:disabled{opacity:.5;cursor:default}
 .pick{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #E1E4EB;border-radius:12px;font-size:13px;cursor:pointer;background:#fff}
 .pick.on{background:#EEF2FF;border-color:#6C86E8}.pick input{margin:0;accent-color:#3B5BDB}
 /* ---- «Сегодня» над графиком ---- */
-.today{padding:14px 16px 16px;margin-bottom:18px;border-radius:22px}
+.card.today{padding:14px 16px 16px;margin-bottom:18px;border-radius:22px}
 .thead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .ttl2{display:flex;align-items:center;gap:10px;font-size:16px}
 .tbadge{background:var(--ink);color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px}

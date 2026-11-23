@@ -220,3 +220,33 @@ button:disabled{opacity:.5;cursor:default}
 .attrow:hover{background:#F4F6FB}
 .attrow .dot{flex-shrink:0}.attn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .attst{font-size:12px;font-weight:600;color:#B42318;flex-shrink:0}.attst.fr{color:#7A4B00}
+
+/* ---- выбор сотрудника: печатать или выбирать ---- */
+.cmb{position:relative}
+.cmbi.bad{border-color:#E4572E!important;background:#FFF7F4}
+.cmbl{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:70;background:#fff;border:1px solid #E1E4EB;border-radius:12px;box-shadow:0 12px 32px rgba(16,24,40,.16);max-height:260px;overflow:auto;padding:4px}
+.cmbl[hidden]{display:none}
+.cmbo{display:block;width:100%;text-align:left;border:0;background:none;border-radius:8px;padding:8px 10px;font-size:14px}
+.cmbo:hover{background:#F1F4FB}.cmbo.on{background:#E6ECFD;font-weight:600}.cmbo.free{color:var(--mut)}
+/* ---- несколько смен сразу ---- */
+.bpicks{max-height:190px;overflow:auto;border:1px solid #E1E4EB;border-radius:12px;margin-top:6px;padding:4px}
+.bpick{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:8px;font-size:14px;cursor:pointer;user-select:none}
+.bpick:hover{background:#F4F6FB}.bpick.on{background:#E6ECFD;font-weight:600}
+.bck{width:16px;height:16px;border:1.5px solid #B8BFCC;border-radius:5px;flex-shrink:0;background:#fff}
+.bpick.on .bck{background:#3B5BDB;border-color:#3B5BDB;box-shadow:inset 0 0 0 2px #fff}
+.bchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.bchip{border:1px solid #E1E4EB;background:#fff;border-radius:999px;padding:6px 11px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.bchip:hover{background:#F4F6FB}.bchip.on{background:#E6ECFD;border-color:#6C86E8;color:#2748B8}
+.bchip .mut{font-weight:500;font-size:11px}
+.mbody label.bchk{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);font-weight:500;cursor:pointer}
+.bsum{margin-top:12px;padding:10px 12px;border-radius:12px;background:#F6F7FA;font-size:14px}
+/* ---- правка дня прямо в ячейке ---- */
+.cedit{position:fixed;z-index:60;background:#fff;border:1px solid #C9D3F5;border-radius:16px;padding:12px;box-shadow:0 16px 48px rgba(16,24,40,.22)}
+.cet{margin-bottom:8px;font-size:13px}
+.cer{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.cew{flex:1;min-width:0;border-radius:9px;padding:4px 10px;font-size:13px;font-weight:600}
+.cew i{font-style:normal;font-weight:500;opacity:.75}
+.cew.fr{background:#fff;border:1px dashed #C99A3B;color:#7A4B00}
+.cex{border:1px solid #E1E4EB;background:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;padding:0;color:#3A4250}
+.cex:hover{background:#FDECEC;border-color:#F3B8B8;color:#B42318}.cex[data-ce^="edit"]:hover{background:var(--bg);border-color:#E1E4EB;color:var(--ink)}
+.cedit .fld{width:100%;flex:none;box-sizing:border-box;margin-top:4px}

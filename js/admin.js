@@ -336,7 +336,7 @@ const Admin = (() => {
 
     return `<div class="head"><div class="ttl"><i class="dot" style="width:16px;height:16px;background:${c}"></i><h1>${MONTHS[S.month]} · ${esc(pvzTitle(p))}</h1>
       <div class="stp"><button data-m="-1" data-tip="Предыдущий месяц">‹</button><button data-today style="font-size:13px;padding:0 10px" data-tip="К сегодняшнему дню">Сегодня</button><button data-m="1" data-tip="Следующий месяц">›</button></div></div>
-      <div class="ag"><button data-freemonth data-tip="Создать свободные смены на дни, где смен ещё нет">Создать свободные смены</button><button data-sync data-tip="Загрузить график из файла по ссылкам автоимпорта">Обновить из Excel</button></div></div>
+      <div class="ag"><button data-act="shift-bulk:" data-tip="Несколько сотрудников, дней и ПВЗ за раз">Несколько смен сразу</button><button data-freemonth data-tip="Создать свободные смены на дни, где смен ещё нет">Создать свободные смены</button><button data-sync data-tip="Загрузить график из файла по ссылкам автоимпорта">Обновить из Excel</button></div></div>
       ${todayBlock()}<div class="nets"><div class="netrow"><span class="net">WB</span>${pvzTabs("wb")}</div><div class="netrow"><span class="net">Ozon</span>${pvzTabs("ozon")}</div></div>
       <div class="layout"><div><div class="sum"><span class="pill">${total} смен</span>${(() => { const n = attention().length; return n ? `<button class="pill att" data-att data-tip="Дни, где на ПВЗ никого нет">⚠ Требует внимания: ${n}</button>` : `<span class="pill attok" data-tip="Везде кто-то есть">✓ Всё закрыто</span>`; })()}<span class="pill" data-tip="Смены без сотрудника, на них можно откликнуться" style="background:#FFF4DC;color:#7A4B00;border-color:#F0D79A">${free} свободных</span></div>
       <div class="card calbox" style="background:${tint(c, 10)}"><div class="grid" style="margin-bottom:6px">${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((x) => `<div class="dow">${x}</div>`).join("")}</div><div class="grid">${cells}</div></div></div>
@@ -346,34 +346,40 @@ const Admin = (() => {
       <datalist id="emps">${S.employees.filter((e) => e.is_active !== false).map((e) => `<option value="${esc(e.full_name)}">`).join("")}</datalist>
       <div style="margin:12px 0 6px;display:flex;gap:6px;flex-wrap:wrap">${QUICK.map((k) => `<button class="sm" data-q="${k[0]}" data-tip="${k[1]}">${k[0]}</button>`).join("")}</div>
       <div style="margin-top:10px">${rows || '<div class="mut" style="padding:10px 0">В этот день смен нет</div>'}</div>
-      <button class="btn" data-act="shift-edit:" style="margin-top:12px;width:100%">+ Смена с настройками (время, сумма)</button></div></div>`;
+      <button class="btn" data-act="shift-edit:" style="margin-top:12px;width:100%">+ Смена с настройками (время, сумма)</button>
+      <button class="btn" data-act="shift-bulk:" style="margin-top:8px;width:100%">+ Несколько смен сразу</button></div></div>`;
   }
 
-  async function addShift() {
+  async function addShift() { return addShiftText(($("q")?.value ?? S.q).trim(), S.sel, true); }
+  // добавить смену из текста («Катя с 17», «?», «Женя 2ч») на день day текущего ПВЗ; true — получилось
+  async function addShiftText(text, day, clearQ) {
     const p = curPvz();
-    const text = ($("q")?.value ?? S.q).trim();
-    if (!p || !text || S.busy) return;
+    if (!p || !text || S.busy) return false;
     const r = parseInput(text, p);
-    if (r.error) return toast("🚫 " + r.error);
+    if (r.error) { toast("🚫 " + r.error); return false; }
     let emp = null;
     if (!r.free) {
       emp = findEmployee(r.name);
-      if (!emp) return toast(`🚫 Нет сотрудника «${r.name}». Он должен быть в списке «Сотрудники»`);
-      const day = dayShifts(p.id, S.sel).find((s) => s.employee_id === emp.id && !s.duration_minutes && !r.dur && toMin(s.start_time) < toMin(r.end) && toMin(s.end_time) > toMin(r.start));
-      if (day && !confirm(`${emp.full_name} уже стоит на этот день с пересекающимся временем. Добавить ещё одну смену?`)) return;
+      if (!emp) { toast(`🚫 Нет сотрудника «${r.name}». Он должен быть в списке «Сотрудники»`); return false; }
+      const k = ymd(S.year, S.month, day);
+      const clash = S.shifts.find((s) => s.pvz_id === p.id && s.shift_date === k && s.employee_id === emp.id && !s.duration_minutes && !r.dur && toMin(s.start_time) < toMin(r.end) && toMin(s.end_time) > toMin(r.start));
+      if (clash && !confirm(`${emp.full_name} уже стоит на этот день с пересекающимся временем. Добавить ещё одну смену?`)) return false;
     }
     S.busy = true;
     try {
       await Api.upsertShift({
-        pvz_id: p.id, shift_date: ymd(S.year, S.month, S.sel), start_time: r.start, end_time: r.end,
+        pvz_id: p.id, shift_date: ymd(S.year, S.month, day), start_time: r.start, end_time: r.end,
         employee_id: emp ? emp.id : null, status: emp ? "confirmed" : "free", custom_amount: null, duration_minutes: r.dur || null,
       });
-      S.q = "";
+      if (clearQ) S.q = "";
       await loadShifts();
       render();
       toast("✅ Смена добавлена");
+      S.busy = false;
+      return true;
     } catch (e) { toast("🚫 " + (e.message || e)); }
     S.busy = false;
+    return false;
   }
 
   async function removeShift(id) {
@@ -529,7 +535,7 @@ const Admin = (() => {
   function onClick(e) {
     if (e.target.closest("[data-mclose]")) return closeModal();
     // клик мимо панели, по пустому месту (не по кнопке, ссылке, полю и т. п.)
-    if ($("modal")?.classList.contains("on") && e.target.isConnected && !e.target.closest("#modal, button, a, input, select, textarea, label, [data-act], [data-s], [data-p], [data-d], [data-c], [data-x], [data-q], [data-add], [data-today], [data-m], [data-g], [data-rail], [data-fs], [data-tp], [data-att], [data-attgo], #toast, .toast")) return closeModal();
+    if ($("modal")?.classList.contains("on") && e.target.isConnected && !e.target.closest("#modal, button, a, input, select, textarea, label, [data-act], [data-s], [data-p], [data-d], [data-c], [data-x], [data-q], [data-add], [data-today], [data-m], [data-g], [data-rail], [data-fs], [data-tp], [data-att], [data-attgo], .cedit, #toast, .toast")) return closeModal();
     const a = e.target.closest("[data-act]");
     if (a) {
       const [name, ...rest] = a.dataset.act.split(":");
@@ -546,7 +552,13 @@ const Admin = (() => {
     else if (d.g) { S.closed[d.g] = !S.closed[d.g]; try { localStorage.setItem("adm-closed", JSON.stringify(S.closed)); } catch (_) { /* */ } render(); }
     else if (d.s) go(d.s);
     else if (d.p) { S.pvzId = d.p; try { localStorage.setItem("adm-pvz", d.p); } catch (_) { /* */ } render(); }
-    else if (d.d) { S.sel = +d.d; render(); }
+    else if (d.d) {
+      // двойной щелчок по дню: правка прямо в ячейке (ловим сами, т.к. первый щелчок перерисовывает календарь)
+      const dbl = S.lastD === d.d && Date.now() - (S.lastT || 0) < 500;
+      S.lastD = d.d; S.lastT = Date.now();
+      if (dbl && ACTS["cell-edit"]) { S.lastT = 0; ACTS["cell-edit"](d.d); }
+      else { S.sel = +d.d; render(); }
+    }
     else if (d.c) { const [id, c] = d.c.split("|"); setColor(id, c); }
     else if (d.x) removeShift(d.x);
     else if (d.q !== undefined) { const cur = $("q")?.value ?? S.q; S.q = d.q === "?" ? "?" : (cur ? cur + " " : "") + d.q; if ($("q")) { $("q").value = S.q; $("q").focus(); } }
@@ -603,7 +615,7 @@ const Admin = (() => {
 
   return {
     init, parseInput, timeLabel, S, MONTHS, WD, SECS, ACTS, $, esc, pad2, ymd, tint, fullName, toast, render, go, modal, closeModal,
-    setMonth: changeMonth, loadShifts,
+    setMonth: changeMonth, loadShifts, MONTHS_GEN, findEmployee, addShiftText, curPvz, dayShifts, addrLabel, toMin, isCurrentMonth,
     section: (id, def) => { SECS[id] = def; },
     act: (name, fn) => { ACTS[name] = fn; },
   };

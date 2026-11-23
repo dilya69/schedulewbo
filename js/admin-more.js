@@ -157,7 +157,7 @@
     const custom = shift?.custom_amount != null;
     const emps = S.employees.filter((e) => e.is_active !== false).sort((a, b) => fullName(a).localeCompare(fullName(b), "ru"));
     A.modal(`${shift ? "Редактировать смену" : "Новая смена"} · ${pvz.name}, ${dmy(date)}`, `
-      <label>Сотрудник</label><select id="f_emp"><option value="">— свободная смена —</option>${emps.map((e) => `<option value="${e.id}" ${e.id === shift?.employee_id ? "selected" : ""}>${esc(fullName(e))}</option>`).join("")}</select>
+      <label>Сотрудник</label>${A.empCombo("f_emp", "f_empn", shift?.employee_id)}
       <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);cursor:pointer"><input type="checkbox" id="f_short" style="width:auto;margin:0" ${short ? "checked" : ""}> Короткая смена без точного времени (например, «2 ч»)</label>
       <div id="f_time" style="${short ? "display:none" : ""}"><label>Начало</label><input type="time" id="f_start" value="${start}"><label>Конец</label><input type="time" id="f_end" value="${end}"></div>
       <div id="f_shortb" style="${short ? "" : "display:none"}"><label>Сколько часов</label><input type="number" id="f_hours" min="0.5" max="12" step="0.5" value="${hours}"></div>
@@ -167,6 +167,7 @@
       if (document.getElementById("f_short").checked && !(dur > 0 && dur <= 720)) { toast("Длительность от 0.5 до 12 часов"); return false; }
       if (!s || !e2 || s >= e2) { toast("Начало должно быть раньше конца"); return false; }
       const emp = $v("f_emp") || null;
+      if (!emp && $v("f_empn").trim()) { toast(`🚫 Нет сотрудника «${$v("f_empn").trim()}». Выберите из списка или очистите поле`); return false; }
       if (emp && !dur) {
         const toM = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
         const clash = S.shifts.find((x) => x.id !== ctx.id && x.employee_id === emp && x.shift_date === date && !x.duration_minutes && toM(hm(x.start_time)) < toM(e2) && toM(hm(x.end_time)) > toM(s));

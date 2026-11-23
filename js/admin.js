@@ -169,6 +169,36 @@ const Admin = (() => {
       <div class="tgrid">${cards}</div></div>`;
   }
 
+  // ---------- Требует внимания: дни, где на ПВЗ никого нет ----------
+  function attention() {
+    const out = [];
+    const last = daysIn();
+    const from = S.year < now.getFullYear() || (S.year === now.getFullYear() && S.month < now.getMonth()) ? last + 1
+      : isCurrentMonth() ? now.getDate() : 1;
+    for (let d = from; d <= last; d++) {
+      const k = ymd(S.year, S.month, d);
+      S.pvz.forEach((p) => {
+        const sh = S.shifts.filter((s) => s.pvz_id === p.id && s.shift_date === k);
+        if (sh.some((s) => s.employee_id)) return;
+        out.push({ p, d, free: sh.length > 0 });
+      });
+    }
+    return out;
+  }
+  function openAttention() {
+    const list = attention();
+    const show = (b) => { modal("Требует внимания", b); S.attOpen = true; };
+    if (!list.length) return show('<div class="mut" style="padding:8px 0">Во всех днях месяца на каждом ПВЗ кто-то есть 👍</div>');
+    const days = [];
+    list.forEach((x) => { let g = days[days.length - 1]; if (!g || g.d !== x.d) { g = { d: x.d, items: [] }; days.push(g); } g.items.push(x); });
+    const body = `<div class="mut" style="margin-bottom:10px">${MONTHS[S.month]}: ${list.length} ${list.length === 1 ? "пустой день" : "пустых дней"} на ПВЗ. Нажмите, чтобы перейти.</div>` + days.map((g) => {
+      const wd = WD[new Date(S.year, S.month, g.d).getDay()];
+      return `<div class="attd">${wd}, ${g.d} ${MONTHS_GEN[S.month]}</div>` + g.items.map((x) =>
+        `<button class="attrow" data-attgo="${x.p.id}|${g.d}" style="border-left-color:${x.p.color}"><i class="dot" style="background:${x.p.color}"></i><span class="attn">${esc(pvzTitle(x.p))}</span><span class="attst ${x.free ? "fr" : ""}">${x.free ? "свободная смена" : "никого"}</span></button>`).join("");
+    }).join("");
+    show(body);
+  }
+
   function openToday(id) {
     const t = new Date();
     S.pvzId = id;
@@ -233,6 +263,7 @@ const Admin = (() => {
     $("side").innerHTML = nav();
     const views = { cal: viewCal, req: viewReq, emp: viewEmp, pvz: viewPvz };
     $("main").innerHTML = (SECS[S.sec]?.view || views[S.sec] || viewOther)();
+    if (S.attOpen && S.sec === "cal") { const sc = $("modal").scrollTop; openAttention(); $("modal").scrollTop = sc; }
     const q = $("q");
     if (q) {
       q.addEventListener("input", (e) => { S.q = e.target.value; });
@@ -252,6 +283,7 @@ const Admin = (() => {
 
   // ---------- окно ----------
   function modal(title, body, onOk, okText) {
+    S.attOpen = false;
     const m = $("modal");
     m.innerHTML = `<div class="mbox"><div class="mhead"><div class="mtitle">${esc(title)}</div><button class="mx" data-mclose aria-label="Закрыть">✕</button></div><div class="mbody">${body}</div>
       <div class="mfoot"><button class="btn" data-mclose>${onOk ? "Отмена" : "Закрыть"}</button>${onOk ? `<button class="btn ok" id="mok">${esc(okText || "Сохранить")}</button>` : ""}</div></div>`;
@@ -261,7 +293,7 @@ const Admin = (() => {
     const f = m.querySelector("input,select,textarea");
     if (f) f.focus();
   }
-  function closeModal() { const m = $("modal"); m.classList.remove("on"); m.innerHTML = ""; $("app").classList.remove("pan"); }
+  function closeModal() { S.attOpen = false; const m = $("modal"); m.classList.remove("on"); m.innerHTML = ""; $("app").classList.remove("pan"); }
 
   // ---------- График ----------
   function pvzTabs(net) {
@@ -306,7 +338,7 @@ const Admin = (() => {
       <div class="stp"><button data-m="-1" data-tip="Предыдущий месяц">‹</button><button data-today style="font-size:13px;padding:0 10px" data-tip="К сегодняшнему дню">Сегодня</button><button data-m="1" data-tip="Следующий месяц">›</button></div></div>
       <div class="ag"><button data-freemonth data-tip="Создать свободные смены на дни, где смен ещё нет">Создать свободные смены</button><button data-sync data-tip="Загрузить график из файла по ссылкам автоимпорта">Обновить из Excel</button></div></div>
       ${todayBlock()}<div class="nets"><div class="netrow"><span class="net">WB</span>${pvzTabs("wb")}</div><div class="netrow"><span class="net">Ozon</span>${pvzTabs("ozon")}</div></div>
-      <div class="layout"><div><div class="sum"><span class="pill">${total} смен</span><span class="pill" data-tip="Смены без сотрудника, на них можно откликнуться" style="background:#FFF4DC;color:#7A4B00;border-color:#F0D79A">${free} свободных</span></div>
+      <div class="layout"><div><div class="sum"><span class="pill">${total} смен</span>${(() => { const n = attention().length; return n ? `<button class="pill att" data-att data-tip="Дни, где на ПВЗ никого нет">⚠ Требует внимания: ${n}</button>` : `<span class="pill attok" data-tip="Везде кто-то есть">✓ Всё закрыто</span>`; })()}<span class="pill" data-tip="Смены без сотрудника, на них можно откликнуться" style="background:#FFF4DC;color:#7A4B00;border-color:#F0D79A">${free} свободных</span></div>
       <div class="card calbox" style="background:${tint(c, 10)}"><div class="grid" style="margin-bottom:6px">${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((x) => `<div class="dow">${x}</div>`).join("")}</div><div class="grid">${cells}</div></div></div>
       <div class="card side"><div style="display:flex;align-items:center;gap:8px"><i class="dot" style="background:${c}"></i><b style="font-size:16px">${dow}, ${sel} ${MONTHS_GEN[S.month]}</b></div>
       <div class="mut" style="margin:2px 0 16px">${esc(pvzTitle(p))}</div>
@@ -497,16 +529,18 @@ const Admin = (() => {
   function onClick(e) {
     if (e.target.closest("[data-mclose]")) return closeModal();
     // клик мимо панели, по пустому месту (не по кнопке, ссылке, полю и т. п.)
-    if ($("modal")?.classList.contains("on") && e.target.isConnected && !e.target.closest("#modal, button, a, input, select, textarea, label, [data-act], [data-s], [data-p], [data-d], [data-c], [data-x], [data-q], [data-add], [data-today], [data-m], [data-g], [data-rail], [data-fs], [data-tp], #toast, .toast")) return closeModal();
+    if ($("modal")?.classList.contains("on") && e.target.isConnected && !e.target.closest("#modal, button, a, input, select, textarea, label, [data-act], [data-s], [data-p], [data-d], [data-c], [data-x], [data-q], [data-add], [data-today], [data-m], [data-g], [data-rail], [data-fs], [data-tp], [data-att], [data-attgo], #toast, .toast")) return closeModal();
     const a = e.target.closest("[data-act]");
     if (a) {
       const [name, ...rest] = a.dataset.act.split(":");
       if (ACTS[name]) return void ACTS[name](rest.join(":"), a, e);
     }
-    const t = e.target.closest("[data-rail],[data-g],[data-s],[data-p],[data-d],[data-c],[data-x],[data-q],[data-add],[data-today],[data-m],[data-freemonth],[data-sync],[data-ra],[data-rr],[data-addpvz],[data-fs],[data-tp]");
+    const t = e.target.closest("[data-rail],[data-g],[data-s],[data-p],[data-d],[data-c],[data-x],[data-q],[data-add],[data-today],[data-m],[data-freemonth],[data-sync],[data-ra],[data-rr],[data-addpvz],[data-fs],[data-tp],[data-att],[data-attgo]");
     if (!t) return;
     const d = t.dataset;
-    if (d.tp) openToday(d.tp);
+    if (d.att !== undefined) openAttention();
+    else if (d.attgo) { const [pid, dd] = d.attgo.split("|"); S.pvzId = pid; S.sel = +dd; try { localStorage.setItem("adm-pvz", pid); } catch (_) { /* */ } render(); }
+    else if (d.tp) openToday(d.tp);
     else if (d.rail) { S.rail = !S.rail; try { localStorage.setItem("adm-rail", S.rail ? "1" : "0"); } catch (_) { /* */ } hideRt(); $("side").innerHTML = nav(); }
     else if (d.g && S.rail) return;
     else if (d.g) { S.closed[d.g] = !S.closed[d.g]; try { localStorage.setItem("adm-closed", JSON.stringify(S.closed)); } catch (_) { /* */ } render(); }

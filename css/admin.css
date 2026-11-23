@@ -211,3 +211,12 @@ button:disabled{opacity:.5;cursor:default}
 .netrow .pill .pn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .netrow .pill .dot{flex-shrink:0}
 @media(max-width:1100px){.netrow{grid-template-columns:48px repeat(3,minmax(0,1fr))}}
+
+/* ---- «Требует внимания» ---- */
+.pill.att{background:#FFF4DC;color:#7A4B00;border-color:#F0D79A;cursor:pointer}.pill.att:hover{filter:brightness(.97)}
+.pill.attok{background:#E8F7EE;color:#15803D;border-color:#BFE6CD}
+.attd{font-weight:700;font-size:13px;margin:14px 0 6px;color:var(--ink)}
+.attrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid #E1E4EB;border-left:4px solid transparent;background:#fff;border-radius:12px;padding:9px 10px;margin-bottom:6px;font-size:13px;font-weight:600}
+.attrow:hover{background:#F4F6FB}
+.attrow .dot{flex-shrink:0}.attn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attst{font-size:12px;font-weight:600;color:#B42318;flex-shrink:0}.attst.fr{color:#7A4B00}

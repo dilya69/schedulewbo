@@ -25,17 +25,17 @@
       const m = [...(R.members.get(p.id) || [])].filter((id) => ids.has(id));
       if (!m.length) return "";
       const all = m.every((id) => R.sel.has(id));
-      return `<button class="chip ${all ? "on" : ""}" data-act="bc-pvz:${p.id}"><i class="dot" style="background:${p.color}"></i>${esc(p.name)} ${p.marketplace === "wb" ? "WB" : "Ozon"} · ${m.length}</button>`;
+      return `<button class="chip ${all ? "on" : ""}" data-act="bc-pvz:${p.id}"><i class="dot" style="background:${p.color}"></i><span class="chn">${esc(A.addrLabel(p.name))}</span><span class="mtag ${p.marketplace === "wb" ? "wb" : "ozon"}">${p.marketplace === "wb" ? "WB" : "Ozon"}</span><span class="chc">${m.length}</span></button>`;
     }).join("");
-    const people = emps.map((e) => `<label class="pick ${R.sel.has(e.id) ? "on" : ""}"><input type="checkbox" data-bce="${e.id}" ${R.sel.has(e.id) ? "checked" : ""}><span>${esc(fullName(e))}</span></label>`).join("");
+    const people = emps.map((e) => `<label class="pick ${R.sel.has(e.id) ? "on" : ""}" title="${esc(fullName(e))}"><input type="checkbox" data-bce="${e.id}" ${R.sel.has(e.id) ? "checked" : ""}><span>${esc(fullName(e))}</span></label>`).join("");
     const me = S.me;
     const hist = R.list.map((b) => {
       const ok = b.replies.filter((r) => r.status === "ok").length, fail = b.replies.filter((r) => r.status === "failed").length, open = R.open === b.id;
       const rows = b.replies.slice().sort((a, c) => (a.status === "ok") - (c.status === "ok") || fullName(a.employees).localeCompare(fullName(c.employees), "ru"))
         .map((r) => `<div class="dr"><span>${esc(fullName(r.employees) || "—")}</span>${r.status === "ok" ? '<span class="mtag okt">принял</span>' : r.status === "failed" ? '<span class="mtag badt">не доставлено</span>' : '<span class="mtag">ждём</span>'}</div>`).join("");
       return `<div class="lcard"><div class="lrow" data-act="bc-open:${b.id}" style="cursor:pointer"><div style="min-width:0;flex:1"><b>${esc(String(b.body).slice(0, 70))}${b.body.length > 70 ? "…" : ""}</b>
-        <div class="mut">${dt(b.created_at)} · ${esc(b.author_name)} · приняли ${ok} из ${b.replies.length}${fail ? ` · не доставлено ${fail}` : ""}</div></div><span class="chev2" style="transform:rotate(${open ? 90 : 0}deg)">›</span></div>
-        ${open ? `<div style="margin-top:10px">${rows}${ok < b.replies.length - fail ? `<button class="btn" data-act="bc-remind:${b.id}" style="margin-top:10px" ${R.busy ? "disabled" : ""}>Напомнить не принявшим</button>` : ""}</div>` : ""}</div>`;
+        <div class="mut">${dt(b.created_at)} · ${esc(b.author_name)} · приняли ${ok} из ${b.replies.length}${fail ? ` · не доставлено ${fail}` : ""}</div></div><button class="lx" data-act="bc-del:${b.id}" title="Удалить рассылку из истории" aria-label="Удалить рассылку">🗑</button><span class="chev2" style="transform:rotate(${open ? 90 : 0}deg)">›</span></div>
+        ${open ? `<div class="lbody"><div class="lfull">${esc(b.body)}</div>${rows}<div class="lbtns">${ok < b.replies.length - fail ? `<button class="btn" data-act="bc-remind:${b.id}" ${R.busy ? "disabled" : ""}>Напомнить не принявшим</button>` : ""}<button class="btn no" data-act="bc-del:${b.id}">Удалить рассылку</button></div></div>` : ""}</div>`;
     }).join("");
     return `<div class="head"><h1>Рассылка</h1></div><div class="two">
       <div class="card side"><div class="dh" style="margin-top:0">Новая рассылка</div>
@@ -45,7 +45,7 @@
         <div class="picks">${people}</div>
         ${nobot.length ? `<div class="mut" style="margin-top:8px">Не запускали бота, написать нельзя: ${esc(nobot.map((e) => e.full_name).join(", "))}</div>` : ""}
         <div class="dh">Текст</div>
-        <textarea class="fld" id="bcBody" rows="7" placeholder="Что нужно сообщить" style="width:100%;resize:vertical;line-height:1.45">${esc(R.body)}</textarea>
+        <textarea class="fld bcta" id="bcBody" rows="7" placeholder="Что нужно сообщить">${esc(R.body)}</textarea>
         <div class="mut" style="margin-top:6px">Подпись добавится автоматически: «— ${esc(me?.full_name || "")}». Под сообщением будет кнопка «Принял(а)».</div>
         <button class="sm d" data-act="bc-send" style="margin-top:14px;padding:11px 22px" ${R.busy ? "disabled" : ""}>${R.busy ? "Отправляю…" : `Отправить (${R.sel.size})`}</button></div>
       <div class="card side"><div class="dh" style="margin-top:0">Последние рассылки</div>${hist || '<div class="mut">Рассылок пока не было</div>'}</div></div>`;
@@ -67,6 +67,16 @@
     const m = [...(R.members.get(pid) || [])].filter((id) => ids.has(id));
     const all = m.every((id) => R.sel.has(id));
     m.forEach((id) => (all ? R.sel.delete(id) : R.sel.add(id)));
+    A.render();
+  });
+  A.act("bc-del", async (id) => {
+    if (!confirm("Удалить рассылку из истории? Сообщения, которые уже пришли сотрудникам в Telegram, останутся у них.")) return;
+    try {
+      await Api.deleteBroadcast(id);
+      if (R.open === id) R.open = null;
+      await enter();
+      toast("🗑️ Рассылка удалена");
+    } catch (e) { toast("🚫 " + (e.message || e)); }
     A.render();
   });
   A.act("bc-open", (id) => { R.open = R.open === id ? null : id; A.render(); });

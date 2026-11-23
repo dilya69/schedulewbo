@@ -250,3 +250,31 @@ button:disabled{opacity:.5;cursor:default}
 .cex{border:1px solid #E1E4EB;background:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;padding:0;color:#3A4250}
 .cex:hover{background:#FDECEC;border-color:#F3B8B8;color:#B42318}.cex[data-ce^="edit"]:hover{background:var(--bg);border-color:#E1E4EB;color:var(--ink)}
 .cedit .fld{width:100%;flex:none;box-sizing:border-box;margin-top:4px}
+
+/* ---- списки: ровные карточки (рассылка и общие) ---- */
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:12px}
+.chip{display:flex;align-items:center;gap:8px;border-radius:12px;padding:0 12px;height:40px;min-width:0;text-align:left}
+.chip .chn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .mtag{margin:0;flex-shrink:0}
+.chip .chc{flex-shrink:0;min-width:24px;text-align:center;font-size:12px;font-weight:700;padding:2px 7px;border-radius:999px;background:#EEF0F6;color:#3A4250}
+.chip.on .chc{background:rgba(255,255,255,.2);color:#fff}
+.chip.on .mtag{background:#fff}
+.picks{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;max-height:320px;padding:2px 4px 2px 2px;margin-bottom:4px}
+.pick{height:42px;padding:0 12px;min-width:0;box-sizing:border-box}
+.pick span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick input{flex-shrink:0;width:16px;height:16px}
+.pick:hover{background:#F4F6FB}.pick.on:hover{background:#E6ECFD}
+.picks::-webkit-scrollbar{width:8px}.picks::-webkit-scrollbar-thumb{background:#D5DAE5;border-radius:8px}
+textarea.fld,.bcta{width:100%;box-sizing:border-box;font-family:inherit;line-height:1.5;resize:vertical;min-height:140px}
+.lcard{padding:0;overflow:hidden;background:#fff;transition:box-shadow .15s}
+.lcard:hover{box-shadow:0 4px 16px rgba(16,24,40,.07)}
+.lcard .lrow{padding:12px 14px;min-height:56px}
+.lcard .lrow b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lcard .lrow .mut{margin-top:2px;font-size:12.5px}
+.lx{border:0;background:none;width:32px;height:32px;border-radius:10px;font-size:15px;flex-shrink:0;opacity:.45}
+.lx:hover{background:#FDECEC;opacity:1}
+.lbody{padding:4px 14px 14px;border-top:1px solid #EEF0F4;background:#FAFBFD}
+.lfull{white-space:pre-wrap;font-size:13px;line-height:1.5;padding:10px 12px;margin:10px 0 8px;border-radius:10px;background:#fff;border:1px solid #EEF0F4;max-height:160px;overflow:auto}
+.lbody .dr{align-items:center;min-height:34px;box-sizing:border-box;padding:0 2px}
+.lbody .dr:last-of-type{border-bottom:0}
+.lbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}

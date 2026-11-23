@@ -134,6 +134,13 @@ const Api = (() => {
     return list.map((b) => ({ ...b, replies: (rows || []).filter((r) => r.broadcast_id === b.id) }));
   }
 
+  // удалить рассылку из истории (ответы уходят каскадом); сообщения в Telegram у людей остаются
+  async function deleteBroadcast(id) {
+    const { data, error } = await client.from("broadcasts").delete().eq("id", id).select("id");
+    if (error) throw error;
+    if (!data?.length) throw new Error("Не удалилось: нет права на удаление (нужно применить sql/migration_broadcasts_delete.sql)");
+  }
+
   // последняя рассылка со списком, кто отметился
   async function getLatestScheduleCheck() {
     const { data: c, error } = await client.from("schedule_checks").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -618,7 +625,7 @@ const Api = (() => {
 
   return {
     login, getCurrentEmployee, isReady, sendFileToMe,
-    getSyncLinks, addSyncLink, setSyncLinkEnabled, deleteSyncLink, runScheduleSync, sendScheduleCheck, getLatestScheduleCheck, getBroadcasts, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
+    getSyncLinks, addSyncLink, setSyncLinkEnabled, deleteSyncLink, runScheduleSync, sendScheduleCheck, getLatestScheduleCheck, getBroadcasts, deleteBroadcast, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,
     applyForShift, getMyPendingRequests, getPendingRequests, resolveRequest, markRequestApproved, rejectAllPendingRequests,
     getEmployees, getHelpChats, updateHelpChat, addEmployee, updateEmployee, deleteEmployee, hardDeleteEmployee, getEmployeeFullHistory,

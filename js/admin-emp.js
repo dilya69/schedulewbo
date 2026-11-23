@@ -11,7 +11,9 @@
   const isBoss = (e) => ["иван", "светлана"].includes(nm(e));
   const isYana = (e) => nm(e) === "яна";
   const safeUser = (u) => (/^[A-Za-z0-9_]{3,32}$/.test(String(u || "")) ? String(u) : "");
-  const E = { q: "" };
+  const E = { q: "", f: "all", pos: "", pvz: "" };
+  const sortKey = (e) => String(e?.real_name || e?.full_name || "").trim().toLowerCase().replace(/ё/g, "е");
+  const isTrainee = (e) => /стаж[её]р/i.test(e.position || "");
   const byId = (id) => S.employees.find((e) => e.id === id);
   const reload = async () => { S.employees = await Api.getEmployees(); };
   const bday = (e) => (e.birth_day && e.birth_month ? `${pad2(e.birth_day)}.${pad2(e.birth_month)}` : "");
@@ -32,14 +34,19 @@
   }
 
   function view() {
+    setTimeout(applySearch, 0);
     const act = S.employees.filter((e) => e.is_active !== false).sort((a, b) => {
       const pa = pinIdx(a), pb = pinIdx(b);
       if (pa >= 0 || pb >= 0) return (pa >= 0 ? pa : 99) - (pb >= 0 ? pb : 99);
-      return String(a.full_name).localeCompare(String(b.full_name), "ru");
+      return sortKey(a).localeCompare(sortKey(b), "ru");
     });
     const wait = S.employees.filter((e) => e.is_active === false);
-    const key = (e) => esc((e.full_name + " " + (e.real_name || "") + " " + (e.tg_username || "")).toLowerCase());
-    const rows = act.map((e) => `<tr data-key="${key(e)}"><td><b>${esc(fullName(e))}</b>${e.real_name ? `<div class="mut">в календаре: ${esc(e.full_name)}</div>` : ""}</td>
+    const key = (e) => esc((e.full_name + " " + (e.real_name || "") + " " + (e.tg_username || "") + " " + (e.phone || "") + " " + (e.position || "")).toLowerCase());
+    const pvzOf = {};
+    (S.shifts || []).forEach((sh) => { (pvzOf[sh.employee_id] = pvzOf[sh.employee_id] || new Set()).add(sh.pvz_id); });
+    const positions = [...new Set(act.map((e) => e.position || "Менеджер"))].sort((a, b) => a.localeCompare(b, "ru"));
+    const chip = (k, l) => `<button class="fchip${E.f === k ? " on" : ""}" data-act="emp-f:${k}">${l}</button>`;
+    const rows = act.map((e) => `<tr data-key="${key(e)}" data-tr="${isTrainee(e) ? 1 : 0}" data-adm="${e.is_admin ? 1 : 0}" data-cam="${e.camera_access ? 1 : 0}" data-pos="${esc(e.position || "Менеджер")}" data-pvz="${esc([...(pvzOf[e.id] || [])].join(","))}"><td><b>${esc(fullName(e))}</b>${e.real_name ? `<div class="mut">в календаре: ${esc(e.full_name)}</div>` : ""}</td>
       <td>${esc(e.position || "Менеджер")}</td>
       <td>${safeUser(e.tg_username) ? `<a class="lnk" href="https://t.me/${safeUser(e.tg_username)}" target="_blank" rel="noopener">@${safeUser(e.tg_username)}</a>` : '<span class="dash">—</span>'}</td>
       <td>${esc(e.phone || "") || '<span class="dash">—</span>'}</td><td>${badges(e)}</td><td class="num">${seen(e)}</td>
@@ -49,7 +56,11 @@
       <td class="acts"><button class="btn ok" data-act="emp-grant:${e.id}">Дать доступ</button><button class="btn" data-act="emp-edit:${e.id}">Изменить</button><button class="btn no" data-act="emp-fire:${e.id}">Удалить</button></td></tr>`).join("");
     return `<div class="head"><div class="ttl"><h1>Сотрудники</h1><span class="pill">${act.length} чел.</span></div>
       <div class="ag"><button class="p" data-act="emp-add">+ Добавить сотрудника</button></div></div>
-      <input class="fld" id="empSearch" placeholder="Поиск по имени или @username" value="${esc(E.q)}" style="max-width:420px;margin-bottom:14px;display:block">
+      <div class="efilters"><input class="fld" id="empSearch" placeholder="Поиск по имени, @username, телефону" value="${esc(E.q)}" style="max-width:340px">
+        ${chip("all", "Все")}${chip("tr", "Стажёры")}${chip("adm", "Админы")}${chip("cam", "Камеры")}
+        <select class="fld" id="empPos" style="max-width:190px"><option value="">Все должности</option>${positions.map((x) => `<option value="${esc(x)}"${E.pos === x ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>
+        <select class="fld" id="empPvz" style="max-width:240px"><option value="">Все ПВЗ (смены в ${A.MONTHS[S.month]})</option>${S.pvz.map((p) => `<option value="${esc(p.id)}"${E.pvz === p.id ? " selected" : ""}>${esc(p.name)} ${p.marketplace === "wb" ? "WB" : "Ozon"}</option>`).join("")}</select>
+        <span class="mut" id="empCnt"></span></div>
       <div class="card tcard"><table class="tbl pay" id="empTbl"><thead><tr><th>Сотрудник</th><th>Должность</th><th>Telegram</th><th>Телефон</th><th>Метки</th><th class="num">Последний вход</th><th></th></tr></thead>
       <tbody>${rows || '<tr><td colspan="7" class="empty">Нет сотрудников</td></tr>'}</tbody></table></div>
       ${wait.length ? `<h3 style="margin:24px 0 10px">Ожидают доступа · ${wait.length}</h3><div class="card tcard"><table class="tbl pay"><thead><tr><th>Сотрудник</th><th>Данные</th><th></th></tr></thead><tbody>${pend}</tbody></table></div>` : ""}`;
@@ -57,9 +68,23 @@
 
   function applySearch() {
     const q = E.q.toLowerCase().trim().replace(/^@/, "");
-    document.querySelectorAll("#empTbl tbody tr[data-key]").forEach((r) => { r.style.display = !q || r.dataset.key.includes(q) ? "" : "none"; });
+    let n = 0, all = 0;
+    document.querySelectorAll("#empTbl tbody tr[data-key]").forEach((r) => {
+      const d = r.dataset;
+      const ok = (!q || d.key.includes(q))
+        && (E.f === "all" || (E.f === "tr" && d.tr === "1") || (E.f === "adm" && d.adm === "1") || (E.f === "cam" && d.cam === "1"))
+        && (!E.pos || d.pos === E.pos)
+        && (!E.pvz || (d.pvz || "").split(",").includes(E.pvz));
+      r.style.display = ok ? "" : "none"; all++; if (ok) n++;
+    });
+    const c = document.getElementById("empCnt"); if (c) c.textContent = n === all ? "" : `${n} из ${all}`;
+    document.querySelectorAll(".fchip").forEach((b) => b.classList.toggle("on", b.dataset.act === "emp-f:" + E.f));
   }
   document.addEventListener("input", (e) => { if (e.target.id === "empSearch") { E.q = e.target.value; applySearch(); } });
+  document.addEventListener("change", (e) => {
+    if (e.target.id === "empPos") { E.pos = e.target.value; applySearch(); }
+    if (e.target.id === "empPvz") { E.pvz = e.target.value; applySearch(); }
+  });
 
   // ---- форма добавления / правки ----
   const $v = (id) => document.getElementById(id).value;
@@ -144,6 +169,7 @@
 
   A.section("emp", { view, enter: reload });
   A.act("emp-add", openAdd);
+  A.act("emp-f", (k) => { E.f = k; applySearch(); });
   A.act("emp-edit", openEdit);
   A.act("emp-fire", openFire);
   A.act("emp-grant", async (id) => {

@@ -1657,3 +1657,8 @@ button { color: inherit; }
 
 /* календарь шире: меньше боковых полей, чтобы именам хватало места */
 #tab1 .calendar-wrapper { margin: 0 -8px; }
+
+.emp-filters { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.emp-filters .fchip { border:1px solid var(--border, #e1e4eb); background:transparent; color:inherit; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:600; }
+.emp-filters .fchip.on { border-color:var(--accent); color:var(--accent); }
+.emp-filters select { flex:1; min-width:0; border:1px solid var(--border, #e1e4eb); background:transparent; color:inherit; border-radius:10px; padding:6px 10px; font-size:13px; }

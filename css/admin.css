@@ -191,3 +191,7 @@ button:disabled{opacity:.5;cursor:default}
 .rtip{position:fixed;transform:translateY(-50%);background:var(--ink);color:#fff;font-size:13px;font-weight:500;padding:6px 11px;border-radius:9px;white-space:nowrap;z-index:60;pointer-events:none;opacity:0;box-shadow:0 8px 24px rgba(16,24,40,.25)}
 .rtip.on{opacity:1}
 @media(max-width:1000px){.app.rail.pan{grid-template-columns:68px minmax(0,1fr)}}
+
+.efilters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px}
+.fchip{border:1px solid #E1E4EB;background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;color:#3A4250;cursor:pointer}
+.fchip:hover{background:#F4F6FB}.fchip.on{background:#E6ECFD;border-color:#6C86E8;color:#2748B8}

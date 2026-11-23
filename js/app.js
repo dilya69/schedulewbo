@@ -1660,18 +1660,24 @@ const App = (() => {
 
     // закреплены вверху списка (по порядку), остальные по алфавиту
     const PINNED = ["светлана", "иван", "яна"];
+    const sortKey = (e) => String((e && (e.real_name || e.full_name)) || "").trim().toLowerCase().replace(/ё/g, "е");
     const pinIndex = (e) => PINNED.indexOf(String(e.full_name || "").trim().toLowerCase());
     const active = state.employees.filter((e) => e.is_active !== false).slice().sort((a, b) => {
       const pa = pinIndex(a), pb = pinIndex(b);
       if (pa >= 0 || pb >= 0) return (pa >= 0 ? pa : 99) - (pb >= 0 ? pb : 99);
-      return String(a.full_name).localeCompare(String(b.full_name), "ru");
+      return sortKey(a).localeCompare(sortKey(b), "ru");
     });
     const pending = state.employees.filter((e) => e.is_active === false);
 
     if (countEl) countEl.textContent = `${active.length} чел.`;
+    const flt = document.getElementById("empFilters");
+    if (flt) {
+      flt.innerHTML = `<button class="fchip${empF.tr ? " on" : ""}" onclick="App.setEmpFilter('tr')">Стажёры</button>
+        <select id="empPvzSel" onchange="App.setEmpFilter('pvz', this.value)"><option value="">Все ПВЗ (смены в этом месяце)</option>${state.pvz.map((p) => `<option value="${p.id}"${empF.pvz === p.id ? " selected" : ""}>${escapeHtml(p.name)} ${p.marketplace === "wb" ? "WB" : "Ozon"}</option>`).join("")}</select>`;
+    }
 
     activeContainer.innerHTML = active.map((e) => `
-      <div class="employee-card collapsible${pinIndex(e) >= 0 ? " pinned" : ""}" onclick="App.toggleEmpCard(this, event)" data-name="${escapeHtml((e.full_name + " " + (e.real_name || "")).toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}">
+      <div class="employee-card collapsible${pinIndex(e) >= 0 ? " pinned" : ""}" onclick="App.toggleEmpCard(this, event)" data-name="${escapeHtml((e.full_name + " " + (e.real_name || "")).toLowerCase())}" data-tgusername="${escapeHtml((e.tg_username || "").toLowerCase())}" data-tr="${RE_TRAINEE.test(e.position || "") ? 1 : 0}" data-pvz="${[...new Set((state.shifts || []).filter((s) => s.employee_id === e.id).map((s) => s.pvz_id))].join(",")}">
         <div class="avatar" style="background:${colorForName(e.full_name)}; box-shadow:0 0 0 2px ${e.avatar_frame || DEFAULT_FRAME_COLOR};">${avatarInnerHtml(e, e.avatar_emoji || e.full_name[0] || "?")}</div>
         <div class="info">
           <div class="name">${escapeHtml(fullName(e))}${state.employee.is_admin && safeUser(e.tg_username) ? ` <span class="tg-handle" style="font-weight:400; font-size:12px; color:var(--text-secondary, #8e8e93);">@${safeUser(e.tg_username)}</span>` : ""}</div>
@@ -1707,6 +1713,7 @@ const App = (() => {
       }
     }
     refreshIcons();
+    if (empF.tr || empF.pvz) filterEmployees();
   }
 
   function openEmployeeScheduleModal(employeeId) {
@@ -1744,11 +1751,19 @@ const App = (() => {
     } catch (e) { toast("🚫 " + e.message); }
   }
 
+  const empF = { tr: false, pvz: "" };
+  function setEmpFilter(k, v) {
+    if (k === "tr") empF.tr = !empF.tr; else empF.pvz = v || "";
+    document.querySelectorAll("#empFilters .fchip").forEach((b) => b.classList.toggle("on", empF.tr));
+    filterEmployees();
+  }
   function filterEmployees() {
     const q = document.getElementById("searchInput").value.toLowerCase().trim().replace(/^@/, "");
     let visible = 0;
     document.querySelectorAll("#employeeList .employee-card").forEach((c) => {
-      const match = (c.dataset.name || "").includes(q) || (c.dataset.tgusername || "").includes(q);
+      const match = ((c.dataset.name || "").includes(q) || (c.dataset.tgusername || "").includes(q))
+        && (!empF.tr || c.dataset.tr === "1")
+        && (!empF.pvz || (c.dataset.pvz || "").split(",").includes(empF.pvz));
       c.style.display = match ? "flex" : "none";
       if (match) visible++;
     });
@@ -3278,7 +3293,7 @@ csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtD
     openDayShiftsModal, openDayViewModal, openShiftForm, _recalcAmount, _toggleShort, deleteShiftConfirm,
     openShiftRequestsModal, approveRequest, rejectRequest, rejectAllRequests,
     _filterEmpPicker, _selectEmp,
-    filterEmployees, openAddEmployeeModal, openEditEmployeeModal, callEmployee, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
+    filterEmployees, setEmpFilter, openAddEmployeeModal, openEditEmployeeModal, callEmployee, openDeleteEmployeeModal, hardDeleteNow, exportEmployeeHistory,
     openEmployeeScheduleModal, grantAccess, openChat, toggleEmpCard,
     changeAvatar, _pickAvatar, _pickTelegramPhoto, openAvatarFrameModal, _pickFrameColor, saveNotificationSettings,
     openPvzRateModal,

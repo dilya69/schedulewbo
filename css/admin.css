@@ -195,3 +195,19 @@ button:disabled{opacity:.5;cursor:default}
 .efilters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px}
 .fchip{border:1px solid #E1E4EB;background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;color:#3A4250;cursor:pointer}
 .fchip:hover{background:#F4F6FB}.fchip.on{background:#E6ECFD;border-color:#6C86E8;color:#2748B8}
+
+/* ---- выравнивание «Сегодня» и фильтров ПВЗ ---- */
+.tgrid{grid-template-columns:repeat(auto-fit,minmax(215px,1fr));align-items:stretch}
+.tg{display:grid;grid-template-rows:auto 1fr 1fr;gap:6px;padding:10px;box-shadow:none}
+.tgt{margin:0 2px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow{margin:0;min-height:44px;align-items:center;box-shadow:none!important;filter:none}
+.trow:hover{filter:none;background:#F4F6FB}
+.trow.empty{background:transparent;border:1px dashed #E1E4EB;border-left:4px solid transparent;color:var(--mut)}
+.trow .mtag{margin:0}
+.tpeople{align-items:center}
+.nets{gap:10px}
+.netrow{display:grid;grid-template-columns:48px repeat(5,minmax(0,1fr));gap:8px;align-items:center}
+.netrow .pill{justify-content:flex-start;min-width:0}
+.netrow .pill .pn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.netrow .pill .dot{flex-shrink:0}
+@media(max-width:1100px){.netrow{grid-template-columns:48px repeat(3,minmax(0,1fr))}}

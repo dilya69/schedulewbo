@@ -126,6 +126,10 @@ const Admin = (() => {
     .filter((t) => t && !MP_TOK.has(t)).map((t) => t.replace(/^к(\d+)$/, "$1")).join(" ");
   const addrLabel = (name) => String(name || "").replace(/(^|\s)(wb|ozon|вб|озон|wildberries)(?=\s|$)/gi, " ").replace(/\s+/g, " ").trim() || String(name || "");
 
+  const mpName = (p) => (p.marketplace === "wb" ? "WB" : "Ozon");
+  // имя ПВЗ без дубля площадки: «Тургенева Ozon» -> «Тургенева Ozon», «Тургенева» -> «Тургенева Ozon»
+  const pvzTitle = (p) => (/(^|\s)(wb|ozon|вб|озон|wildberries)(\s|$)/i.test(p.name || "") ? p.name : `${p.name} ${mpName(p)}`);
+
   function todayBlock() {
     const t = new Date();
     const k = ymd(t.getFullYear(), t.getMonth(), t.getDate());
@@ -144,8 +148,9 @@ const Admin = (() => {
     const people = new Set(list.filter((s) => s.employee_id).map((s) => s.employee_id)).size;
     const free = list.filter((s) => !s.employee_id).length;
     const cards = groups.map((g) => {
-      g.items.sort((a, b) => (a.marketplace === b.marketplace ? 0 : a.marketplace === "wb" ? -1 : 1));
-      const rows = g.items.map((p) => {
+      const slots = ["wb", "ozon"].map((net) => g.items.find((x) => x.marketplace === net) || { empty: true, marketplace: net });
+      const rows = slots.map((p) => {
+        if (p.empty) return `<div class="trow empty"><span class="mtag ${p.marketplace === "wb" ? "wb" : "ozon"}">${mpName(p)}</span><span class="tpeople"><span class="mut">—</span></span></div>`;
         const sh = list.filter((s) => s.pvz_id === p.id)
           .sort((a, b) => (a.employee_id ? 0 : 1) - (b.employee_id ? 0 : 1) || a.start_time.localeCompare(b.start_time));
         const chips = sh.map((s) => {
@@ -262,7 +267,7 @@ const Admin = (() => {
   function pvzTabs(net) {
     return S.pvz.filter((p) => p.marketplace === net).map((p) => {
       const on = p.id === S.pvzId;
-      return `<button class="pill" data-p="${p.id}" style="background:${on ? tint(p.color, 26) : "#fff"};border-color:${on ? p.color : "#E1E4EB"}"><i class="dot" style="background:${p.color}"></i>${esc(p.name)}</button>`;
+      return `<button class="pill" data-p="${p.id}" style="background:${on ? tint(p.color, 26) : "#fff"};border-color:${on ? p.color : "#E1E4EB"}"><i class="dot" style="background:${p.color}"></i><span class="pn">${esc(addrLabel(p.name))}</span></button>`;
     }).join("");
   }
 
@@ -297,14 +302,14 @@ const Admin = (() => {
     }).join("");
     const dow = WD[new Date(S.year, S.month, sel).getDay()];
 
-    return `<div class="head"><div class="ttl"><i class="dot" style="width:16px;height:16px;background:${c}"></i><h1>${MONTHS[S.month]} · ${esc(p.name)} ${p.marketplace === "wb" ? "WB" : "Ozon"}</h1>
+    return `<div class="head"><div class="ttl"><i class="dot" style="width:16px;height:16px;background:${c}"></i><h1>${MONTHS[S.month]} · ${esc(pvzTitle(p))}</h1>
       <div class="stp"><button data-m="-1" data-tip="Предыдущий месяц">‹</button><button data-today style="font-size:13px;padding:0 10px" data-tip="К сегодняшнему дню">Сегодня</button><button data-m="1" data-tip="Следующий месяц">›</button></div></div>
       <div class="ag"><button data-freemonth data-tip="Создать свободные смены на дни, где смен ещё нет">Создать свободные смены</button><button data-sync data-tip="Загрузить график из файла по ссылкам автоимпорта">Обновить из Excel</button></div></div>
       ${todayBlock()}<div class="nets"><div class="netrow"><span class="net">WB</span>${pvzTabs("wb")}</div><div class="netrow"><span class="net">Ozon</span>${pvzTabs("ozon")}</div></div>
       <div class="layout"><div><div class="sum"><span class="pill">${total} смен</span><span class="pill" data-tip="Смены без сотрудника, на них можно откликнуться" style="background:#FFF4DC;color:#7A4B00;border-color:#F0D79A">${free} свободных</span></div>
       <div class="card calbox" style="background:${tint(c, 10)}"><div class="grid" style="margin-bottom:6px">${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((x) => `<div class="dow">${x}</div>`).join("")}</div><div class="grid">${cells}</div></div></div>
       <div class="card side"><div style="display:flex;align-items:center;gap:8px"><i class="dot" style="background:${c}"></i><b style="font-size:16px">${dow}, ${sel} ${MONTHS_GEN[S.month]}</b></div>
-      <div class="mut" style="margin:2px 0 16px">${esc(p.name)} ${p.marketplace === "wb" ? "WB" : "Ozon"}</div>
+      <div class="mut" style="margin:2px 0 16px">${esc(pvzTitle(p))}</div>
       <div style="display:flex;gap:8px"><input class="fld" id="q" list="emps" value="${esc(S.q)}" placeholder="Имя, с 17, до 19, 2ч…" aria-label="Смена" autocomplete="off"><button class="sm d" data-add>Добавить</button></div>
       <datalist id="emps">${S.employees.filter((e) => e.is_active !== false).map((e) => `<option value="${esc(e.full_name)}">`).join("")}</datalist>
       <div style="margin:12px 0 6px;display:flex;gap:6px;flex-wrap:wrap">${QUICK.map((k) => `<button class="sm" data-q="${k[0]}" data-tip="${k[1]}">${k[0]}</button>`).join("")}</div>

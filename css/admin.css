@@ -36,13 +36,13 @@ h1{margin:0;font-size:28px;letter-spacing:-.025em}
 .calbox{padding:10px;border-radius:24px}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .dow{padding:6px 0;text-align:center;font-size:13px;font-weight:700;color:var(--mut)}
-.c{position:relative;padding:28px 7px 7px;display:flex;flex-direction:column;gap:4px;min-height:86px;cursor:pointer;border-radius:14px}
+.c{position:relative;padding:32px 8px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:150px;cursor:pointer;border-radius:14px}
 .c:hover{filter:brightness(.97)}
 .c .n{position:absolute;top:7px;right:9px;font-size:12px;font-weight:700;color:#2B3240}
 .c.dim .n{color:#6B7483;font-weight:500}
 .c.today .n{background:var(--ink);color:#fff;border-radius:9px;padding:0 7px}
-.ch{border-radius:9px;padding:3px 9px;font-size:13px;font-weight:600}
-.ch i{font-style:normal;font-weight:500;opacity:.75}
+.ch{box-sizing:border-box;width:100%;max-width:130px;border-radius:12px;padding:9px 10px;font-size:15px;line-height:1.25;font-weight:700;text-align:center;overflow-wrap:anywhere}
+.ch i{display:block;margin-top:3px;font-style:normal;font-size:13px;font-weight:600;opacity:.8}
 .ch.q{background:#fff!important;border:1px dashed #C99A3B;color:#7A4B00}
 .side{padding:20px}
 .fld{flex:1;min-width:0;border:1px solid #E1E4EB;border-radius:14px;padding:10px 14px;font-size:14px}

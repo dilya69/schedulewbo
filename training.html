@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/training.css?v=20261125a">
+<link rel="stylesheet" href="css/training.css?v=20261125b">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
@@ -29,19 +29,28 @@
     </div>
   </header>
 
-  <main class="main">
-    <section id="stage" class="stage"></section>
-    <aside id="notes" class="notes" aria-label="Заметки смены">
-      <div class="notes-head"><h2 class="display">Заметки смены</h2><button class="notes-close" id="notes-close" type="button" aria-label="Закрыть">✕</button></div>
-      <p class="notes-empty" id="notes-empty">Сюда попадают правила, которые ты узнаёшь по ходу смены.</p>
-      <ol id="notes-list" class="notes-list"></ol>
-    </aside>
-  </main>
+  <div id="world" class="world">
+    <canvas id="cv"></canvas>
+    <div id="goal" class="goal" hidden></div>
+    <div class="cross"></div>
+    <button id="phone-btn" class="phonebtn" type="button" hidden>📱 <span>Телефон</span></button>
+    <button id="ctx" class="ctx" type="button" hidden></button>
+    <div id="joy" class="joy" hidden><i></i></div>
+    <div id="help" class="helpbar" hidden>WASD: идти · зажми мышь: смотреть · E: действие · P: телефон</div>
+    <div id="dlg" class="dlg" hidden></div>
+    <div id="ov" class="ov" hidden><button id="ov-x" class="ov-x" type="button" hidden>✕ Убрать телефон</button><div id="ov-stage" class="stage"></div></div>
+  </div>
+  <aside id="notes" class="notes" aria-label="Заметки смены">
+    <div class="notes-head"><h2 class="display">Заметки смены</h2><button class="notes-close" id="notes-close" type="button" aria-label="Закрыть">✕</button></div>
+    <p class="notes-empty" id="notes-empty">Сюда попадают правила, которые ты узнаёшь по ходу смены.</p>
+    <ol id="notes-list" class="notes-list"></ol>
+  </aside>
 </div>
 
 <div id="veil" class="veil" hidden></div>
 <div id="toasts" class="toasts"></div>
 
+<script src="js/gl3d.js?v=20261125b"></script>
 <script src="js/config.js?v=20261110d"></script>
 <script src="js/api.js?v=20261125a"></script>
 <script>
@@ -64,7 +73,7 @@
   }
   window.__TRAINING_USER__ = name;
   const s = document.createElement("script");
-  s.src = "js/training-game.js?v=20261125a";
+  s.src = "js/training-3d.js?v=20261125b";
   s.onload = () => {
     document.getElementById("gate").hidden = true;
     document.getElementById("game").hidden = false;

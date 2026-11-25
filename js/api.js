@@ -623,7 +623,19 @@ const Api = (() => {
     if (error) throw error;
   }
 
+  // ---------- ОБУЧЕНИЕ (доступ выдаётся вручную, таблица training_access) ----------
+  async function hasTrainingAccess() {
+    const { data, error } = await client
+      .from("training_access")
+      .select("employee_id")
+      .eq("employee_id", currentEmployee.id)
+      .maybeSingle();
+    if (error) throw error;
+    return !!data;
+  }
+
   return {
+    hasTrainingAccess,
     login, getCurrentEmployee, isReady, sendFileToMe,
     getSyncLinks, addSyncLink, setSyncLinkEnabled, deleteSyncLink, runScheduleSync, sendScheduleCheck, getLatestScheduleCheck, getBroadcasts, deleteBroadcast, getPvzList, addPvz, updatePvz, deletePvz, bulkCreateFreeMonth,
     getShiftsForMonth, upsertShift, deleteShift, applySheetPlan,

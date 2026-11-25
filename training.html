@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>Смена на ПВЗ — обучение</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/training.css?v=20261125a">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="gate" class="gate"><div><div class="gate-dot"></div><p id="gate-msg">Загрузка…</p></div></div>
+
+<div id="game" class="shell" hidden>
+  <header class="hud">
+    <div class="hud-brand"><span class="hud-dot"></span><span class="display">Смена на ПВЗ</span></div>
+    <div class="hud-mid">
+      <span class="chip" id="chip-clock" title="Игровое время">🕘 <b id="clock">07:00</b></span>
+      <span class="chip chip-soft" id="chip-step">Утро</span>
+    </div>
+    <div class="hud-right">
+      <span class="chip" title="Очки"><span class="star">★</span> <b id="score">100</b></span>
+      <button class="chip chip-btn notes-toggle" id="notes-toggle" type="button">📒 <b id="notes-count">0</b></button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section id="stage" class="stage"></section>
+    <aside id="notes" class="notes" aria-label="Заметки смены">
+      <div class="notes-head"><h2 class="display">Заметки смены</h2><button class="notes-close" id="notes-close" type="button" aria-label="Закрыть">✕</button></div>
+      <p class="notes-empty" id="notes-empty">Сюда попадают правила, которые ты узнаёшь по ходу смены.</p>
+      <ol id="notes-list" class="notes-list"></ol>
+    </aside>
+  </main>
+</div>
+
+<div id="veil" class="veil" hidden></div>
+<div id="toasts" class="toasts"></div>
+
+<script src="js/config.js?v=20261110d"></script>
+<script src="js/api.js?v=20261125a"></script>
+<script>
+// Вход и проверка доступа. Саму игру подгружаем только тем, у кого есть доступ.
+(async () => {
+  const msg = (t) => { document.getElementById("gate-msg").textContent = t; };
+  const local = location.protocol === "file:" || ["localhost", "127.0.0.1"].includes(location.hostname);
+  const dev = local && new URLSearchParams(location.search).has("dev");
+  let name = "";
+  if (!dev) {
+    try {
+      const r = await Api.login();
+      if (r.demo) return msg("Открой обучение через бота в Telegram.");
+      if (!(await Api.hasTrainingAccess())) return msg("Обучение пока открыто не всем. Скоро и до тебя дойдёт.");
+      const e = r.employee || {};
+      name = e.real_name || e.full_name || "";
+    } catch (e) {
+      return msg(e && e.message ? e.message : "Не получилось войти. Попробуй открыть ещё раз.");
+    }
+  }
+  window.__TRAINING_USER__ = name;
+  const s = document.createElement("script");
+  s.src = "js/training-game.js?v=20261125a";
+  s.onload = () => {
+    document.getElementById("gate").hidden = true;
+    document.getElementById("game").hidden = false;
+    window.startTraining();
+  };
+  s.onerror = () => msg("Не загрузилась игра. Проверь интернет и открой ещё раз.");
+  document.body.appendChild(s);
+})();
+</script>
+</body>
+</html>

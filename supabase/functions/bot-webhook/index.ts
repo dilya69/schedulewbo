@@ -26,6 +26,8 @@ const BOT_TOKEN = Deno.env.get("BOT_TOKEN")!;
 const WEBAPP_URL = Deno.env.get("WEBAPP_URL")!;
 // Страница админки для компьютера (admin.html рядом с index.html). Можно переопределить секретом ADMIN_URL.
 const ADMIN_URL = Deno.env.get("ADMIN_URL") ?? new URL("admin.html", WEBAPP_URL).toString();
+// Страница обучающей игры (training.html рядом с index.html). Можно переопределить секретом TRAINING_URL.
+const TRAINING_URL = Deno.env.get("TRAINING_URL") ?? new URL("training.html", WEBAPP_URL).toString();
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TZ = Deno.env.get("APP_TZ") ?? "Europe/Moscow";
@@ -56,6 +58,7 @@ const BTN_MY = "🧑 Мои смены";
 const BTN_SEEN = "🕒 Последний вход"; // только для админов
 const BTN_LOST = "🔎 Потеряшки"; // только для админов
 const BTN_BCAST = "📢 Рассылка"; // только для админов
+const BTN_TRAIN = "🎓 Обучение"; // только у тех, кому выдан доступ (таблица training_access)
 const BTN_ADMIN = "🖥 Админка"; // только для админов; открывает сообщение с инлайн-кнопкой (из кнопки клавиатуры Telegram не передаёт данные для входа)
 const REPLY_KB = {
   keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }]],
@@ -66,6 +69,11 @@ const REPLY_KB_ADMIN = {
   keyboard: [[{ text: BTN_SCHEDULE }, { text: BTN_MY }], [{ text: BTN_SEEN }, { text: BTN_LOST }], [{ text: BTN_BCAST }, { text: BTN_ADMIN }]],
   resize_keyboard: true,
   is_persistent: true,
+};
+// Клавиатура под полем ввода; кнопка «Обучение» добавляется тем, у кого есть доступ.
+const replyKb = (isAdmin: boolean, training: boolean) => {
+  const base = isAdmin ? REPLY_KB_ADMIN : REPLY_KB;
+  return training ? { ...base, keyboard: [...base.keyboard, [{ text: BTN_TRAIN }]] } : base;
 };
 // Инлайн-меню: у админов добавляется кнопка «Последний вход».
 const mainKb = (isAdmin: boolean) =>
@@ -153,6 +161,17 @@ async function getEmployee(tgId: number) {
   if (!Number.isInteger(tgId)) return null;
   const rows = await db(`employees?select=id,full_name,is_admin,camera_access&tg_id=eq.${tgId}&is_active=eq.true&limit=1`);
   return rows[0] ?? null;
+}
+
+// Есть ли у человека доступ к обучению. Если таблицы training_access ещё нет или запрос упал, считаем, что доступа нет.
+async function hasTraining(tgId: number): Promise<boolean> {
+  if (!Number.isInteger(tgId)) return false;
+  try {
+    const rows = await db(`employees?select=id,training_access!inner(employee_id)&tg_id=eq.${tgId}&is_active=eq.true&limit=1`);
+    return rows.length > 0;
+  } catch (_) {
+    return false;
+  }
 }
 
 // Помечаем время последней активности сотрудника в боте (если поля last_seen_at ещё нет — ошибка игнорируется).
@@ -1622,13 +1641,14 @@ Deno.serve(async (req) => {
     const text: string = msg.text ?? "";
 
     // админ пишет текст рассылки (после выбора получателей)
-    if (text && !text.startsWith("/") && ![BTN_SCHEDULE, BTN_MY, BTN_SEEN, BTN_LOST, BTN_BCAST, BTN_ADMIN].includes(text)) {
+    if (text && !text.startsWith("/") && ![BTN_SCHEDULE, BTN_MY, BTN_SEEN, BTN_LOST, BTN_BCAST, BTN_ADMIN, BTN_TRAIN].includes(text)) {
       const me = await getEmployee(msg.from?.id);
       if (me?.is_admin && (await bcHandleText(msg, me))) return new Response("ok");
     }
 
     if (text.startsWith("/start")) {
       const me = await getEmployee(msg.from?.id);
+      const training = me ? await hasTraining(msg.from?.id) : false;
       await touchSeen(msg.from?.id);
       // кнопка меню рядом с полем ввода всегда открывает обычное приложение (возвращает её, если была другая)
       await tg("setChatMenuButton", {
@@ -1644,11 +1664,22 @@ Deno.serve(async (req) => {
               [{ text: "📅 Открыть график", web_app: { url: WEBAPP_URL } }],
               [{ text: "📋 График в чате", callback_data: "n" }],
               ...(me?.is_admin ? [[{ text: "🖥 Админка (для компьютера)", web_app: { url: ADMIN_URL } }]] : []),
+              ...(training ? [[{ text: "🎓 Обучение", web_app: { url: TRAINING_URL } }]] : []),
             ],
           },
         },
       );
-      await sendMessage(chatId, "Кнопки меню всегда под полем ввода 👇", { reply_markup: me?.is_admin ? REPLY_KB_ADMIN : REPLY_KB });
+      await sendMessage(chatId, "Кнопки меню всегда под полем ввода 👇", { reply_markup: replyKb(!!me?.is_admin, training) });
+    } else if (text.startsWith("/training") || text === BTN_TRAIN) {
+      const me = await getEmployee(msg.from?.id);
+      if (me && (await hasTraining(msg.from?.id))) {
+        await touchSeen(msg.from?.id);
+        await sendMessage(chatId, "🎓 <b>Обучение</b>\nИгра-тренажёр: смена на ПВЗ от утра до приёмки поставки. Работает и на телефоне, и на компьютере.", {
+          reply_markup: { inline_keyboard: [[{ text: "Открыть обучение", web_app: { url: TRAINING_URL } }]] },
+        });
+      } else {
+        await sendMessage(chatId, "Обучение пока открыто не всем. Скоро и до тебя дойдёт.");
+      }
     } else if (text.startsWith("/admin") || text === BTN_ADMIN) {
       const me = await getEmployee(msg.from?.id);
       if (me?.is_admin) {

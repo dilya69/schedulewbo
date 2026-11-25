@@ -81,7 +81,9 @@
 
   function toast(msg, tone) {
     const t = el("div", "toast " + (tone || ""), msg);
-    $("#toasts").append(t);
+    const box = $("#toasts");
+    while (box.children.length >= 2) box.firstElementChild.remove();
+    box.append(t);
     setTimeout(() => t.remove(), 4200);
   }
   function floatText(txt) {
@@ -235,10 +237,10 @@
       <rect width="800" height="460" fill="url(#bk2)"/>
       <rect x="30" y="90" width="210" height="290" rx="4" fill="#2c3345"/><rect x="560" y="90" width="210" height="290" rx="4" fill="#2c3345"/>
       <path d="M30 90h210l-80 290H30z" fill="#fff" opacity=".08"/><path d="M560 90h210v290H640z" fill="#fff" opacity=".08"/>
-      <rect x="282" y="104" width="236" height="286" rx="6" fill="#1c2233"/>
-      <rect x="292" y="114" width="106" height="266" fill="${open ? "url(#warm)" : "url(#glass)"}"/><rect x="402" y="114" width="106" height="266" fill="${open ? "url(#warm)" : "url(#glass)"}"/>
+      <rect x="282" y="116" width="236" height="274" rx="6" fill="#1c2233"/>
+      <rect x="292" y="126" width="106" height="254" fill="${open ? "url(#warm)" : "url(#glass)"}"/><rect x="402" y="126" width="106" height="254" fill="${open ? "url(#warm)" : "url(#glass)"}"/>
       <rect x="386" y="230" width="8" height="64" rx="4" fill="#cfd3dc"/><rect x="406" y="230" width="8" height="64" rx="4" fill="#cfd3dc"/>
-      <rect x="338" y="36" width="124" height="44" rx="22" fill="#ff2fb0"/><text x="400" y="66" font-family="Unbounded,sans-serif" font-size="22" font-weight="700" fill="#fff" text-anchor="middle">ПВЗ</text>
+      <rect x="338" y="58" width="124" height="44" rx="22" fill="#ff2fb0"/><text x="400" y="88" font-family="Unbounded,sans-serif" font-size="22" font-weight="700" fill="#fff" text-anchor="middle">ПВЗ</text>
       <circle cx="568" cy="226" r="34" fill="#ff2fb0"/><text x="568" y="222" font-family="Onest,sans-serif" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">режим</text><text x="568" y="240" font-family="Onest,sans-serif" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">с 10:00</text>
       <rect y="380" width="800" height="80" fill="url(#tiles)"/>
       <g><rect x="40" y="396" width="190" height="16" rx="3" fill="#a8452f"/><rect x="40" y="416" width="190" height="10" rx="3" fill="#8e3624"/><rect x="62" y="426" width="14" height="22" fill="#c9c9cf"/><rect x="200" y="426" width="14" height="22" fill="#c9c9cf"/></g>

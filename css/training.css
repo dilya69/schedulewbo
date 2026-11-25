@@ -143,9 +143,9 @@ button:disabled { cursor: default; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
 /* ---------- телефон ---------- */
-.phoneWrap { height: 100%; display: grid; place-items: center; }
-.phone { position: relative; width: min(100%, 372px); height: 100%; max-height: 740px; background: #09090c; border-radius: 40px; padding: 9px; box-shadow: 0 34px 70px -24px rgba(35, 17, 58, .75), inset 0 0 0 2px #2a2a31; }
-.screen { position: relative; height: 100%; border-radius: 32px; background: #101014; color: #f4f4f7; overflow: hidden; display: flex; flex-direction: column; font-family: "Onest", system-ui, sans-serif; }
+.phoneWrap { height: 100%; display: grid; grid-template-rows: minmax(0, 1fr); place-items: center; }
+.phone { position: relative; width: min(100%, 372px); height: 100%; min-height: 0; max-height: 740px; background: #09090c; border-radius: 40px; padding: 9px; box-shadow: 0 34px 70px -24px rgba(35, 17, 58, .75), inset 0 0 0 2px #2a2a31; }
+.screen { position: relative; height: 100%; min-height: 0; border-radius: 32px; background: #101014; color: #f4f4f7; overflow: hidden; display: flex; flex-direction: column; font-family: "Onest", system-ui, sans-serif; }
 .notch { position: absolute; top: 8px; left: 50%; width: 74px; height: 8px; border-radius: 8px; background: #000; transform: translateX(-50%); z-index: 5; opacity: .85; }
 .apphead { padding: 26px 16px 12px; text-align: center; background: #1a1a1f; border-radius: 0 0 26px 26px; flex: none; position: relative; }
 .apphead h3 { font-size: 18px; font-weight: 700; }
@@ -294,6 +294,7 @@ button:disabled { cursor: default; }
 }
 /* ---------- телефон ---------- */
 @media (max-width: 979px) {
+  .toasts { bottom: auto; top: 64px; }
   .notes { position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-height: 72dvh; border-radius: 24px 24px 0 0; transform: translateY(105%); transition: transform .25s; z-index: 55; }
   .notes.open { transform: none; }
   .notes-toggle { display: inline-flex; }

@@ -133,6 +133,17 @@ Deno.serve(async (req) => {
       employee = created;
     }
 
+    // человек сменил (или убрал) @username в Telegram — обновляем, tg_id при этом не меняется
+    const username = tgUser.username ?? null;
+    if (employee.tg_username !== username) {
+      const { error: unameErr } = await supabase
+        .from("employees")
+        .update({ tg_username: username })
+        .eq("id", employee.id);
+      if (unameErr) console.error("username sync", unameErr); // не мешаем входу
+      else employee.tg_username = username;
+    }
+
     if (!employee.is_active) {
       return new Response(
         JSON.stringify({ error: "not_whitelisted", message: "Обратитесь к администратору для получения доступа" }),

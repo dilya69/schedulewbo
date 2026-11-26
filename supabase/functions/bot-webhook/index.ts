@@ -192,6 +192,27 @@ async function touchSeen(tgId: number) {
   }
 }
 
+// Человек сменил (или убрал) @username — обновляем по tg_id. Запись меняется, только если ник другой.
+async function syncUsername(from: any) {
+  if (!from || from.is_bot || !Number.isInteger(from.id)) return;
+  const u: string | null = from.username ?? null;
+  const changed = u ? `or=(tg_username.is.null,tg_username.neq.${encodeURIComponent(u)})` : "tg_username=not.is.null";
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/employees?tg_id=eq.${from.id}&${changed}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ tg_username: u }),
+    });
+    if (!r.ok) console.error("syncUsername", r.status, await r.text());
+  } catch (e) {
+    console.error("syncUsername", e);
+  }
+}
+
 async function loadPvz(onlyActive = true) {
   const filter = onlyActive ? "&is_active=eq.true" : "";
   return await db(`pvz?select=id,name,marketplace,sort_order,default_start_time,default_end_time${filter}&order=sort_order.asc`);
@@ -1623,6 +1644,8 @@ Deno.serve(async (req) => {
   const update = await req.json();
 
   try {
+    await syncUsername(update.callback_query?.from ?? update.message?.from);
+
     if (update.callback_query) {
       await handleCallback(update.callback_query);
       return new Response("ok");

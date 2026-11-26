@@ -343,3 +343,7 @@ button:disabled { cursor: default; }
   .ov .stage.phone-mode .sheet { position: static; }
 }
 @media (max-width: 979px) { .phonebtn { bottom: 14px; padding: 12px 14px; } .ctx { bottom: 82px; } .helpbar { bottom: 130px; } }
+.sidebtn { position: absolute; right: 12px; bottom: 74px; z-index: 5; padding: 11px 14px; border-radius: 16px; background: #fff; color: var(--ink); font-weight: 700; font-size: 14px; display: inline-flex; gap: 8px; align-items: center; box-shadow: 0 12px 26px -12px rgba(35, 17, 58, .6); }
+.sidebtn.on { background: var(--mag); color: #fff; }
+.sidebtn.ladder { bottom: 128px; background: #ffe45c; }
+@media (max-width: 979px) { .sidebtn { bottom: 70px; } .sidebtn.ladder { bottom: 122px; } .sidebtn span { display: none; } .sidebtn.ladder span { display: inline; } }

@@ -23,40 +23,43 @@
   const COMMUTE = 40;
 
   const ITEMS = [
-    { id: "dress", em: "👗", name: "Платье летнее миди, хлопок", brand: "Lume", art: "6120457", tag: "3104", code: "2000412380417", cell: 27, zone: "racks" },
     { id: "tee", em: "👕", name: "Футболка базовая оверсайз", brand: "Norda", art: "5198832", tag: "2215", code: "2000377120065", cell: 34, zone: "racks" },
+    { id: "socks", em: "🧦", name: "Носки хлопок, набор 5 пар", brand: "Lume", art: "4471209", tag: "1180", code: "2000377120072", cell: 34, zone: "racks" },
+    { id: "cap", em: "🧢", name: "Бейсболка летняя", brand: "Norda", art: "6620318", tag: "2290", code: "2000377120089", cell: 34, zone: "racks" },
     { id: "pillow", em: "🛏️", name: "Подушка анатомическая 50×70", brand: "Sonnet", art: "7741056", tag: "9087", code: "2000551980213", cell: 426, zone: "top" },
-    { id: "buds", em: "🎧", name: "Наушники беспроводные", brand: "Tonic", art: "4402719", tag: "6620", code: "2000298450771", cell: 807, zone: "pockets" },
     { id: "pencil", em: "✏️", name: "Карандаши чернографитные, 12 шт", brand: "Grafo", art: "3365120", tag: "1040", code: "2000610320148", cell: 801, zone: "pockets" },
     { id: "kettle", em: "🫖", name: "Чайник электрический 1,7 л", brand: "Kuhne", art: "8820643", tag: "7712", code: "2000610320155", cell: 801, zone: "container", tape: "container", note: "Из того же заказа, что и карандаши. Габариты не позволяют положить его в кармашек." },
     { id: "org", em: "🧺", name: "Органайзер для хранения, 3 шт", brand: "Domus", art: "5530981", tag: "4418", code: "2000463310982", cell: 703, zone: "hall" },
     { id: "sweat", em: "🧶", name: "Свитшот оверсайз, графит", brand: "Norda", art: "6014477", tag: "3350", code: "2000702260334", cell: 31, zone: "racks", defect: true, note: "На рукаве видна затяжка и пятно. Это брак." },
-    { id: "micro", em: "micro", name: "Микроволновая печь 20 л", brand: "Kuhne", art: "9012235", tag: "5071", code: "2000840110906", cell: 150, zone: "desk", tape: "desk", big: true, note: "Габаритный товар в большой коробке." },
+    { id: "vase", em: "🏺", name: "Ваза стеклянная высокая", brand: "Domus", art: "7712045", tag: "5560", code: "2000840110913", cell: 901, zone: "gab", tape: "gab", big: true, note: "Очень длинная: в обычную ячейку не поместится." },
+    { id: "micro", em: "micro", name: "Микроволновая печь 20 л", brand: "Kuhne", art: "9012235", tag: "5071", code: "2000840110906", cell: 902, zone: "gab", tape: "gab", big: true, note: "Габаритный товар в большой коробке." },
+    { id: "tire", em: "🛞", name: "Шина автомобильная R16", brand: "Rolsen", art: "3318890", tag: "8801", code: "2000840110920", cell: 903, zone: "gab", tape: "gab", big: true, note: "Габаритный товар, не в коробке." },
+    { id: "bike", em: "🚲", name: "Велосипед городской", brand: "Velo", art: "2209941", tag: "9034", code: "2000840110937", cell: 904, zone: "gab", tape: "gab", big: true, note: "Габаритный товар, не в коробке." },
   ];
 
-  const ZONES = {
-    racks: { e: "🗄️", t: "Стеллажи 1–300", s: "у стен и в центре, по 5 полок" },
-    top: { e: "⬆️", t: "Верхние полки 301+", s: "самая верхняя доска стеллажа" },
-    pockets: { e: "🧺", t: "Кармашки 800-е", s: "тканевые, у стеллажа" },
-    hall: { e: "🪑", t: "Зал: ячейки 700-е", s: "у рабочего стола, с твоей стороны" },
-    container: { e: "📥", t: "Контейнер под кармашками", s: "для того, что не влезает в кармашек" },
-    desk: { e: "📍", t: "Справа от стола", s: "место для габаритных товаров" },
-  };
+
 
   const NOTES = {
     time: ["Время", "Работа начинается в 9:00, а для клиентов пункт открывается в 10:00. Приезжай к 9: за этот час нужно сделать все дела. Всегда рассчитывай своё время и не опаздывай."],
     key: ["Как попасть на пункт", "Заранее продумай, как будешь открываться: ключ, замок, кто может помочь. Сделай это до смены, а не у закрытой двери."],
     ship: ["Сколько поставки ждёт", "Перед началом смены можно посмотреть, сколько поставок тебя ждёт: «Ещё» → «Пункт выдачи» → «Поставки» → «Отгрузки»."],
-    stack: ["Коробки на складе", "Коробки переносим на склад и кладём по три штуки друг на друга."],
+    stack: ["Коробки на складе", "Коробки переносим на склад и кладём по три штуки друг на друга, не выше."],
+    hold: ["Осмотр товара", "Бери товар в руки, переверни и найди розовый стикер с ШК. Сканируем только его. Стикер на большой коробке не сканируем."],
+    sound: ["Звук при приёмке", "Во время приёмки не носи наушники и включи звук приложения погромче: оно называет номер ячейки, и на камерах должно быть слышно, какую ячейку ты принял и куда несёшь товар."],
     point: ["Проверь пункт в приложении", "Перед приёмкой посмотри адрес пункта вверху экрана. Если вошёл не на тот, перезайди: «Ещё» → «Пункт выдачи» → нужный пункт → «Выбрать»."],
     sticker: ["Что сканируем", "Сканируем только розовый стикер с ШК на самом товаре: он уникальный у каждого товара. Стикер на большой коробке не сканируем."],
-    cells: ["Нумерация ячеек", "1–300: стеллажи у стен и в центре, внутри стеллажа номера идут сверху вниз. С 301: самые верхние полки. 700-е: в зале у рабочего стола, с твоей стороны. 800-е: тканевые кармашки."],
+    cells: ["Нумерация ячеек", "1–300: стеллажи у стен и в центре, внутри стеллажа номера идут сверху вниз. С 301: самые верхние полки. 700-е: маленькие картонные ячейки в зале у рабочего стола. 800-е: тканевые кармашки."],
     pocket: ["Кармашки 800-е", "Маленькие товары кладём в кармашки, чтобы они не потерялись."],
     tape: ["Большой товар из заказа с мелочью", "Если часть заказа не влезает в кармашек, подпиши товар малярным скотчем с номером ячейки (например, 801) и положи в контейнер под кармашками."],
-    big: ["Габаритные товары", "Габарит, например микроволновку, сканируем по ШК и принимаем, потом ставим справа от стола и подписываем малярным скотчем так, чтобы надпись было видно."],
+    big: ["Габаритки", "Габаритные товары (микроволновка, шина, велосипед) сканируем по ШК и принимаем, потом подписываем малярным скотчем так, чтобы надпись было видно, и ставим к габариткам у стены, не посреди зала."],
+    long: ["Длинные товары", "Если товар не влезает в ячейку (например, длинная ваза), подпиши его скотчем и убери к габариткам."],
+    ladder: ["Стремянка", "К высоким ячейкам берём стремянку, а закончив, сразу убираем: не оставляем в проходе."],
+    cams: ["Камеры на складе", "По углам склада стоят камеры: если товар потеряется, его найдут по записи. Не захламляй верхние ячейки и не закрывай обзор камер."],
+    heap: ["Много товаров на одну ячейку", "Если на одну ячейку отсканировалось много товаров, не оставляй их кучей. «Ещё» → «Пункт выдачи» → «Склад» → «Проверить товары»: отсканируй каждый, сложи в коробку и поставь коробку на ячейку."],
     brak: ["Брак", "Осматривай товар. Если есть брак, отметь его галочкой «Брак» в карточке товара."],
-    done: ["Конец приёмки", "Приложение не пришлёт уведомление, что приёмка завершена. Проверяй сам: на столе не должно остаться неразобранных товаров."],
+    done: ["Конец приёмки", "Приложение не пришлёт уведомление, что приёмка завершена. Проверяй сам: в коробках и у входа не должно остаться неразобранных товаров."],
   };
+
 
   /* ---------- состояние ---------- */
   let S, P, busy;
@@ -154,7 +157,7 @@
   /* ---------- звук и голос ---------- */
   let ac;
   function beep() {
-    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = 1180; g.gain.value = 0.05; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.09); } catch (_) {}
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = 1180; g.gain.value = 0.25; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.09); } catch (_) {}
   }
   const ONES = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять", "десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать", "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"];
   const TENS = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"];
@@ -169,8 +172,8 @@
     try {
       const ss = window.speechSynthesis; if (!ss) return;
       ss.cancel();
-      const u = new SpeechSynthesisUtterance("Ячейка " + words(n));
-      u.lang = "ru-RU"; u.rate = 0.95;
+      const u = new SpeechSynthesisUtterance(words(n));
+      u.lang = "ru-RU"; u.rate = 0.95; u.volume = 1;
       ss.speak(u);
     } catch (_) {}
   }
@@ -199,14 +202,15 @@
         h = head("Принять", pointTitle()) + `<div class="appbody"><div class="empty-scan"><div class="qr">▥</div><h4>Отсканируйте товар<br>или QR курьера</h4><p>Если у товара отсутствует код, нажмите на 3 точки и далее на «Проблемы с QR»</p></div></div>` + bar("Сканировать") + nav(0);
         break;
       case "cam": {
-        const tray = (S.unpacked ? P.tray : []).map((it, i) => {
+        const hit = R.hold && R.hold.item ? R.hold.item : null;
+        const tray = (hit ? [hit] : []).map((it, i) => {
           let out = `<button class="tcard" data-a="item" data-id="${it.id}" type="button"><span class="em">${emoji(it)}</span>${sticker(it.code)}<span class="nm">${it.name}</span></button>`;
-          if (i === P.decoyAt) out = `<button class="tcard big" data-a="decoy" type="button"><span class="bigbox"><i></i></span><span class="nm">Большая коробка, стикер поставки</span></button>` + out;
+          if (i === 0) out = `<button class="tcard big" data-a="decoy" type="button"><span class="bigbox"><i></i></span><span class="nm">Большая коробка, стикер поставки</span></button>` + out;
           return out;
         }).join("");
         h = `<div class="apphead"><button class="back" data-a="back" type="button" aria-label="Назад">‹</button><h3>Принять</h3><span class="torch">🔦</span></div>
           <div class="appbody"><div class="cam"><div class="frame"><i></i><span class="scanline"></span></div><p>Наведите на QR</p></div>
-          <div class="tray-title">${!S.unpacked ? "Товары пока в коробках. Занеси коробки на склад, и они окажутся на столе приёмки." : P.tray.length ? "На столе лежат товары. Нажми на стикер, чтобы отсканировать." : "На столе больше нет товаров."}</div>
+          <div class="tray-title">${hit ? "Товар в руках. Нажми на розовый стикер ШК, чтобы отсканировать. Стикер на коробке не сканируем." : "Возьми товар в руки: достань его из коробки на складе или возьми габаритный товар у входа."}</div>
           <div class="tray">${tray}</div></div>` + nav(0);
         break;
       }
@@ -231,15 +235,28 @@
       case "point":
         h = head("Пункт выдачи", "", true) + `<div class="appbody"><div class="mlist">
           <button class="mrow sel" data-a="points" type="button"><span class="ic">🏬</span><span class="t">${pointTitle()}</span><span class="chev">›</span></button>
-          <button class="mrow" data-a="later" type="button"><span class="ic">🏅</span><span class="t">Рейтинг ПВЗ</span><span class="chev">›</span></button>
+          <button class="mrow" data-a="later" type="button"><span class="ic">🏅</span><span class="t">Рейтинг ПВЗ</span><b style="margin-right:8px">4.99</b><span class="chev">›</span></button>
           <button class="mrow" data-a="later" type="button"><span class="ic">🔓</span><span class="t">Электронный замок</span><span class="chev">›</span></button>
           <button class="mrow" data-a="later" type="button"><span class="ic">📊</span><span class="t">Статистика ПВЗ</span><span class="chev">›</span></button>
           <button class="mrow" data-a="ships" type="button"><span class="ic">🗃️</span><span class="t">Поставки</span><span class="chev">›</span></button>
-          <button class="mrow" data-a="later" type="button"><span class="ic">🛒</span><span class="t">Склад</span><span class="chev">›</span></button></div></div>` + nav(3);
+          <button class="mrow" data-a="stock" type="button"><span class="ic">🛒</span><span class="t">Склад</span><span class="chev">›</span></button></div></div>` + nav(3);
         break;
       case "points":
         h = head("Выбор пункта", "", true) + `<div class="appbody"><div class="mlist">${POINTS.map((p) => `<button class="mrow ${P.sel === p.id ? "sel" : ""}" data-a="pick" data-id="${p.id}" type="button"><span class="ic">🏬</span><span class="t">${p.title}${p.id === P.point ? "<small>Сейчас выбран</small>" : ""}</span></button>`).join("")}</div></div>` + bar("Выбрать", !P.sel) + nav(3);
         break;
+      case "stock": {
+        const cells = {}; P.done.forEach((d) => { (cells[d.item.cell] = cells[d.item.cell] || []).push(d); });
+        const keys = Object.keys(cells).map(Number).sort((x, y) => x - y);
+        h = head("Склад", pointTitle(), true) + `<div class="appbody"><div class="mlist">${keys.length ? keys.map((k) => { const op = P.openCell === k, many = cells[k].length >= 3;
+          return `<button class="mrow ${op ? "sel" : ""}" data-a="cellopen" data-id="${k}" type="button"><span class="ic">▭</span><span class="t"><b>${k}</b> <span style="color:#a7a7b5;font-weight:500">${cells[k].length} шт</span></span><span class="chev">${op ? "⌃" : "⌄"}</span></button>` + (op ? `${many ? `<button class="mrow" data-a="check" type="button"><span class="ic">🔍</span><span class="t" style="color:#c49bff">Проверить товары</span></button>` : ""}${cells[k].map((d) => `<div class="drow"><div class="th">${emoji(d.item)}</div><div><div class="a">${d.item.art}<b>${d.item.tag}</b></div><div class="n">${d.item.name}</div></div></div>`).join("")}` : ""); }).join("") : `<p style="color:#8c8c98;text-align:center;padding:24px 8px">На складе пока ничего нет. Принятые товары появятся здесь по ячейкам.</p>`}</div></div>` + nav(3);
+        break;
+      }
+      case "check": {
+        const items = P.done.filter((d) => d.item.cell === P.openCell).map((d) => d.item);
+        const hb = R.hold && R.hold.cbox ? R.hold : null;
+        h = head("Проверить товары", "Ячейка " + P.openCell, true) + `<div class="appbody"><p style="color:#8c8c98;font-size:13.5px;line-height:1.45;margin-bottom:10px">${hb ? "Отсканируй каждый товар и сложи его в коробку." : "Сначала возьми пустую коробку на столе приёмки."}</p>${items.map((it) => `<div class="drow"><div class="th">${emoji(it)}</div><div><div class="a">${it.art}<b>${it.tag}</b></div><div class="n">${it.name}</div></div><div class="c">${P.chk && P.chk[it.id] ? "✓" : `<button class="btnp" style="padding:8px 12px;font-size:13px" data-a="chk" data-id="${it.id}" type="button">▥ ШК</button>`}</div></div>`).join("")}</div>` + nav(3);
+        break;
+      }
       case "ships":
         h = head("Отгрузки", pointTitle(), true) + `<div class="appbody">
           ${[["Сегодня", "2 / 2", "23 / 23", "≈310 / ≈310"], ["Вчера", "3 / 3", "22 / 22", "≈390 / ≈390"], ["Позавчера", "3 / 3", "21 / 21", "≈340 / ≈340"]].map(([d, a, b, c]) => `<div class="ship"><h4>${d}</h4>
@@ -255,17 +272,16 @@
 
   function sheetText() {
     const left = P.tray.length;
-    if (S.unpacked && !P.tray.length && P.placed && ["accept", "cam", "result"].includes(P.screen)) return `<div class="say">Последний товар лежит на месте. На столе больше ничего нет.</div><div class="row-end"><button class="btn" data-s="finish" type="button">Закончить приёмку →</button></div>`;
+    if (!P.tray.length && P.placed && S.heapDone && ["accept", "cam", "result"].includes(P.screen)) return `<div class="say">Последний товар лежит на месте. В коробках и у входа больше ничего нет.</div><div class="row-end"><button class="btn" data-s="finish" type="button">Закончить приёмку →</button></div>`;
     if (P.screen === "accept") return `<div class="say">Приложение открыто. Проверь адрес пункта и начни приёмку. Твой пункт сегодня: <b>${POINT_OK.title}</b>.${P.point === "nek" ? "<small>Пункт выбран верно.</small>" : ""}</div>`;
     if (P.screen === "more") return `<div class="say">Раздел «Ещё». Здесь меняют пункт выдачи.</div>`;
     if (P.screen === "point") return `<div class="say">Адрес пункта вверху. Нажми на него, чтобы сменить. В «Поставках» видно, сколько всего ждёт.</div>`;
     if (P.screen === "points") return `<div class="say">Выбери пункт, на котором работаешь сегодня, и нажми «Выбрать».</div>`;
     if (P.screen === "ships") return `<div class="say">Здесь видно, сколько отгрузок, коробок и товаров ждёт. Смотри это перед началом смены, чтобы спланировать время.</div>`;
-    if (P.screen === "cam" && !S.unpacked) return `<div class="say">Сканировать пока нечего: коробки ещё у входа. Сначала занеси их на склад.</div>`;
-    if (P.screen === "cam") return left ? `<div class="say">Сканируем розовый стикер ШК на самом товаре. Осталось отсканировать: <b>${left}</b>.</div>` : `<div class="say">Всё отсканировано и разложено.</div><div class="row-end"><button class="btn" data-s="finish" type="button">Закончить приёмку →</button></div>`;
+        if (P.screen === "cam") return left ? `<div class="say">Сканируем розовый стикер ШК на самом товаре. Осталось отсканировать: <b>${left}</b>.</div>` : `<div class="say">Всё отсканировано и разложено.</div><div class="row-end"><button class="btn" data-s="finish" type="button">Закончить приёмку →</button></div>`;
     if (P.screen === "result") {
       if (!P.placed) return `<div class="say">Приложение показало ячейку <b>${P.cur.cell}</b> и озвучило её. Можно осмотреть товар, а потом отнеси его в ячейку.</div><div class="row-end"><button class="btn" data-s="place" type="button">Взять товар и отнести в ячейку ${P.cur.cell} →</button></div>`;
-      return left ? `<div class="say">Товар в ячейке. Сканируй следующий. Осталось: <b>${left}</b>.</div>` : `<div class="say">Последний товар лежит на месте. На столе больше ничего нет.</div><div class="row-end"><button class="btn" data-s="finish" type="button">Закончить приёмку →</button></div>`;
+      return left ? `<div class="say">Товар в ячейке. Сканируй следующий. Осталось: <b>${left}</b>.</div>` : `<div class="say">Последний товар лежит на месте. В коробках и у входа больше ничего нет.</div><div class="row-end"><button class="btn" data-s="finish" type="button">Закончить приёмку →</button></div>`;
     }
     return "";
   }
@@ -284,7 +300,17 @@
   async function onPhoneAction(a, ds) {
     if (busy) return;
     switch (a) {
-      case "back": P.screen = ({ points: "point", point: "more", ships: "point", cam: P.cur ? "result" : "accept" })[P.screen] || "accept"; break;
+      case "back": P.screen = ({ points: "point", point: "more", ships: "point", stock: "point", check: "stock", cam: P.cur ? "result" : "accept" })[P.screen] || "accept"; break;
+      case "stock": P.screen = "stock"; break;
+      case "cellopen": P.openCell = P.openCell === +ds.id ? null : +ds.id; break;
+      case "check": P.screen = "check"; P.chk = {}; break;
+      case "chk": {
+        if (!(R.hold && R.hold.cbox)) { toast("Сначала возьми пустую коробку на столе приёмки.", "bad"); return; }
+        beep(); tick(1); P.chk = P.chk || {}; if (!P.chk[ds.id]) { P.chk[ds.id] = true; R.hold.n++; }
+        const need = P.done.filter((d) => d.item.cell === P.openCell).length;
+        if (R.hold.n >= need) { R.hold.full = true; toast("Все товары в коробке. Поставь её на ячейку " + P.openCell, "good"); setGoal("Отнеси коробку и поставь её на ячейку " + P.openCell); }
+        break;
+      }
       case "nav0": P.screen = P.cur ? "result" : "accept"; break;
       case "nav3": P.screen = "more"; break;
       case "nav1": case "nav2": toast("Этот раздел будет в следующих уроках."); return;
@@ -308,7 +334,7 @@
         await oops(3, "Не тот стикер", "Стикер на большой коробке не сканируем. Сканируем только розовый стикер с ШК на самом товаре: он уникальный у каждого товара.");
         learn("sticker"); busy = false; return;
       case "item": {
-        const it = P.tray.find((x) => x.id === ds.id); if (!it) return;
+        const it = R.hold && R.hold.item; if (!it || it.id !== ds.id) { toast("Возьми этот товар в руки.", "bad"); return; }
         busy = true; beep(); tick(1);
         if (P.point !== "nek") {
           if (!S.blindScan) {
@@ -317,7 +343,6 @@
           } else toast("Пункт всё ещё не тот. Смени его в «Ещё» → «Пункт выдачи».", "bad");
           P.screen = "accept"; busy = false; renderPhone(); return;
         }
-        P.tray = P.tray.filter((x) => x.id !== it.id);
         P.cur = it; P.brak = false; P.placed = false; P.screen = "result";
         P.counts[it.cell] = (P.counts[it.cell] || 0) + 1;
         learn("sticker");
@@ -336,155 +361,239 @@
   }
 
   /* ================= 3D-МИР ================= */
-  const R = { active: false, doorOpen: 0, doorTarget: 0, stage: "title", frozen: false, cut: false, hold: null, carried: [], pads: [0, 0, 0], moved: 0, placed: [], keyPlan: false, tasya: null, t: 0, keyShow: false };
+  const GLM = window.GL3D.M;
+  const R = { active: false, doorOpen: 0, doorTarget: 0, stage: "title", cut: false, hold: null, t: 0, tasya: null, keyShow: false, boxes: [], stacks: [[], [], []], hall: [], placed: [], ladder: { up: false, x: 0, z: 0, nx: 0, nz: 1 }, lift: 0, inspect: false, rot: { y: 0.3, x: 0.15 }, emptyBoxes: 0, cars: [], people: [] };
   let E, cv, T = [], COLL = [], LB = {}, STK = {}, TAPE = {}, built = false, raf = 0, last = 0;
   const PAD = [[0.8, -9.6], [2.2, -9.6], [3.6, -9.6]];
-  const BOXES = [0, 1, 2, 3, 4, 5].map((i) => [-5.6 + (i % 3) * 1.05, -1.4 - Math.floor(i / 3) * 1.0]);
+  const HALLBOX = [[2.1, -1.3], [3.2, -1.3], [4.3, -1.3], [2.7, -2.4]];
+  const BOXDEF = [["tee", "socks", "cap"], ["pillow", "pencil"], ["kettle", "org"], ["sweat", "vase"]];
+  const BIGPOS = { micro: [5.9, -1.5, 0], tire: [5.9, -2.7, 0.2], bike: [5.0, -3.6, 0] };
   const TABLE = { x: -4.2, z: -9.6, y: 0.83 };
-  const ICOL = { dress: [1, 0.5, 0.65], tee: [0.3, 0.75, 0.75], pillow: [0.85, 0.9, 1], buds: [0.25, 0.25, 0.3], pencil: [1, 0.85, 0.3], kettle: [0.7, 0.78, 0.9], org: [0.85, 0.7, 0.5], sweat: [0.35, 0.36, 0.42], micro: [0.82, 0.84, 0.88] };
-  const isize = (it) => (it.big ? [0.52, 0.34, 0.42] : [0.3, 0.22, 0.26]);
-  const band = (n) => (n <= 300 ? "racks" : n < 700 ? "top" : n < 800 ? "hall" : "pockets");
-  const C = { w: [0.97, 0.96, 0.99], pink: [1, 0.36, 0.72], mag: [0.76, 0.09, 0.56], plum: [0.3, 0.12, 0.5], pur: [0.52, 0.28, 0.82], grey: [0.62, 0.64, 0.7], dg: [0.33, 0.35, 0.42], kr: [0.82, 0.62, 0.38], gl: [0.14, 0.17, 0.26], wood: [0.7, 0.5, 0.32], gr: [0.4, 0.72, 0.38], blue: [0.28, 0.38, 0.65], sky: [0.7, 0.85, 1] };
+  const GAB = { x: 6.35, z: -6.0 };
+  const band = (n) => (n >= 900 ? "gab" : n <= 300 ? "racks" : n < 700 ? "top" : n < 800 ? "hall" : "pockets");
+  const C = { w: [0.97, 0.96, 0.99], pink: [1, 0.36, 0.72], mag: [0.76, 0.09, 0.56], plum: [0.3, 0.12, 0.5], pur: [0.52, 0.28, 0.82], grey: [0.62, 0.64, 0.7], dg: [0.33, 0.35, 0.42], kr: [0.82, 0.62, 0.38], gl: [0.14, 0.17, 0.26], wood: [0.7, 0.5, 0.32], gr: [0.4, 0.72, 0.38], blue: [0.28, 0.38, 0.65], dark: [0.12, 0.12, 0.15] };
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const byId = (id) => ITEMS.find((i) => i.id === id);
+  function lab(txt, w, h, o) { const k = txt + "|" + w + "|" + h + ((o && o.k) || ""); return LB[k] || (LB[k] = E.label(txt, w, h, o || { bg: "#f7f4ea", fg: "#2a1740", border: "#bdb6a4" })); }
 
-  function lab(txt, w, h, o) { const k = txt + "|" + w + "|" + h + (o && o.k || ""); return LB[k] || (LB[k] = E.label(txt, w, h, o || { bg: "#f7f4ea", fg: "#2a1740", border: "#bdb6a4" })); }
+  /* внешний вид предметов: части [x,y,z, sx,sy,sz, цвет, поворот вокруг Z], стикер ШК [x,y,z,w,h] на передней (+Z) стороне */
+  const dsk = [0.2, 0.2, 0.24], lt = [0.72, 0.74, 0.8];
+  const VIS = {
+    tee: { p: [[0, 0, 0, 0.32, 0.26, 0.06, [0.3, 0.75, 0.78]]], s: [0, 0, 0.031, 0.15, 0.12], sc: 1.5 },
+    socks: { p: [[0, 0, 0, 0.26, 0.2, 0.07, [0.95, 0.9, 0.6]]], s: [0, 0, 0.036, 0.13, 0.1], sc: 1.7 },
+    cap: { p: [[0, 0, 0, 0.28, 0.2, 0.13, [0.25, 0.32, 0.6]], [0, -0.09, 0.14, 0.26, 0.02, 0.12, [0.2, 0.26, 0.5]]], s: [0, 0.02, 0.066, 0.13, 0.1], sc: 1.5 },
+    pillow: { p: [[0, 0, 0, 0.5, 0.34, 0.16, [0.85, 0.9, 1]]], s: [0, 0, 0.081, 0.16, 0.12], sc: 1.2 },
+    pencil: { p: [[0, 0, 0, 0.2, 0.14, 0.05, [1, 0.85, 0.3]]], s: [0, 0, 0.026, 0.1, 0.08], sc: 2 },
+    kettle: { p: [[0, 0, 0, 0.24, 0.26, 0.2, [0.7, 0.78, 0.9]], [0, 0.16, 0, 0.1, 0.06, 0.1, dsk]], s: [0, -0.02, 0.101, 0.12, 0.1], sc: 1.5 },
+    org: { p: [[0, 0, 0, 0.34, 0.26, 0.2, [0.85, 0.7, 0.5]]], s: [0, 0, 0.101, 0.15, 0.12], sc: 1.3 },
+    sweat: { p: [[0, 0, 0, 0.34, 0.28, 0.06, [0.4, 0.41, 0.48]]], s: [0, 0, 0.031, 0.15, 0.12], sc: 1.4 },
+    vase: { p: [[0, -0.05, 0, 0.13, 0.36, 0.13, [0.6, 0.85, 0.95]], [0, 0.2, 0, 0.07, 0.2, 0.07, [0.55, 0.8, 0.9]]], s: [0, -0.08, 0.066, 0.09, 0.08], sc: 1.1 },
+    micro: { p: [[0, 0, 0, 0.5, 0.32, 0.4, [0.82, 0.84, 0.88]], [-0.07, 0, 0.201, 0.3, 0.22, 0.01, dsk], [0.18, 0.05, 0.201, 0.07, 0.07, 0.01, lt]], s: [0.15, -0.09, 0.203, 0.1, 0.08], sc: 0.9 },
+    tire: { p: [[0, 0, 0, 0.58, 0.58, 0.2, [0.15, 0.15, 0.18]], [0, 0, 0, 0.58, 0.58, 0.2, [0.15, 0.15, 0.18], 0.785], [0, 0, 0.101, 0.3, 0.3, 0.02, lt], [0, 0, 0.11, 0.1, 0.1, 0.02, [0.4, 0.4, 0.45]]], s: [0.18, -0.18, 0.103, 0.12, 0.09], sc: 0.8 },
+    bike: { p: [[-0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14]], [-0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14], 0.785], [-0.42, -0.1, 0.01, 0.34, 0.34, 0.05, [0.9, 0.9, 0.95]], [-0.42, -0.1, 0.01, 0.34, 0.34, 0.05, [0.9, 0.9, 0.95], 0.785], [0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14]], [0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14], 0.785], [0.42, -0.1, 0.01, 0.34, 0.34, 0.05, [0.9, 0.9, 0.95]], [0.42, -0.1, 0.01, 0.34, 0.34, 0.05, [0.9, 0.9, 0.95], 0.785], [0, 0.06, 0, 0.7, 0.04, 0.05, [0.9, 0.3, 0.45], 0.0], [0.1, 0.0, 0, 0.5, 0.04, 0.05, [0.9, 0.3, 0.45], 0.9], [-0.18, 0.0, 0, 0.4, 0.04, 0.05, [0.9, 0.3, 0.45], -1.1], [0.36, 0.14, 0, 0.3, 0.04, 0.05, [0.2, 0.2, 0.25], 1.3], [-0.2, 0.2, 0, 0.16, 0.04, 0.07, [0.15, 0.15, 0.18]], [0.38, 0.3, 0, 0.04, 0.04, 0.3, [0.15, 0.15, 0.18]]], s: [0, 0.0, 0.03, 0.12, 0.09], sc: 0.55 },
+  };
+  const FLOORY = { tee: 0.03, socks: 0.035, cap: 0.07, pillow: 0.08, pencil: 0.025, kettle: 0.1, org: 0.1, sweat: 0.03, vase: 0.2, micro: 0.16, tire: 0.29, bike: 0.35 };
+
+  /* наклейка ШК: белая, QR и штрихкоды, цифры, розовая надпись */
+  function skDraw(ctx, x, y, w, h, code) {
+    ctx.fillStyle = "#fff"; ctx.fillRect(x, y, w, h);
+    let sd = +code.slice(-6) || 7; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    const qr = (qx, qy, n, c) => { const cs = n / 11; for (let i = 0; i < 11; i++) for (let j = 0; j < 11; j++) { const e = (i < 3 && j < 3) || (i > 7 && j < 3) || (i < 3 && j > 7); if (e ? (i % 2 === 0 || j % 2 === 0) && !(i === 1 && j === 1) : r() > 0.5) { ctx.fillStyle = "#222"; ctx.fillRect(qx + i * cs, qy + j * cs, cs + 0.5, cs + 0.5); } } };
+    qr(x + 6, y + 6, 22); qr(x + w - 28, y + 6, 22); qr(x + 6, y + h - 28, 22); qr(x + w - 28, y + h - 28, 22);
+    ctx.fillStyle = "#222"; for (let i = 0; i < 30; i++) { const bw = 1 + r() * 2.4; ctx.fillRect(x + 32 + i * 2.5, y + 7, bw, 20); ctx.fillRect(x + 32 + i * 2.5, y + h - 27, bw, 20); }
+    qr(x + 34, y + 33, 44);
+    ctx.fillStyle = "#e0309f"; ctx.font = "700 20px Onest, Arial, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillText("пвз", x + w - 50, y + 54);
+    ctx.fillStyle = "#222"; ctx.font = "700 11px Onest, Arial, sans-serif"; ctx.fillText(code.slice(2, 9), x + 80, y + 68); ctx.fillText(code.slice(9, 13), x + 80, y + 82);
+  }
+
+  function lab2(txt, w, h, o) { return lab(txt, w, h, o); }
 
   function buildWorld() {
     E = new window.GL3D.Engine(cv);
-    const L = E.light; L.fog = [0.72, 0.86, 1]; L.fogN = 40; L.fogF = 120; L.amb = 0.8; L.sunI = 0.4; L.sun = [0.4, 0.9, 0.5];
-    E.repeatTex("floor", 128, (c, s) => { c.fillStyle = "#ebe8f1"; c.fillRect(0, 0, s, s); c.strokeStyle = "#cdc8d9"; c.lineWidth = 4; c.strokeRect(0, 0, s, s); c.fillStyle = "rgba(255,255,255,.4)"; c.fillRect(8, 8, 50, 50); });
-    E.repeatTex("tile", 128, (c, s) => { c.fillStyle = "#d8cdb8"; c.fillRect(0, 0, s, s); c.strokeStyle = "#b9ad95"; c.lineWidth = 3; for (let i = 0; i < 2; i++) { c.strokeRect(0, i * 64, 128, 64); c.beginPath(); c.moveTo(i ? 32 : 96, i * 64); c.lineTo(i ? 32 : 96, i * 64 + 64); c.stroke(); } });
-    E.repeatTex("brick", 128, (c, s) => { c.fillStyle = "#f0ece6"; c.fillRect(0, 0, s, s); c.strokeStyle = "#cfc7bb"; c.lineWidth = 3; for (let r = 0; r < 4; r++) { c.strokeRect(0, r * 32, 128, 32); for (let k = 0; k < 2; k++) { const x = (r % 2 ? 32 : 0) + k * 64; c.beginPath(); c.moveTo(x, r * 32); c.lineTo(x, r * 32 + 32); c.stroke(); } } });
-    E.repeatTex("grass", 128, (c, s) => { c.fillStyle = "#79c26a"; c.fillRect(0, 0, s, s); for (let i = 0; i < 260; i++) { c.fillStyle = Math.random() < 0.5 ? "#6bb35c" : "#88cf78"; c.fillRect(Math.random() * s, Math.random() * s, 4, 4); } });
-    const F = E.batch("flat"), FL = E.batch("floor"), TL = E.batch("tile"), BR = E.batch("brick"), GR = E.batch("grass"), AT = E.batch("atlas");
+    const L = E.light; L.fog = [0.74, 0.87, 1]; L.fogN = 45; L.fogF = 135; L.amb = 0.82; L.sunI = 0.4; L.sun = [0.4, 0.9, 0.5];
+    E.repeatTex("floor", 128, (c, s) => { c.fillStyle = "#e8e5ee"; c.fillRect(0, 0, s, s); c.strokeStyle = "#c9c4d6"; c.lineWidth = 4; c.strokeRect(0, 0, s, s); c.fillStyle = "rgba(255,255,255,.4)"; c.fillRect(8, 8, 50, 50); });
+    E.repeatTex("tile", 128, (c, s) => { c.fillStyle = "#d9cfba"; c.fillRect(0, 0, s, s); c.strokeStyle = "#b9ad95"; c.lineWidth = 3; for (let i = 0; i < 2; i++) { c.strokeRect(0, i * 64, 128, 64); c.beginPath(); c.moveTo(i ? 32 : 96, i * 64); c.lineTo(i ? 32 : 96, i * 64 + 64); c.stroke(); } });
+    E.repeatTex("brick", 128, (c, s) => { c.fillStyle = "#f1ede7"; c.fillRect(0, 0, s, s); c.strokeStyle = "#d1c9bd"; c.lineWidth = 3; for (let r = 0; r < 4; r++) { c.strokeRect(0, r * 32, 128, 32); for (let k = 0; k < 2; k++) { const x = (r % 2 ? 32 : 0) + k * 64; c.beginPath(); c.moveTo(x, r * 32); c.lineTo(x, r * 32 + 32); c.stroke(); } } });
+    E.repeatTex("grass", 128, (c, s) => { c.fillStyle = "#6fbb62"; c.fillRect(0, 0, s, s); for (let i = 0; i < 260; i++) { c.fillStyle = Math.random() < 0.5 ? "#62ab56" : "#7fc96f"; c.fillRect(Math.random() * s, Math.random() * s, 4, 4); } });
+    E.repeatTex("road", 128, (c, s) => { c.fillStyle = "#4a4d57"; c.fillRect(0, 0, s, s); for (let i = 0; i < 160; i++) { c.fillStyle = Math.random() < 0.5 ? "#434650" : "#555964"; c.fillRect(Math.random() * s, Math.random() * s, 3, 3); } c.fillStyle = "#f2e8a0"; c.fillRect(0, 60, 64, 8); });
+    const F = E.batch("flat"), FL = E.batch("floor"), TL = E.batch("tile"), BR = E.batch("brick"), GR = E.batch("grass"), RD = E.batch("road"), AT = E.batch("atlas");
     const add = (b, x0, y0, z0, x1, y1, z1, col, o, collide) => { b.box(x0, y0, z0, x1, y1, z1, col, o); if (collide) COLL.push({ x0, z0, x1, z1 }); };
+    const sign = (cx, cy, cz, w, h, face, text, k, bg, fg, px) => AT.label(cx, cy, cz, w, h, face, lab(text, px || 256, Math.round((px || 256) * h / w), { k, bg, fg: fg || "#fff" }));
 
-    /* земля */
-    add(GR, -60, -0.3, -45, 60, 0, 70, C.w, { uv: 3, ao: 1, top: 1 });
+    /* земля, дорожки, дорога */
+    add(GR, -90, -0.3, -45, 90, 0, 62, C.w, { uv: 3, ao: 1, top: 1 });
     add(TL, -2.4, -0.3, -0.1, 2.4, 0.03, 54, C.w, { uv: 1.5, ao: 1, top: 1 });
     add(TL, -9, -0.3, 0, 9, 0.03, 4.5, C.w, { uv: 1.5, ao: 1, top: 1 });
+    add(TL, -90, -0.3, 54, 90, 0.04, 57, C.w, { uv: 1.5, ao: 1, top: 1 });
+    add(RD, -90, -0.3, 57, 90, 0.02, 68, C.w, { uv: 4, ao: 1, top: 1 });
+    add(GR, -90, -0.3, 68, 90, 0, 120, C.w, { uv: 3, ao: 1, top: 1 });
     /* здание ПВЗ */
     add(FL, -7, -0.3, -20, 7, 0.02, -0.3, C.w, { uv: 1.2, ao: 1, top: 1 });
-    add(BR, -7.3, 0, -0.3, -1.3, 3.6, 0, C.w, { uv: 2, ao: 1 }, true);
-    add(BR, 1.3, 0, -0.3, 7.3, 3.6, 0, C.w, { uv: 2, ao: 1 }, true);
-    add(BR, -1.3, 2.5, -0.3, 1.3, 3.6, 0, C.w, { uv: 2, ao: 1 });
-    add(F, -7.3, 0, -0.36, -1.3, 3.6, -0.3, [1, 0.62, 0.84]); add(F, 1.3, 0, -0.36, 7.3, 3.6, -0.36 + 0.06, [1, 0.62, 0.84]); add(F, -1.3, 2.5, -0.36, 1.3, 3.6, -0.3, [1, 0.62, 0.84]);
-    add(F, -7.3, 0, -20.3, -7, 3.6, 0, [0.95, 0.94, 0.98], {}, true); add(F, 7, 0, -20.3, 7.3, 3.6, 0, [0.95, 0.94, 0.98], {}, true);
-    add(F, -7, 0, -20.3, 7, 3.6, -20, [0.93, 0.93, 0.97], {}, true);
-    add(F, -7, 0, -8.3, 4, 3.6, -8, [1, 0.7, 0.88], {}, true); add(F, 6.5, 0, -8.3, 7, 3.6, -8, [1, 0.7, 0.88], {}, true); add(F, 4, 2.6, -8.3, 6.5, 3.6, -8, [1, 0.7, 0.88]);
-    add(F, -7.3, 3.6, -20.3, 7.3, 3.9, 0, [0.4, 0.42, 0.5]);
-    add(F, -7, 3.58, -20, 7, 3.62, -0.3, [0.99, 0.99, 1], { ao: 1 });
+    add(BR, -7.3, 0, -0.3, -1.3, 3.6, 0, C.w, { uv: 2, ao: 1 }, true); add(BR, 1.3, 0, -0.3, 7.3, 3.6, 0, C.w, { uv: 2, ao: 1 }, true); add(BR, -1.3, 2.5, -0.3, 1.3, 3.6, 0, C.w, { uv: 2, ao: 1 });
+    add(F, -7, 0, -0.34, -1.3, 3.6, -0.3, [1, 0.66, 0.86]); add(F, 1.3, 0, -0.34, 7, 3.6, -0.3, [1, 0.66, 0.86]); add(F, -1.3, 2.5, -0.34, 1.3, 3.6, -0.3, [1, 0.66, 0.86]);
+    add(F, -7.3, 0, -20.3, -7, 3.6, 0, [0.95, 0.94, 0.98], {}, true); add(F, 7, 0, -20.3, 7.3, 3.6, 0, [0.95, 0.94, 0.98], {}, true); add(F, -7, 0, -20.3, 7, 3.6, -20, [0.93, 0.93, 0.97], {}, true);
+    add(F, -7, 0, -8.3, 4, 3.6, -8, [1, 0.72, 0.89], {}, true); add(F, 6.5, 0, -8.3, 7, 3.6, -8, [1, 0.72, 0.89], {}, true); add(F, 4, 2.6, -8.3, 6.5, 3.6, -8, [1, 0.72, 0.89]);
+    add(F, -7.3, 3.6, -20.3, 7.3, 3.9, 0, [0.4, 0.42, 0.5]); add(F, -7, 3.58, -20, 7, 3.6, -0.3, [0.99, 0.99, 1], { ao: 1 });
     COLL.push({ x0: -1.3, z0: -0.4, x1: 1.3, z1: 0.05, on: () => R.doorOpen < 0.5 });
-    /* вывеска и часы у входа */
-    add(F, -2.6, 3.0, 0, 2.6, 3.75, 0.18, C.mag);
-    AT.label(0, 3.38, 0.19, 4.6, 0.62, "+z", lab("ПВЗ · пункт выдачи", 512, 70, { k: "sg", bg: "#e0309f", fg: "#fff" }));
-    add(F, 2.2, 1.35, 0, 3.4, 2.55, 0.1, [1, 0.45, 0.78]);
-    AT.label(2.8, 1.95, 0.11, 1.0, 1.0, "+z", lab("Часы работы\n10:00–21:00", 160, 160, { k: "hrs", bg: "#ff5cb8", fg: "#fff", fs: 21 }));
-    /* дверь (рама) */
+    /* потолочные светильники */
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) add(F, -4 + i * 4 - 0.6, 3.54, -2.2 - j * 4 - 0.25, -4 + i * 4 + 0.6, 3.58, -2.2 - j * 4 + 0.25, [1, 1, 1], { ao: 1, top: 1 });
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) add(F, -4.5 + i * 4.5 - 0.7, 3.54, -10.5 - j * 4 - 0.2, -4.5 + i * 4.5 + 0.7, 3.58, -10.5 - j * 4 + 0.2, [1, 1, 1], { ao: 1, top: 1 });
+    /* вывеска, часы, дверь, окна */
+    add(F, -2.6, 3.0, 0, 2.6, 3.75, 0.18, C.mag); sign(0, 3.38, 0.19, 4.6, 0.62, "+z", "ПВЗ · пункт выдачи", "sg", "#e0309f", "#fff", 512);
+    add(F, 2.2, 1.35, 0, 3.4, 2.55, 0.1, [1, 0.45, 0.78]); sign(2.8, 1.95, 0.11, 1.0, 1.0, "+z", "Часы работы\n10:00–21:00", "hrs", "#ff5cb8", "#fff", 160);
     add(F, -1.3, 0, 0, -1.2, 2.5, 0.12, C.dg); add(F, 1.2, 0, 0, 1.3, 2.5, 0.12, C.dg);
-    /* стойка, ноутбук */
+    sign(-4.2, 1.8, 0.01, 1.2, 0.5, "+z", "Заходи!", "wl", "#7a3fc6", "#fff", 192);
+    /* зал: стойка и рабочее место */
     add(F, -3, 0, -4.1, 3, 1.05, -3.4, C.w, { top: 1 }, true); add(F, -3.05, 1.05, -4.15, 3.05, 1.1, -3.35, C.plum);
     add(F, -1.4, 1.1, -3.95, -0.4, 1.12, -3.6, C.dg); add(F, -1.4, 1.12, -3.95, -0.4, 1.7, -3.9, C.dg); add(F, 0.6, 1.1, -3.85, 0.75, 1.3, -3.7, C.dg);
-    add(F, -1.5, 0.45, -5.1, -0.9, 0.5, -4.5, C.plum); add(F, -1.5, 0.5, -5.1, -0.9, 1.0, -5.05, C.plum); add(F, 0.5, 0.45, -5.1, 1.1, 0.5, -4.5, C.plum); add(F, 0.5, 0.5, -5.1, 1.1, 1.0, -5.05, C.plum);
-    /* примерочные */
-    for (let i = 0; i < 3; i++) { const z0 = -1.2 - i * 1.7; add(F, -7, 0, z0 - 1.5, -5.7, 2.4, z0, [1, 0.62, 0.84], {}, true); add(F, -5.7, 0, z0 - 1.5, -5.6, 2.3, z0, C.pur); add(F, -6.95, 0.6, z0 - 1.2, -6.9, 1.9, z0 - 0.3, [0.85, 0.93, 1]); }
-    /* ячейки 700-е: картонные соты на стене за стойкой */
-    add(F, -6.6, 0.4, -8, -1.4, 2.4, -7.55, C.kr, { top: 1 }, true);
-    for (let r = 0; r < 2; r++) for (let c = 0; c < 5; c++) {
-      const n = 701 + r * 5 + c, x0 = -6.5 + c * 1.02, y0 = 0.5 + (1 - r) * 0.95; add(F, x0 + 0.06, y0, -7.58, x0 + 0.96, y0 + 0.8, -7.55, [0.45, 0.33, 0.2]);
-      AT.label(x0 + 0.51, y0 + 0.88, -7.54, 0.5, 0.15, "+z", lab(String(n), 96, 30)); T.push({ kind: "cell", n, pos: [x0 + 0.51, y0 + 0.4, -7.6], r: 3.6 });
+    for (const x of [-1.2, 0.8]) { add(F, x - 0.3, 0.45, -5.1, x + 0.3, 0.5, -4.5, C.plum); add(F, x - 0.3, 0.5, -5.1, x + 0.3, 1.0, -5.05, C.plum); add(F, x - 0.04, 0, -4.82, x + 0.04, 0.45, -4.78, C.dg); }
+    sign(0, 2.5, -3.5, 3.2, 0.5, "+z", "Выдача заказов", "vd", "#4b1d7a", "#fff", 384); add(F, -1.6, 2.3, -3.6, -1.5, 3.55, -3.5, C.dg); add(F, 1.5, 2.3, -3.6, 1.6, 3.55, -3.5, C.dg); add(F, -1.6, 2.3, -3.55, 1.6, 2.75, -3.5, C.plum);
+    /* примерочные: открытые кабинки, шторы, зеркала */
+    [-1.2, -2.8, -4.4, -6.0].forEach((z) => add(F, -7, 0, z - 0.03, -5.7, 2.4, z + 0.03, [1, 0.62, 0.84]));
+    COLL.push({ x0: -7, z0: -6.05, x1: -5.65, z1: -1.15 });
+    for (let i = 0; i < 3; i++) { const z0 = -1.2 - i * 1.6, z1 = z0 - 1.6; add(F, -5.72, 0, z1 + 0.03, -5.66, 2.4, z0 - 0.03, C.pur); add(F, -6.98, 0.7, z1 + 0.4, -6.95, 2.0, z0 - 0.4, [0.82, 0.92, 1]); add(F, -7, 0.01, z1 + 0.03, -5.72, 0.03, z0 - 0.03, [0.9, 0.7, 0.85], { ao: 1 }); add(F, -6.5, 0, z1 + 0.5, -6.1, 0.42, z1 + 0.9, C.wood); }
+    sign(-6.0, 2.55, -3.6, 1.8, 0.3, "+x", "Примерочные", "pr", "#7a3fc6", "#fff", 192);
+    /* ячейки 700-е: маленькие картонные соты на стене */
+    {
+      const x0 = -6.3, y0 = 0.95, cw = 0.46, ch = 0.3, nx = 5, ny = 2, dz = 0.28, zw = -8;
+      add(F, x0 - 0.03, y0 - 0.03, zw, x0 + nx * cw + 0.03, y0 + ny * ch + 0.03, zw + 0.02, [0.5, 0.36, 0.22]);
+      for (let i = 0; i <= nx; i++) add(F, x0 + i * cw - 0.012, y0, zw + 0.02, x0 + i * cw + 0.012, y0 + ny * ch, zw + dz, C.kr);
+      for (let j = 0; j <= ny; j++) add(F, x0, y0 + j * ch - 0.012, zw + 0.02, x0 + nx * cw, y0 + j * ch + 0.012, zw + dz, C.kr);
+      COLL.push({ x0: x0 - 0.05, z0: zw, x1: x0 + nx * cw + 0.05, z1: zw + dz });
+      for (let r = 0; r < ny; r++) for (let c = 0; c < nx; c++) {
+        const n = 701 + r * nx + c, cx = x0 + (c + 0.5) * cw, cy = y0 + (ny - 1 - r + 0.5) * ch;
+        AT.label(cx, cy - ch / 2 + 0.035, zw + dz + 0.004, 0.2, 0.05, "+z", lab(String(n), 80, 20, { k: "hc" }));
+        T.push({ kind: "cell", n, pos: [cx, cy, zw + 0.12], r: 3.4, tol: 0.7, nrm: [0, 1], low: true });
+      }
+      sign(x0 + nx * cw / 2, y0 + ny * ch + 0.22, zw + 0.03, 1.8, 0.26, "+z", "700-е · маленькие ячейки", "h7", "#7a3fc6", "#fff", 320);
     }
-    AT.label(-3.9, 2.75, -7.54, 2.2, 0.36, "+z", lab("700-е · зал", 256, 44, { k: "hall", bg: "#7a3fc6", fg: "#fff" }));
-    AT.label(0, 2.9, -7.99, 4.6, 0.6, "+z", lab("Добро пожаловать!", 512, 68, { k: "wel", bg: "#ff5cb8", fg: "#fff" }));
-    /* штора на входе на склад */
-    add(F, 4, 0, -8.15, 4.6, 2.6, -8.05, C.pur); add(F, 5.9, 0, -8.15, 6.5, 2.6, -8.05, C.pur);
-    /* зона габаритов справа от стола */
-    add(F, 3.5, 0.0, -6.2, 5.0, 0.02, -4.9, [1, 0.88, 0.3], { ao: 1 }); T.push({ kind: "desk", pos: [4.25, 0.3, -5.55], r: 3.4 });
-    AT.label(4.25, 0.9, -4.95, 1.4, 0.3, "+z", lab("Габариты", 192, 40, { k: "gab", bg: "#ffe45c", fg: "#3a2a00" }));
-    add(F, 4.2, 0, -4.97, 4.3, 0.9, -4.9, C.dg);
-    /* склад: стол приёмки */
-    add(F, TABLE.x - 1.1, 0.78, TABLE.z - 0.45, TABLE.x + 1.1, 0.83, TABLE.z + 0.45, C.wood, {}, false);
-    [[-1, -0.4], [1, -0.4], [-1, 0.4], [1, 0.4]].forEach(([a, b]) => add(F, TABLE.x + a - 0.04 * Math.sign(a) - 0.04, 0, TABLE.z + b - 0.04, TABLE.x + a + 0.04 - 0.04 * Math.sign(a), 0.78, TABLE.z + b + 0.04, C.dg));
+    sign(0, 2.95, -7.99, 4.6, 0.55, "+z", "Добро пожаловать!", "wel", "#ff5cb8", "#fff", 512);
+    /* декор зала: кресла, растения, плакаты, стенд */
+    [[2.2, -6.9], [3.3, -6.9]].forEach(([x, z]) => { add(F, x - 0.3, 0, z - 0.3, x + 0.3, 0.45, z + 0.3, [1, 0.5, 0.78]); add(F, x - 0.3, 0.45, z - 0.3, x + 0.3, 0.95, z - 0.2, [1, 0.5, 0.78]); });
+    const plant = (x, z) => { add(F, x - 0.25, 0, z - 0.25, x + 0.25, 0.45, z + 0.25, [0.9, 0.5, 0.35]); add(F, x - 0.4, 0.45, z - 0.4, x + 0.4, 1.3, z + 0.4, C.gr); add(F, x - 0.25, 1.3, z - 0.25, x + 0.25, 1.8, z + 0.25, [0.3, 0.62, 0.3]); COLL.push({ x0: x - 0.3, z0: z - 0.3, x1: x + 0.3, z1: z + 0.3 }); };
+    plant(-4.8, -0.9); plant(6.4, -0.9); plant(-6.5, -7.4);
+    sign(-2.0, 1.9, -0.36, 1.0, 1.3, "-z", "Акция\n−30%", "ak", "#ffd23f", "#4b1d7a", 128); sign(2.0, 1.9, -0.36, 1.0, 1.3, "-z", "Заказы\nна WB-\nпункте", "zk", "#ff5cb8", "#fff", 128);
+    /* габаритки у правой стены */
+    {
+      const x = GAB.x, z = GAB.z;
+      add(F, x - 0.8, 0, z - 1.5, 7, 0.02, z + 1.5, [1, 0.88, 0.3], { ao: 1 }); add(F, x - 0.8, 0.0, z - 1.5, x - 0.74, 0.03, z + 1.5, [0.2, 0.2, 0.2]); add(F, x - 0.8, 0.0, z - 1.5, 7, 0.03, z - 1.44, [0.2, 0.2, 0.2]); add(F, x - 0.8, 0.0, z + 1.44, 7, 0.03, z + 1.5, [0.2, 0.2, 0.2]);
+      add(F, 6.95, 1.2, z - 1.4, 7, 1.3, z + 1.4, C.dg); add(F, 6.95, 0.6, z - 1.4, 7, 0.7, z + 1.4, C.dg);
+      sign(6.93, 2.0, z, 2.2, 0.4, "-x", "Габаритки", "gab", "#ffe45c", "#3a2a00", 256);
+      T.push({ kind: "gab", pos: [x + 0.2, 0.4, z], r: 4, tol: 2.6 });
+    }
+    /* склад: стол приёмки, площадки, камеры, огнетушитель */
+    add(F, TABLE.x - 1.1, 0.78, TABLE.z - 0.45, TABLE.x + 1.1, 0.83, TABLE.z + 0.45, C.wood);
+    [[-1, -0.4], [1, -0.4], [-1, 0.4], [1, 0.4]].forEach(([a, b]) => add(F, TABLE.x + a * 1.0 - 0.04 - 0.04 * Math.sign(a), 0, TABLE.z + b - 0.04, TABLE.x + a * 1.0 + 0.04 - 0.04 * Math.sign(a), 0.78, TABLE.z + b + 0.04, C.dg));
     COLL.push({ x0: TABLE.x - 1.1, z0: TABLE.z - 0.45, x1: TABLE.x + 1.1, z1: TABLE.z + 0.45 });
-    AT.label(TABLE.x, 1.9, TABLE.z - 0.5, 1.6, 0.3, "+z", lab("Стол приёмки", 224, 40, { k: "tbl", bg: "#4b1d7a", fg: "#fff" }));
-    add(F, TABLE.x - 0.02, 1.2, TABLE.z - 0.55, TABLE.x + 0.02, 1.75, TABLE.z - 0.5, C.dg);
-    /* площадки под стопки коробок */
-    PAD.forEach(([x, z], i) => { add(F, x - 0.6, 0, z - 0.45, x + 0.6, 0.02, z + 0.45, [0.98, 0.8, 0.3], { ao: 1 }); AT.label(x, 0.03, z + 0.62, 0.5, 0.3, "+y", lab("Стопка " + (i + 1), 128, 40, { k: "pad", bg: "#ffe45c", fg: "#3a2a00" })); T.push({ kind: "pad", i, pos: [x, 0.6, z], r: 3.4, tol: 2 }); });
+    sign(TABLE.x, 1.9, TABLE.z - 0.5, 1.6, 0.3, "+z", "Стол приёмки", "tbl", "#4b1d7a", "#fff", 224); add(F, TABLE.x - 0.02, 1.2, TABLE.z - 0.55, TABLE.x + 0.02, 1.75, TABLE.z - 0.5, C.dg);
+    PAD.forEach(([x, z], i) => { add(F, x - 0.6, 0, z - 0.45, x + 0.6, 0.02, z + 0.45, [0.98, 0.8, 0.3], { ao: 1 }); AT.label(x, 0.025, z + 0.62, 0.5, 0.3, "+y", lab("Стопка " + (i + 1), 128, 40, { k: "pad", bg: "#ffe45c", fg: "#3a2a00" })); });
+    [[-6.7, -9.0], [6.7, -9.0], [-6.7, -19.6], [6.7, -19.6]].forEach(([x, z]) => { add(F, x - 0.15, 3.0, z - 0.15, x + 0.15, 3.3, z + 0.15, [0.15, 0.16, 0.2]); });
+    add(F, 6.9, 0.3, -10.5, 7.0, 1.0, -10.3, [0.9, 0.15, 0.15]); sign(6.89, 1.3, -10.4, 0.3, 0.2, "-x", "ОГОНЬ", "fx", "#ffe45c", "#a00", 96);
+    /* паллеты и коробки на полу */
+    [[-6.0, -19.2, 1.2], [6.0, -16.2, 1.0]].forEach(([x, z, s]) => { add(F, x - s / 2, 0, z - s / 2, x + s / 2, 0.14, z + s / 2, C.wood, {}, true); add(F, x - s / 2 + 0.05, 0.14, z - s / 2 + 0.05, x + s / 2 - 0.05, 0.14 + 0.6, z + s / 2 - 0.05, C.kr); });
 
     /* стеллажи */
-    const reserved = new Set([27, 34, 31, 426]);
-    function rack(cx, cz, face, start, top, sign) {
+    const reserved = new Set([34, 31, 426, 27, 28, 25, 22, 429, 424]);
+    function rack(cx, cz, face, start, top, sg) {
       const A = { "+z": { ax: [1, 0], n: [0, 1] }, "-z": { ax: [-1, 0], n: [0, -1] }, "+x": { ax: [0, -1], n: [1, 0] }, "-x": { ax: [0, 1], n: [-1, 0] } }[face];
       const W = (u, v) => [cx + A.ax[0] * u + A.n[0] * v, cz + A.ax[1] * u + A.n[1] * v];
       const ab = (u0, u1, y0, y1, v0, v1, col) => { const p = W(u0, v0), q = W(u1, v1); F.box(Math.min(p[0], q[0]), y0, Math.min(p[1], q[1]), Math.max(p[0], q[0]), y1, Math.max(p[1], q[1]), col); };
       const H = top ? 3.2 : 2.7, boards = top ? 7 : 6;
-      [-1.6, 1.6].forEach((u) => { ab(u - 0.04, u + 0.04, 0, H, 0, 0.6, C.blue); });
+      [-1.6, 1.6].forEach((u) => ab(u - 0.04, u + 0.04, 0, H, 0, 0.6, C.blue));
       for (let k = 0; k < boards; k++) { const y0 = 0.15 + 0.5 * k; ab(-1.6, 1.6, y0, y0 + 0.04, 0, 0.6, C.grey); ab(-1.6, 1.6, y0 - 0.04, y0 + 0.1, 0.56, 0.6, [0.78, 0.8, 0.86]); }
       const p0 = W(-1.75, -0.05), p1 = W(1.75, 0.65); COLL.push({ x0: Math.min(p0[0], p1[0]), z0: Math.min(p0[1], p1[1]), x1: Math.max(p0[0], p1[0]), z1: Math.max(p0[1], p1[1]) });
       const cell = (n, i, k) => {
         const u = -1.2 + 0.8 * i, y0 = 0.15 + 0.5 * k, w = W(u, 0.606), c = W(u, 0.3);
         AT.label(w[0], y0 + 0.03, w[1], 0.5, 0.12, face, lab(String(n), 96, 26));
-        T.push({ kind: "cell", n, pos: [c[0], y0 + 0.33, c[1]], r: 4 });
-        if (!reserved.has(n) && rnd() < 0.5) { const h = 0.2 + rnd() * 0.22, cc = [[0.82, 0.62, 0.38], [0.95, 0.95, 0.98], [1, 0.55, 0.78], [0.55, 0.75, 1], [0.9, 0.85, 0.5]][Math.floor(rnd() * 5)]; ab(u - 0.3, u + 0.3, y0 + 0.04, y0 + 0.04 + h, 0.1, 0.5, cc); }
+        T.push({ kind: "cell", n, pos: [c[0], y0 + 0.33, c[1]], r: 4.2, high: k >= 4, nrm: A.n.slice() });
+        if (!reserved.has(n) && !(k >= 4 && n >= 300) && rnd() < 0.5) { const h = 0.2 + rnd() * 0.2, cc = [[0.82, 0.62, 0.38], [0.95, 0.95, 0.98], [1, 0.55, 0.78], [0.55, 0.75, 1], [0.9, 0.85, 0.5]][Math.floor(rnd() * 5)]; ab(u - 0.3, u + 0.3, y0 + 0.04, y0 + 0.04 + h, 0.1, 0.5, cc); }
       };
       for (let r = 0; r < 5; r++) for (let i = 0; i < 4; i++) cell(start + r * 4 + i, i, 4 - r);
       if (top) for (let i = 0; i < 4; i++) cell(top + i, i, 5);
-      const sg = W(0, 0.62); AT.label(sg[0], top ? 3.4 : 2.95, sg[1], 1.3, 0.28, face, lab(sign, 192, 40, { k: "rs", bg: "#4b1d7a", fg: "#fff" }));
+      const s2 = W(0, 0.62); AT.label(s2[0], top ? 3.4 : 2.95, s2[1], 1.3, 0.28, face, lab(sg, 192, 40, { k: "rs", bg: "#4b1d7a", fg: "#fff" }));
     }
-    rack(-4.5, -19.95, "+z", 1, 421, "Стеллаж 1–20");
-    rack(0, -19.95, "+z", 21, 425, "Стеллаж 21–40");
-    rack(4.5, -19.95, "+z", 41, 429, "Стеллаж 41–60");
+    rack(-4.5, -19.95, "+z", 1, 421, "Стеллаж 1–20"); rack(0, -19.95, "+z", 21, 425, "Стеллаж 21–40"); rack(4.5, -19.95, "+z", 41, 429, "Стеллаж 41–60");
     rack(0, -13.75, "+z", 61, 0, "61–80"); rack(0, -13.65, "-z", 81, 0, "81–100");
     rack(-6.95, -10.2, "+x", 101, 0, "101–120"); rack(-6.95, -13.7, "+x", 121, 0, "121–140"); rack(-6.95, -17.2, "+x", 141, 0, "141–160");
-    /* кармашки 800-е на торце стеллажа (тканевый органайзер) */
+    /* кармашки 800-е: прозрачная ткань, подписанные (рисуются отдельно с прозрачностью) */
     {
       const cx = 6.95, cz = -13;
-      F.box(cx - 0.05, 0.75, cz - 0.95, cx, 2.55, cz + 0.95, [0.5, 0.56, 0.7]); COLL.push({ x0: cx - 0.6, z0: cz - 1, x1: cx, z1: cz + 1 });
+      F.box(cx - 0.04, 0.8, cz - 0.98, cx, 2.62, cz + 0.98, [0.55, 0.6, 0.74]); COLL.push({ x0: cx - 0.5, z0: cz - 1, x1: cx, z1: cz + 1 });
+      F.box(cx - 0.12, 2.62, cz - 1.0, cx, 2.68, cz + 1.0, C.dg);
+      R.pockets = [];
       for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
-        const n = 801 + r * 3 + c, z = cz - 0.6 + c * 0.6, y = 2.3 - r * 0.42;
-        F.box(cx - 0.2, y - 0.17, z - 0.24, cx - 0.04, y + 0.17, z + 0.24, [0.38, 0.45, 0.62]);
-        AT.label(cx - 0.205, y + 0.02, z, 0.36, 0.12, "-x", lab(String(n), 96, 26));
-        T.push({ kind: "cell", n, pos: [cx - 0.3, y, z], r: 3.8, tol: 0.8 });
+        const n = 801 + r * 3 + c, z = cz - 0.62 + c * 0.62, y = 2.3 - r * 0.42;
+        R.pockets.push({ n, x: cx - 0.1, y, z });
+        AT.label(cx - 0.215, y + 0.14, z, 0.34, 0.1, "-x", lab(String(n), 96, 28, { k: "pk" }));
+        T.push({ kind: "cell", n, pos: [cx - 0.12, y - 0.02, z], r: 3.9, tol: 0.85, nrm: [-1, 0], low: true });
       }
-      AT.label(cx - 0.06, 2.75, cz, 1.7, 0.3, "-x", lab("800-е · кармашки", 256, 44, { k: "pk", bg: "#4b1d7a", fg: "#fff" }));
-      F.box(cx - 0.95, 0.04, cz - 0.7, cx - 0.1, 0.5, cz + 0.7, [0.55, 0.58, 0.68]); F.box(cx - 0.9, 0.5, cz - 0.65, cx - 0.15, 0.52, cz + 0.65, [0.3, 0.32, 0.4]);
+      sign(cx - 0.06, 2.9, cz, 1.7, 0.3, "-x", "800-е · кармашки", "pk8", "#4b1d7a", "#fff", 256);
+      F.box(cx - 0.95, 0.04, cz - 0.7, cx - 0.1, 0.5, cz + 0.7, [0.55, 0.58, 0.68]); F.box(cx - 0.9, 0.5, cz - 0.65, cx - 0.15, 0.53, cz + 0.65, [0.3, 0.32, 0.4]);
       COLL.push({ x0: cx - 0.95, z0: cz - 0.7, x1: cx - 0.1, z1: cz + 0.7 });
       AT.label(cx - 0.96, 0.28, cz, 1.0, 0.2, "-x", lab("Контейнер", 160, 32, { k: "ct", bg: "#d9dbe6", fg: "#2a1740" }));
-      T.push({ kind: "container", pos: [cx - 0.5, 0.55, cz], r: 3.6, tol: 1.4 });
+      T.push({ kind: "container", pos: [cx - 0.5, 0.58, cz], r: 3.7, tol: 1.4 });
     }
-    /* уличные детали */
+    /* улица: деревья, дома, вывески, скамейки, фонари */
+    const tree = (x, z) => { add(F, x - 0.15, 0, z - 0.15, x + 0.15, 1.7, z + 0.15, [0.5, 0.35, 0.22], {}, true); add(F, x - 0.85, 1.5, z - 0.85, x + 0.85, 2.9, z + 0.85, C.gr); add(F, x - 0.55, 2.8, z - 0.55, x + 0.55, 3.8, z + 0.55, [0.34, 0.65, 0.34]); };
     for (let i = 0; i < 7; i++) { const z = 8 + i * 6, s = i % 2 ? 1 : -1; tree(s * 4.6, z); tree(-s * 9.5, z + 3); }
-    [[-6, 14, 11, 8, 5], [-6, 24, 11, 9, 6], [-6, 36, 11, 7, 7], [6, 12, 10, 9, 5], [6, 24, 9, 8, 6], [6, 38, 10, 10, 7]].forEach(([s, z, w, h, d], i) => { const x0 = s < 0 ? -9 - w : 9, col = [[1, 0.88, 0.8], [0.85, 0.92, 1], [0.95, 0.85, 1], [1, 0.95, 0.7]][i % 4]; add(F, x0, 0, z, x0 + w, h, z + d * 1.4, col, {}, true); for (let k = 0; k < 3; k++) add(F, s < 0 ? x0 + w : x0 - 0.05, 2 + (k % 2) * 3, z + 0.8 + k * 1.4, s < 0 ? x0 + w + 0.05 : x0, 3.2 + (k % 2) * 3, z + 1.8 + k * 1.4, C.gl); });
-    add(F, -9 - 14, 0, -20, -7.3, 7, 0, [0.96, 0.86, 0.8], {}, true); add(F, 7.3, 0, -20, 22, 8, 0, [0.84, 0.9, 1], {}, true); add(F, -40, 0, -20, -23, 9, 0, [0.9, 0.85, 1], {}, true); add(F, 22, 0, -20, 40, 6, 0, [1, 0.95, 0.8], {}, true);
-    /* дом героя и скамейки */
+    const shops = [["Продукты", "#ffd23f", "#4b1d7a"], ["Аптека", "#7be0a4", "#12432a"], ["Кофе", "#ffb08a", "#4a1d0a"], ["Цветы", "#ff9ccf", "#5a0f3a"], ["Пекарня", "#ffe9a8", "#5b3a00"], ["Книги", "#a6c8ff", "#0f2a5a"]];
+    [[-6, 14, 11, 8, 5], [-6, 24, 11, 9, 6], [-6, 36, 11, 7, 7], [6, 12, 10, 9, 5], [6, 24, 9, 8, 6], [6, 38, 10, 10, 7]].forEach(([s, z, w, h, d], i) => {
+      const x0 = s < 0 ? -9 - w : 9, col = [[1, 0.88, 0.8], [0.85, 0.92, 1], [0.95, 0.85, 1], [1, 0.95, 0.7]][i % 4], fx = s < 0 ? x0 + w : x0;
+      add(F, x0, 0, z, x0 + w, h, z + d * 1.4, col, {}, true);
+      for (let k = 0; k < 3; k++) { const wy = 3.6 + (k % 2) * 2.2, zz = z + 0.8 + k * 1.8; add(F, s < 0 ? fx : fx - 0.05, wy, zz, s < 0 ? fx + 0.05 : fx, wy + 1.3, zz + 1.2, C.gl); add(F, s < 0 ? fx + 0.04 : fx - 0.09, wy - 0.08, zz - 0.08, s < 0 ? fx + 0.09 : fx - 0.04, wy + 1.38, zz + 1.28, [1, 1, 1]); }
+      const sh = shops[i % shops.length]; add(F, s < 0 ? fx : fx - 0.5, 2.5, z + 0.4, s < 0 ? fx + 0.5 : fx, 3.0, z + d * 1.4 - 0.4, [0.95, 0.45, 0.55], { top: 1 }); sign(s < 0 ? fx + 0.51 : fx - 0.51, 2.75, z + d * 0.7, 3.2, 0.45, s < 0 ? "+x" : "-x", sh[0], "sh" + i, sh[1], sh[2], 256);
+    });
+    add(F, -23, 0, -20, -7.3, 7, 0, [0.96, 0.86, 0.8], {}, true); add(F, 7.3, 0, -20, 22, 8, 0, [0.84, 0.9, 1], {}, true); add(F, -40, 0, -20, -23, 9, 0, [0.9, 0.85, 1], {}, true); add(F, 22, 0, -20, 40, 6, 0, [1, 0.95, 0.8], {}, true);
     add(F, -16, 0, 40, -7, 8, 54, [1, 0.8, 0.78], {}, true); add(F, -7.05, 0, 45, -6.95, 2.3, 47.4, C.wood);
-    [[-3.2, 6], [3.2, 6], [-3.2, 18], [3.2, 28]].forEach(([x, z]) => { add(F, x - 0.9, 0.42, z - 0.25, x + 0.9, 0.5, z + 0.25, C.wood); add(F, x - 0.9, 0.5, z + 0.22, x + 0.9, 0.95, z + 0.28, C.wood); add(F, x - 0.8, 0, z - 0.2, x - 0.7, 0.42, z + 0.2, C.dg); add(F, x + 0.7, 0, z - 0.2, x + 0.8, 0.42, z + 0.2, C.dg); });
+    [[-3.2, 6], [3.2, 6], [-3.2, 18], [3.2, 28], [-3.2, 40]].forEach(([x, z]) => { add(F, x - 0.9, 0.42, z - 0.25, x + 0.9, 0.5, z + 0.25, C.wood); add(F, x - 0.9, 0.5, z + 0.22, x + 0.9, 0.95, z + 0.28, C.wood); add(F, x - 0.8, 0, z - 0.2, x - 0.7, 0.42, z + 0.2, C.dg); add(F, x + 0.7, 0, z - 0.2, x + 0.8, 0.42, z + 0.2, C.dg); });
     [[-2.9, 3], [2.9, 3], [2.9, 22]].forEach(([x, z]) => add(F, x - 0.25, 0, z - 0.25, x + 0.25, 0.8, z + 0.25, C.dg, {}, true));
-    [[-3, 10], [3, 10], [-3, 30], [3, 36]].forEach(([x, z]) => { add(F, x - 0.06, 0, z - 0.06, x + 0.06, 3.6, z + 0.06, C.dg); add(F, x - 0.25, 3.5, z - 0.25, x + 0.25, 3.7, z + 0.25, [1, 0.95, 0.7], { top: 1 }); });
-    function tree(x, z) { add(F, x - 0.15, 0, z - 0.15, x + 0.15, 1.7, z + 0.15, [0.5, 0.35, 0.22], {}, true); add(F, x - 0.85, 1.5, z - 0.85, x + 0.85, 2.9, z + 0.85, C.gr); add(F, x - 0.55, 2.8, z - 0.55, x + 0.55, 3.8, z + 0.55, [0.34, 0.65, 0.34]); }
-    /* внешние границы */
-    COLL.push({ x0: -30, z0: 54, x1: 30, z1: 56 }, { x0: -30, z0: -30, x1: -29, z1: 56 }, { x0: 29, z0: -30, x1: 30, z1: 56 });
+    [[-3, 10], [3, 10], [-3, 30], [3, 36], [-3, 48]].forEach(([x, z]) => { add(F, x - 0.06, 0, z - 0.06, x + 0.06, 3.6, z + 0.06, C.dg); add(F, x - 0.25, 3.5, z - 0.25, x + 0.25, 3.7, z + 0.25, [1, 0.95, 0.7], { top: 1 }); });
+    for (let i = 0; i < 5; i++) { const x = -1.8 + i * 0.9, z = 4.2; add(F, x, 0, z, x + 0.7, 0.35, z + 0.5, [0.9, 0.5, 0.35]); add(F, x + 0.05, 0.35, z + 0.05, x + 0.65, 0.6, z + 0.45, [[1, 0.5, 0.75], [1, 0.85, 0.3], [0.95, 0.4, 0.4], [0.7, 0.55, 1], [1, 0.7, 0.4]][i]); }
+    const cloud = (x, y, z) => { add(F, x - 6, y, z - 3, x + 6, y + 2, z + 3, [1, 1, 1], { ao: 1 }); add(F, x - 3, y + 2, z - 2, x + 4, y + 3.5, z + 2, [1, 1, 1], { ao: 1 }); };
+    cloud(-40, 38, -50); cloud(30, 42, -70); cloud(0, 40, 90); cloud(-60, 36, 20); cloud(60, 40, 40); cloud(-20, 44, -90);
+    COLL.push({ x0: -30, z0: 53, x1: 30, z1: 56 }, { x0: -30, z0: -30, x1: -29, z1: 56 }, { x0: 29, z0: -30, x1: 30, z1: 56 });
 
-    /* двери (динамика) и подписи предметов */
-    ITEMS.forEach((it) => { STK[it.id] = E.label("ШК\n" + it.tag, 80, 56, { bg: "#ff5cb8", fg: "#fff", fs: 20 }); if (it.tape) TAPE[it.id] = E.label(String(it.cell), 96, 48, { bg: "#f2ead2", fg: "#222", border: "#c9bf9a" }); });
+    /* стикеры ШК и подписи скотча для предметов */
+    ITEMS.forEach((it) => { STK[it.id] = E.label("", 128, 100, { draw: (ctx, x, y, w, h) => skDraw(ctx, x, y, w, h, it.code) }); if (it.tape) TAPE[it.id] = E.label(String(it.cell), 96, 48, { bg: "#f2ead2", fg: "#222", border: "#c9bf9a" }); });
     E.finalize(); built = true;
 
-    /* цели, не зависящие от стройки */
+    /* динамика мира: машины и прохожие */
+    R.cars = [{ x: -40, z: 60, v: 6, col: [0.9, 0.2, 0.3] }, { x: 30, z: 65, v: -5, col: [0.2, 0.5, 0.9] }, { x: 0, z: 60, v: 7, col: [1, 0.8, 0.2] }];
+    R.people = [
+      { x: 3.4, z: 14, dz: -0.7, pal: { hair: [0.55, 0.3, 0.15], top: [0.95, 0.5, 0.3], bot: [0.25, 0.3, 0.55] } },
+      { x: -3.4, z: 30, dz: 0.8, pal: { hair: [0.1, 0.1, 0.12], top: [0.4, 0.75, 0.5], bot: [0.2, 0.2, 0.25] } },
+      { x: 3.2, z: 44, dz: -0.6, pal: { hair: [0.9, 0.8, 0.4], top: [0.7, 0.45, 0.9], bot: [0.3, 0.3, 0.4], long: true } },
+    ];
+
+    /* интерактивные цели */
     T.push({ kind: "door", pos: [0, 1.2, 0.15], r: 2.8, tol: 3, prompt: () => (!R.doorOpen && !R.doorTarget && R.stage !== "title" ? "Открыть дверь" : null), act: doorAct });
     T.push({ kind: "tasya", get pos() { return [R.tasya ? R.tasya.x : 0, 1.3, R.tasya ? R.tasya.z : 0]; }, r: 3.2, tol: 2.4, prompt: () => (R.tasya && R.tasya.talk && !S.key ? "Поговорить с Тасей" : null), act: tasyaAct });
-    BOXES.forEach((b, i) => T.push({ kind: "box", i, pos: [b[0], 0.35, b[1]], r: 3, tol: 1.6, prompt: () => (!R.hold && !R.carried[i] && R.stage === "hall" ? "Взять коробку" : null), act: () => { R.hold = { box: true, i }; R.carried[i] = true; setGoal("Неси коробку на склад и поставь на площадку: максимум три друг на друга"); } }));
+    HALLBOX.forEach((b, i) => T.push({ kind: "box", i, pos: [b[0], 0.35, b[1]], r: 3.2, tol: 1.7, prompt: () => (!R.hold && R.hall[i] && R.stage !== "street" && R.stage !== "door" ? "Взять коробку" : null), act: () => { R.hold = { box: true, i }; R.hall[i] = false; setGoal("Неси коробку на склад и поставь на площадку: максимум три друг на друга"); } }));
+    Object.keys(BIGPOS).forEach((id) => { const it = byId(id), p = BIGPOS[id]; T.push({ kind: "big", id, pos: [p[0], 0.5, p[1]], r: 3.4, tol: 2, prompt: () => (!R.hold && !it.taken && R.stage !== "street" && R.stage !== "door" ? "Взять: " + it.name : null), act: () => { it.taken = true; R.hold = { item: it }; R.inspect = false; learn("hold"); setGoal("Возьми телефон (кнопка 📱), отсканируй розовый стикер ШК на товаре"); } }); });
+    PAD.forEach(([x, z], i) => T.push({ kind: "pad", i, get pos() { return [x, 0.3 + 0.5 * R.stacks[i].length, z]; }, r: 3.4, tol: 2.2,
+      prompt: () => { if (R.hold && R.hold.box) return "Поставить коробку"; if (R.hold) return null; const st = R.stacks[i]; if (!st.length) return null; const b = R.boxes[st[st.length - 1]]; return !b.opened ? "Открыть коробку" : b.ids.length ? "Достать: " + byId(b.ids[0]).name : "Убрать пустую коробку"; },
+      act: () => padAct(i) }));
+    T.push({ kind: "emptybox", pos: [TABLE.x + 1.0, 0.95, TABLE.z + 0.9], r: 3.6, tol: 2.2, prompt: () => (S.heapSeen && !S.heapDone && !R.hold ? "Взять пустую коробку" : null), act: () => { R.hold = { cbox: true, full: false, n: 0 }; setGoal("Открой телефон: «Ещё» → «Пункт выдачи» → «Склад» → ячейка 34 → «Проверить товары»"); } });
+    T.push({ kind: "ladder", get pos() { return [R.ladder.x, 1.2, R.ladder.z]; }, r: 5, tol: 3, prompt: () => (R.ladder.up ? "Убрать стремянку" : null), act: foldLadder });
     T.forEach((t) => {
       if (t.prompt) return;
-      if (t.kind === "pad") { t.prompt = () => (R.hold && R.hold.box ? "Поставить коробку" : null); t.act = () => padAct(t.i); }
-      else if (t.kind === "cell") { t.prompt = () => (R.hold && R.hold.item ? "Положить в ячейку " + t.n : null); t.act = () => placeItem(t); }
-      else { t.prompt = () => (R.hold && R.hold.item ? (t.kind === "desk" ? "Поставить справа от стола" : "Положить в контейнер") : null); t.act = () => placeItem(t); }
+      if (t.kind === "cell") {
+        t.prompt = () => {
+          if (R.hold && R.hold.item) { if (t.high && !ladderAt(t)) return R.ladder.up ? "Переставить стремянку" : "Поставить стремянку"; return "Положить в ячейку " + t.n; }
+          if (R.hold && R.hold.cbox && R.hold.full) return "Поставить коробку на ячейку " + t.n;
+          return null;
+        };
+        t.act = () => (R.hold && R.hold.item && t.high && !ladderAt(t) ? deployLadder(t) : placeItem(t));
+      } else if (t.kind === "gab") { t.prompt = () => (R.hold && R.hold.item ? "Поставить к габариткам" : null); t.act = () => placeItem(t); }
+      else { t.prompt = () => (R.hold && R.hold.item ? "Положить в контейнер" : null); t.act = () => placeItem(t); }
     });
   }
 
-  /* ---------- состояние мира ---------- */
+  /* ---------- состояние ---------- */
   const PL = { x: -1.2, z: 46, yaw: 0, pitch: 0, bob: 0 };
   function setGoal(t) { const g = $("#goal"); if (!t) { g.hidden = true; return; } g.hidden = false; g.innerHTML = "🎯 " + t; }
   const isFrozen = () => !$("#ov").hidden || !$("#dlg").hidden || R.cut || !!$("#veil").innerHTML;
+  const ladderAt = (t) => R.ladder.up && Math.hypot(R.ladder.x - t.pos[0], R.ladder.z - t.pos[2]) < 1.9;
 
   function say(html, o = {}) {
     return new Promise((res) => {
@@ -493,75 +602,116 @@
       d.querySelector("button").onclick = () => { d.hidden = true; d.innerHTML = ""; res(); };
     });
   }
+  function choose(title, text, opts) {
+    return new Promise((res) => {
+      const v = $("#veil"); v.hidden = false;
+      const box = el("div", "wh"); v.replaceChildren(box);
+      box.innerHTML = `<h2>${title}</h2><p class="sub">${text}</p><div class="opts">${opts.map((o, i) => `<button class="opt" data-i="${i}" type="button"><b>${o}</b></button>`).join("")}</div>`;
+      box.querySelectorAll(".opt").forEach((b) => (b.onclick = () => { v.hidden = true; v.replaceChildren(); res(+b.dataset.i); }));
+    });
+  }
 
-  /* ---------- цели и действия ---------- */
+  /* ---------- сцены и действия ---------- */
   async function tasyaAct() {
-    R.cut = true; const ta = R.tasya;
+    R.cut = true;
     await say("Привет! Ты как раз вовремя. Держи ключ от пункта, а то дверь закрыта.", { who: "Тася" });
     R.keyShow = true;
     await say("Не потеряй его! Хорошей смены, увидимся!", { who: "Тася", label: "Взять ключ" });
-    R.keyShow = false; S.key = true; ta.talk = false; ta.wave = 3;
-    toast("🔑 Ключ от пункта у тебя", "good");
-    R.cut = false;
+    R.keyShow = false; S.key = true; R.tasya.talk = false; R.tasya.wave = 3;
+    toast("🔑 Ключ от пункта у тебя", "good"); R.cut = false;
     await say("Спасибо, Тась! Теперь можно идти на пункт.", { who: "Я", label: "Идти" });
     setGoal("Иди к пункту: розовая вывеска впереди");
   }
-
   async function doorAct() {
     R.cut = false;
-    if (S.key) {
-      await say("«Хорошо, что я заранее подготовился и взял ключик у Таси, а то бы сейчас не попал на пункт».", { who: "Я" });
-      R.doorTarget = 1; learn("key");
-    } else {
+    if (S.key) { await say("«Хорошо, что я заранее подготовился и взял ключик у Таси, а то бы сейчас не попал на пункт».", { who: "Я" }); R.doorTarget = 1; learn("key"); }
+    else {
       await say("Ты дёргаешь ручку, но дверь заперта. Ключ остался у Таси, а ты не договорился с ней заранее.", { who: "Я", label: "Позвонить Тасе" });
       S.keyLate = true; tick(35);
       await oops(20, "Ключа нет", "Ты потерял 35 минут: пока Тася привезла ключ, поставка стояла у двери. Заранее продумывай, как будешь открываться, и забирай ключ до смены.");
-      R.cut = true;
-      R.tasya = { x: 7, z: 12, yaw: 0, talk: false, wave: 0 };
+      R.cut = true; R.tasya = { x: 7, z: 12, yaw: 0, talk: false, wave: 0, walk: true };
       while (R.tasya.z > 2.2) { R.tasya.z -= 0.09; R.tasya.x += (1.1 - R.tasya.x) * 0.04; await sleep(16); }
-      R.cut = false;
+      R.tasya.walk = false; R.cut = false;
       await say("Прости, что задержалась! Вот ключ, пользуйся.", { who: "Тася", label: "Взять ключ" });
-      S.key = true; toast("🔑 Ключ у тебя", "good");
-      R.doorTarget = 1; learn("key");
+      S.key = true; toast("🔑 Ключ у тебя", "good"); R.doorTarget = 1; learn("key");
     }
     setGoal("Заходи внутрь");
   }
 
+  /* стопки коробок: поставить, открыть, достать товар, убрать пустую */
   function padAct(i) {
-    if (!R.hold || !R.hold.box) return;
-    if (R.pads[i] >= 3) { oops(3, "Слишком высокая стопка", "Больше трёх коробок друг на друга не ставим: стопка может упасть, и неудобно доставать. Поставь в другое место.", false); tick(1); return; }
-    R.pads[i]++; R.moved++; R.hold = null; tick(1);
-    if (R.moved < 6) { setGoal(`Принеси остальные коробки: ${R.moved} из 6 на складе`); return; }
-    learn("stack"); S.unpacked = true; S.stage = "accept"; R.stage = "accept";
-    setGoal("Открой приложение (кнопка 📱 или клавиша P) и сканируй товары на столе приёмки");
-    say("Все коробки на складе. Ты вскрыл их, и товары лежат на столе приёмки. Теперь достань телефон и открой приложение.", { who: "Я", label: "Достать телефон" }).then(() => openPhone());
+    const st = R.stacks[i];
+    if (R.hold && R.hold.box) {
+      if (st.length >= 3) { oops(3, "Слишком высокая стопка", "Больше трёх коробок друг на друга не ставим: стопка может упасть, и неудобно доставать. Поставь в другое место.", false); tick(1); return; }
+      st.push(R.hold.i); R.hold = null; tick(1);
+      const left = R.hall.filter(Boolean).length;
+      if (left) setGoal(`Остальные коробки у входа: осталось ${left}`);
+      else { learn("stack"); setGoal("Открой коробки на площадках (клавиша E на коробке), доставай товары и осматривай их в руках"); say("Все коробки на складе. Теперь открывай их по одной: внутри товары. Бери товар в руки, осматривай и ищи розовый стикер ШК.", { who: "Я" }); }
+      return;
+    }
+    if (R.hold || !st.length) return;
+    const b = R.boxes[st[st.length - 1]];
+    if (!b.opened) { b.opened = true; tick(1); toast("Коробка открыта", "good"); setGoal("Доставай товары по одному"); return; }
+    if (b.ids.length) { const it = byId(b.ids.shift()); R.hold = { item: it }; R.inspect = false; learn("hold"); setGoal("Осмотри товар (кнопка 🔍), потом открой телефон 📱 и отсканируй розовый стикер ШК"); return; }
+    st.pop(); R.emptyBoxes++; setGoal(allBoxesEmpty() ? "" : "Доставай товары из следующих коробок");
   }
+  const allBoxesEmpty = () => R.boxes.every((b) => b.opened && !b.ids.length);
 
-  /* ---------- размещение товара ---------- */
+  /* стремянка */
+  function deployLadder(t) {
+    const nx = t.nrm[0], nz = t.nrm[1];
+    R.ladder = { up: true, x: t.pos[0] + nx * 0.72, z: t.pos[2] + nz * 0.72, nx, nz };
+    PL.x = R.ladder.x + nx * 0.5; PL.z = R.ladder.z + nz * 0.5; PL.yaw = Math.atan2(-nx, nz); PL.pitch = 0.45;
+    learn("ladder"); toast("Стремянка стоит. Закончил: «Убрать стремянку»", "good");
+  }
+  function foldLadder() { if (!R.ladder.up) return; R.ladder.up = false; toast("Стремянку убрал"); }
+
+  /* размещение товара */
   async function placeItem(t) {
-    if (!R.hold || !R.hold.item || busy) return;
+    if (!R.hold || busy) return;
+    if (R.hold.cbox) { return placeBox(t); }
+    if (!R.hold.item) return;
     const it = R.hold.item; busy = true; tick(1);
+    if (P.cur !== it || P.placed) { busy = false; toast("Сначала отсканируй этот товар в приложении: 📱", "bad"); return; }
     let ok = false, why = "", pts = 3, title = "Не то место";
     if (t.kind === "cell") {
       if (t.n === it.cell && band(t.n) === it.zone) ok = true;
       else if (it.zone === "container") why = t.n >= 801 && t.n <= 812 ? "Чайник не поместится в кармашек. Такой товар подписывают скотчем и кладут в контейнер под кармашками." : "Этот товар из заказа с мелочью и на полку не ложится: подпиши его скотчем и положи в контейнер под кармашками.";
-      else if (it.zone === "desk") why = "Габаритный товар на полки не поставишь: он останется справа от стола, с подписью скотчем.";
-      else if (band(t.n) !== it.zone) why = it.zone === "top" && band(t.n) === "racks" ? "Номера от 301 идут на самые верхние полки, а не на обычные." : it.zone === "racks" && band(t.n) === "top" ? `Номер ${it.cell} меньше 301: это обычная полка стеллажа, не верхняя.` : `Ячейка ${it.cell} находится не здесь. 1–300: стеллажи, с 301: верхние полки, 700-е: зал, 800-е: кармашки.`;
+      else if (it.zone === "gab") why = it.id === "vase" ? "Ваза слишком длинная для ячейки. Такой товар подписывают скотчем и убирают к габариткам." : "Габаритный товар не ставим в ячейки: подпиши его скотчем и убери к габариткам у стены.";
+      else if (band(t.n) !== it.zone) why = it.zone === "top" && band(t.n) === "racks" ? "Номера от 301 идут на самые верхние полки, а не на обычные." : it.zone === "racks" && band(t.n) === "top" ? `Номер ${it.cell} меньше 301: это обычная полка стеллажа, не верхняя.` : `Ячейка ${it.cell} находится не здесь. 1–300: стеллажи, с 301: верхние полки, 700-е: маленькие ячейки в зале, 800-е: кармашки.`;
       else { pts = 2; title = "Другая ячейка"; why = `Это ${t.n}, а нужна ${it.cell}. Проверяй номер на полке.`; }
     } else if (it.tape === t.kind) ok = true;
-    else why = it.zone === "desk" || it.zone === "container" ? "Тут не то место для этого товара. Контейнер под кармашками: для того, что не влезает в кармашек. Справа от стола: для габаритов." : "Это место для товаров, которые не влезают в ячейки, а наш товар обычный.";
+    else why = it.zone === "gab" || it.zone === "container" ? "Тут не то место для этого товара. Контейнер под кармашками: для того, что не влезает в кармашек. Габаритки у стены: для больших товаров." : "Это место для товаров, которые не влезают в ячейки, а наш товар обычный.";
     if (!ok) { S.cellMiss = true; await oops(pts, title, why, false); busy = false; return; }
-    if (t.kind === "container" || t.kind === "desk") { const good = await tapeChoice(t.kind, it); if (!good) { busy = false; return; } }
-    const tp = t.kind === "container" ? [t.pos[0], 0.58, t.pos[2]] : t.kind === "desk" ? [4.25, 0.17, -5.55] : [t.pos[0], t.pos[1] - 0.1, t.pos[2]];
-    R.placed.push({ it, pos: tp });
-    R.hold = null; P.placed = true; P.done.unshift({ item: it, brak: P.brak }); S.placed++; tick(2);
-    if (it.zone === "pockets") learn("pocket");
-    if (it.tape === "container") learn("tape");
-    if (it.big) learn("big");
-    if (S.placed === 1) learn("cells");
+    if (t.kind === "container" || t.kind === "gab") { const good = await tapeChoice(t.kind, it); if (!good) { busy = false; return; } }
+    const nPlaced = R.placed.filter((x) => x.cell === it.cell && x.kind === t.kind).length;
+    let pos;
+    if (t.kind === "container") pos = [t.pos[0] + (nPlaced % 2) * 0.1, 0.6 + 0.1, t.pos[2] + (nPlaced % 2 ? 0.2 : -0.2)];
+    else if (t.kind === "gab") { const k = R.placed.filter((x) => x.kind === "gab").length; pos = [GAB.x + 0.35, FLOORY[it.id], GAB.z - 1.1 + k * 0.7]; }
+    else if (t.pocket || (t.n >= 801 && t.n <= 812)) pos = [t.pos[0] + 0.05, t.pos[1] - 0.05, t.pos[2]];
+    else if (t.n >= 701 && t.n < 800) pos = [t.pos[0], t.pos[1] - 0.06, t.pos[2] + 0.06];
+    else pos = [t.pos[0] + (nPlaced % 3 - 1) * 0.14, t.pos[1] - 0.12 + (VIS[it.id].p[0][4] || 0.2) / 2 * 0, t.pos[2]];
+    R.placed.push({ it, cell: it.cell, kind: t.kind, pos, small: t.n >= 700 && t.n < 900, tape: !!it.tape });
+    R.hold = null; P.placed = true; P.done.unshift({ item: it, brak: P.brak }); P.tray = P.tray.filter((x) => x !== it); S.placed++; tick(2);
+    if (it.zone === "pockets") learn("pocket"); if (it.tape === "container") learn("tape"); if (it.tape === "gab") learn(it.id === "vase" ? "long" : "big"); if (S.placed === 1) learn("cells");
+    if (it.zone === "top") learn("cams");
     toast(`Ячейка ${it.cell}: готово ✓`, "good"); buzz();
-    setGoal(P.tray.length ? `Достань телефон и сканируй следующий товар. Осталось: ${P.tray.length}` : "Все товары разложены. Открой телефон и закончи приёмку");
+    if (R.ladder.up) toast("Не забудь убрать стремянку", "");
+    const heap = P.done.filter((d) => d.item.cell === 34).length;
+    if (heap >= 3 && !S.heapSeen) {
+      S.heapSeen = true; learn("heap"); busy = false;
+      await say("На ячейке 34 скопилось уже три товара. Если оставить их кучей, они смешаются с чужими. Сложи их в коробку: возьми пустую коробку на столе приёмки, а в приложении открой «Склад» и «Проверить товары».", { who: "Я", label: "Понял" });
+      setGoal("Возьми пустую коробку со стола приёмки (она вся в картоне справа от стола)");
+    } else setGoal(P.tray.length ? (S.heapSeen && !S.heapDone ? "Собери товары ячейки 34 в коробку: пустая коробка на столе приёмки" : `Бери следующий товар. Осталось принять: ${P.tray.length}`) : (S.heapDone || !S.heapSeen ? "Все товары разложены. Открой телефон и закончи приёмку" : "Осталось собрать коробку для ячейки 34"));
     busy = false;
+  }
+  async function placeBox(t) {
+    if (t.kind !== "cell") return;
+    if (t.n !== 34) { busy = true; await oops(3, "Не та ячейка", "Эта коробка собрана для ячейки 34. Ставь её именно туда.", false); busy = false; return; }
+    R.placed = R.placed.filter((x) => x.cell !== 34);
+    R.placed.push({ cbox: true, cell: 34, pos: [t.pos[0], t.pos[1] - 0.08, t.pos[2]] });
+    R.hold = null; S.heapDone = true; tick(2); toast("Коробка стоит на ячейке 34 ✓", "good");
+    setGoal(P.tray.length ? `Бери следующий товар. Осталось принять: ${P.tray.length}` : "Все товары разложены. Открой телефон и закончи приёмку");
   }
 
   function tapeChoice(z, item) {
@@ -572,31 +722,38 @@
         ? [[true, `Написать «${item.cell}»`, "номер ячейки, как показало приложение"], [false, "Написать «Чайник»", "название товара"], [false, "Не подписывать", "и так запомню"]]
         : [[true, "Скотч спереди, номер ячейки крупно", "чтобы надпись было видно"], [false, "Скотч сзади, надпись мелко", "чтобы не мешал"], [false, "Не подписывать", "и так запомню"]];
       box.innerHTML = `<h2>Подпись <span class="cellbadge">${item.cell}</span></h2><p class="sub">${z === "container" ? "Отрезаешь кусочек малярного скотча и клеишь на товар. Что пишешь?" : "Отрезаешь кусок малярного скотча. Как подписываешь габаритный товар?"}</p><div class="opts">${opts.map((o, i) => `<button class="opt" data-i="${i}" type="button"><b>${o[1]}</b><small>${o[2]}</small></button>`).join("")}</div>`;
-      box.querySelectorAll(".opt").forEach((b) => b.onclick = async () => {
+      box.querySelectorAll(".opt").forEach((b) => (b.onclick = async () => {
         tick(1);
-        if (opts[+b.dataset.i][0]) { veil.hidden = true; veil.replaceChildren(); toast(z === "container" ? "Подписал и положил в контейнер под кармашками ✓" : "Поставил справа от стола и подписал ✓", "good"); return resolve(true); }
+        if (opts[+b.dataset.i][0]) { veil.hidden = true; veil.replaceChildren(); toast(z === "container" ? "Подписал и положил в контейнер под кармашками ✓" : "Подписал и поставил у стены ✓", "good"); return resolve(true); }
         S.cellMiss = true;
         await oops(3, "Так потеряется", z === "container" ? "Найти товар в контейнере можно только по номеру ячейки на скотче. Подпиши номер, который показало приложение." : "Надпись должна быть хорошо видна: иначе товар не найти, когда придёт клиент.", false);
-      });
+      }));
     });
   }
 
   /* ---------- телефон ---------- */
-  function openPhone() {
-    if (!R.active || !$("#ov").hidden || !$("#dlg").hidden) return;
+  async function openPhone() {
+    if (!R.active || !$("#ov").hidden || !$("#dlg").hidden || $("#veil").innerHTML) return;
     if (!S.doorSeen) { toast("Телефон пригодится на пункте."); return; }
+    if (!S.soundAsked && (R.hold && R.hold.item || S.heapSeen)) {
+      S.soundAsked = true;
+      const a = await choose("Перед приёмкой", "Приложение будет называть номер ячейки. Как поступишь со звуком?", ["Сниму наушники и сделаю звук погромче", "Оставлю музыку в наушниках, так приятнее"]);
+      if (a === 1) await oops(5, "Наушники при приёмке", "При приёмке наушники не носят. Приложение озвучивает номер ячейки, и на камерах должно быть слышно, какую ячейку ты принял и куда несёшь товар. Так потерянный товар можно найти.");
+      else toast("Звук включён на максимум", "good");
+      learn("sound");
+    }
     stage = $("#ov-stage");
     P.screen = P.cur && !P.placed ? "result" : "accept";
-    const sh = scene(phoneArt(), { phone: true });
+    scene(phoneArt(), { phone: true });
     showOv("phone"); renderPhone();
     if (!S.phone && !S.dead) {
       S.dead = true; busy = true;
       card({ tone: "bad", title: "Телефон разряжен", text: "Приёмка идёт в приложении, а телефон сел в самый неподходящий момент. Пришлось ставить на зарядку и ждать 15 минут. Заряжай телефон заранее.", pen: "−10 очков" }).then(() => { S.score = Math.max(0, S.score - 10); S.mistakes.push("Телефон разряжен"); tick(15); busy = false; });
     }
-    return sh;
   }
-  function closePhone() { $("#ov").hidden = true; $("#ov-x").hidden = true; stage = $("#ov-stage"); stage.innerHTML = ""; }
+  function closePhone() { $("#ov").hidden = true; $("#ov-x").hidden = true; $("#ov-stage").innerHTML = ""; }
   function showOv(mode) { const o = $("#ov"); o.hidden = false; o.dataset.mode = mode; o.scrollTop = 0; $("#ov-x").hidden = mode !== "phone"; }
+  function hideOv() { $("#ov").hidden = true; $("#ov-x").hidden = true; }
 
   async function onSheetAction(s) {
     if (busy) return;
@@ -606,8 +763,8 @@
         learn("brak"); busy = false; return; }
       if (!it.defect && P.brak) { await oops(3, "Лишняя отметка", "Товар целый, а отметка «Брак» стоит. Отмечай её только когда брак есть."); P.brak = false; busy = false; renderPhone(); return; }
       if (it.defect) learn("brak");
-      busy = false; R.hold = { item: it }; closePhone();
-      setGoal(`Отнеси товар в ячейку ${it.cell}. Номера написаны на наклейках на полках`);
+      busy = false; closePhone();
+      setGoal(it.zone === "gab" ? `Подпиши и отнеси к габариткам у правой стены: ячейка ${it.cell}` : `Отнеси товар в ячейку ${it.cell}. Номера написаны на наклейках на полках`);
     } else if (s === "finish") { closePhone(); endShift(); }
   }
 
@@ -617,9 +774,9 @@
     await narrate(sh, `<b>${fmt(S.clock)}.</b> Все товары разложены по местам.`, "Дальше");
     const ans = await ask(sh, "Приёмка закончена, но приложение ничего не показало: нет уведомления, что приёмка завершена. Как понять, что всё сделано?", [
       { value: "wait", label: "Подожду, пока приложение напишет, что приёмка завершена" },
-      { value: "check", label: "Проверю сам: на столе не осталось неразобранных товаров" },
+      { value: "check", label: "Проверю сам: в коробках и у входа не осталось неразобранных товаров" },
     ]);
-    if (ans === "wait") await oops(5, "Уведомления не будет", "Приложение не сообщает о завершении приёмки. Проверяй сам: на столе не должно остаться товаров, все лежат в своих ячейках.");
+    if (ans === "wait") await oops(5, "Уведомления не будет", "Приложение не сообщает о завершении приёмки. Проверяй сам: в коробках и у входа не должно остаться товаров, все лежат в своих ячейках.");
     learn("done"); results();
   }
 
@@ -650,37 +807,46 @@
   /* ---------- управление ---------- */
   const K = {}; let joy = null, look = null;
   const touch = matchMedia("(pointer: coarse)").matches;
+  function toggleInspect() { if (!(R.hold && (R.hold.item || R.hold.box))) return; R.inspect = !R.inspect; $("#insp-btn").classList.toggle("on", R.inspect); }
   function bindInput() {
     addEventListener("keydown", (e) => {
       if (!R.active) return;
       K[e.code] = true;
       const dlg = $("#dlg");
       if (["KeyE", "Space", "Enter"].includes(e.code)) {
-        if (!dlg.hidden) dlg.querySelector("button").click();
-        else if ($("#ov").hidden && !$("#veil").innerHTML) doAct();
+        if (!dlg.hidden) dlg.querySelector("button").click(); else if ($("#ov").hidden && !$("#veil").innerHTML) doAct();
         if (e.target === document.body || e.target === cv) e.preventDefault();
       }
       if (e.code === "KeyP") { if ($("#ov").dataset.mode === "phone" && !$("#ov").hidden) closePhone(); else openPhone(); }
-      if (e.code === "Escape" && !$("#ov").hidden && $("#ov").dataset.mode === "phone") closePhone();
+      if (e.code === "KeyF" && $("#ov").hidden) toggleInspect();
+      if (e.code === "KeyQ") foldLadder();
+      if (e.code === "Escape") { if (R.inspect) toggleInspect(); else if (!$("#ov").hidden && $("#ov").dataset.mode === "phone") closePhone(); }
     });
     addEventListener("keyup", (e) => { K[e.code] = false; });
     cv.addEventListener("pointerdown", (e) => {
       cv.setPointerCapture(e.pointerId);
       const r = cv.getBoundingClientRect();
-      if (e.pointerType === "touch" && e.clientX - r.left < r.width * 0.45) { joy = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: 0, y: 0 }; const j = $("#joy"); j.hidden = false; j.style.left = e.clientX - r.left - 55 + "px"; j.style.top = e.clientY - r.top - 55 + "px"; $("#joy i").style.transform = ""; }
+      if (!R.inspect && e.pointerType === "touch" && e.clientX - r.left < r.width * 0.45) { joy = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: 0, y: 0 }; const j = $("#joy"); j.hidden = false; j.style.left = e.clientX - r.left - 55 + "px"; j.style.top = e.clientY - r.top - 55 + "px"; $("#joy i").style.transform = ""; }
       else look = { id: e.pointerId, x: e.clientX, y: e.clientY, k: e.pointerType === "touch" ? 0.0058 : 0.0042 };
     });
     cv.addEventListener("pointermove", (e) => {
       if (joy && e.pointerId === joy.id) { joy.x = Math.max(-1, Math.min(1, (e.clientX - joy.x0) / 50)); joy.y = Math.max(-1, Math.min(1, (e.clientY - joy.y0) / 50)); $("#joy i").style.transform = `translate(${joy.x * 34}px,${joy.y * 34}px)`; }
-      else if (look && e.pointerId === look.id) { PL.yaw += (e.clientX - look.x) * look.k; PL.pitch = Math.max(-1.2, Math.min(1.2, PL.pitch - (e.clientY - look.y) * look.k)); look.x = e.clientX; look.y = e.clientY; }
+      else if (look && e.pointerId === look.id) {
+        const dx = e.clientX - look.x, dy = e.clientY - look.y;
+        if (R.inspect) { R.rot.y += dx * 0.012; R.rot.x = Math.max(-1.4, Math.min(1.4, R.rot.x + dy * 0.012)); }
+        else { PL.yaw += dx * look.k; PL.pitch = Math.max(-1.2, Math.min(1.2, PL.pitch - dy * look.k)); }
+        look.x = e.clientX; look.y = e.clientY;
+      }
     });
     const up = (e) => { if (joy && e.pointerId === joy.id) { joy = null; $("#joy").hidden = true; } if (look && e.pointerId === look.id) look = null; };
     cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
     $("#ctx").addEventListener("click", () => doAct());
     $("#phone-btn").addEventListener("click", () => ($("#ov").dataset.mode === "phone" && !$("#ov").hidden ? closePhone() : openPhone()));
+    $("#insp-btn").addEventListener("click", toggleInspect);
+    $("#ladder-btn").addEventListener("click", foldLadder);
     $("#ov-x").addEventListener("click", closePhone);
     $("#ov-stage").addEventListener("click", (e) => {
-      const m = $("#ov").dataset.mode; if (m !== "phone") return;
+      if ($("#ov").dataset.mode !== "phone") return;
       const a = e.target.closest("[data-a]"); if (a) return onPhoneAction(a.dataset.a, a.dataset);
       const s = e.target.closest("[data-s]"); if (s) onSheetAction(s.dataset.s);
     });
@@ -694,13 +860,12 @@
       const pr = t.prompt(); if (!pr) continue;
       const p = t.pos, dx = p[0] - e[0], dy = p[1] - e[1], dz = p[2] - e[2], d = Math.hypot(dx, dy, dz);
       if (d > (t.r || 3.4)) continue;
-      const a = Math.acos(Math.min(1, (dx * f[0] + dy * f[1] + dz * f[2]) / d)), tol = Math.max(0.16, Math.atan(0.42 / Math.max(d, 0.5))) * (t.tol || 1);
+      const a = Math.acos(Math.min(1, (dx * f[0] + dy * f[1] + dz * f[2]) / d)), tol = Math.max(0.16, Math.atan(0.42 / Math.max(d, 0.5))) * (t.tol || 1) * (t.kind === "cell" && t.low ? 0.8 : 1);
       if (a < tol && a < ba) { ba = a; best = { t, pr }; }
     }
     return best;
   }
   function doAct() { if (isFrozen() || !focus) return; const a = focus.t.act; if (a) a(); }
-
   function blocked(x, z) {
     for (const c of COLL) { if (c.on && !c.on()) continue; if (x > c.x0 - 0.3 && x < c.x1 + 0.3 && z > c.z0 - 0.3 && z < c.z1 + 0.3) return true; }
     return false;
@@ -710,17 +875,22 @@
     R.t += dt;
     const fr = isFrozen();
     if (!fr) {
-      let ix = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0), iz = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0);
-      if (K.ArrowLeft || K.ArrowRight) { PL.yaw += ((K.ArrowRight ? 1 : 0) - (K.ArrowLeft ? 1 : 0)) * 1.8 * dt; ix = 0; }
+      let ix = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0), iz = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0);
+      if (K.ArrowLeft || K.ArrowRight) PL.yaw += ((K.ArrowRight ? 1 : 0) - (K.ArrowLeft ? 1 : 0)) * 1.8 * dt;
       if (joy) { ix += joy.x; iz -= joy.y; }
       const m = Math.hypot(ix, iz); if (m > 1) { ix /= m; iz /= m; }
-      const sp = (K.ShiftLeft ? 5.2 : 3.4) * dt, s = Math.sin(PL.yaw), c = Math.cos(PL.yaw);
+      const sp = (K.ShiftLeft ? 5.2 : 3.4) * dt * (R.ladder.up ? 0.5 : 1), s = Math.sin(PL.yaw), c = Math.cos(PL.yaw);
       const dx = (s * iz + c * ix) * sp, dz = (-c * iz + s * ix) * sp;
       if (!blocked(PL.x + dx, PL.z)) PL.x += dx;
       if (!blocked(PL.x, PL.z + dz)) PL.z += dz;
       if (m > 0.05) PL.bob += dt * 8;
     }
-    /* время идёт по мере хода к пункту */
+    if (R.ladder.up && Math.hypot(PL.x - R.ladder.x, PL.z - R.ladder.z) > 2.6) { foldLadder(); toast("Отошёл от стремянки, убрал её"); }
+    R.lift += ((R.ladder.up ? 0.85 : 0) - R.lift) * Math.min(1, dt * 6);
+    if (R.hold && R.hold.box) R.inspect = false;
+    if (!R.hold && R.inspect) toggleInspect();
+    $("#insp-btn").hidden = !(R.hold && (R.hold.item || R.hold.box)) || !$("#ov").hidden;
+    $("#ladder-btn").hidden = !R.ladder.up || !$("#ov").hidden;
     if (R.stage === "street" && !fr) {
       const p = Math.max(0, Math.min(1, (46 - PL.z) / 43));
       S.clock = Math.max(S.clock, S.leave + COMMUTE * p); hud();
@@ -730,6 +900,8 @@
     R.doorOpen += (R.doorTarget - R.doorOpen) * Math.min(1, dt * 4);
     if (R.doorTarget && !S.doorSeen) S.doorSeen = true;
     const t = R.tasya; if (t) { const dx = PL.x - t.x, dz = PL.z - t.z; t.yaw = Math.atan2(dx, dz); if (t.wave > 0) t.wave -= dt; }
+    R.cars.forEach((c) => { c.x += c.v * dt; if (c.x > 80) c.x = -80; if (c.x < -80) c.x = 80; });
+    R.people.forEach((p) => { p.z += p.dz * dt; if (p.z > 50) p.dz = -Math.abs(p.dz); if (p.z < 6) p.dz = Math.abs(p.dz); });
     focus = pickFocus();
     const cx = $("#ctx");
     if (focus && !fr) { if (cx.hidden || cx.dataset.t !== focus.pr) { cx.hidden = false; cx.dataset.t = focus.pr; cx.innerHTML = `<span class="k">${touch ? "👆" : "E"}</span>${focus.pr}`; } } else if (!cx.hidden) { cx.hidden = true; cx.dataset.t = ""; }
@@ -745,54 +917,117 @@
   }
   async function enterHall() {
     R.stage = "hall"; setStep("Поставка"); R.cut = true;
-    await say(`<b>${fmt(S.clock)}.</b> Ты внутри. Поставка уже приехала и ждёт, когда ты её примешь. Для начала нужно занести коробки на склад: он за фиолетовой шторой справа.`, { label: "К коробкам" });
-    R.cut = false; setGoal("Возьми коробку у входа и неси на склад. Всего 6 коробок");
+    await say(`<b>${fmt(S.clock)}.</b> Ты внутри. Поставка уже приехала: коробки с товарами, а ещё микроволновка, шина и велосипед не в коробках. Коробки неси на склад за фиолетовой шторой справа.`, { label: "К поставке" });
+    R.cut = false; setGoal("Возьми коробку у входа и неси на склад. Всего 4 коробки");
   }
 
   /* ---------- отрисовка ---------- */
-  function drawGirl(x, z, yaw, o) {
+  function drawPerson(x, z, yaw, o) {
     const c = Math.cos(yaw), s = Math.sin(yaw), P3 = (lx, y, lz) => [x + lx * c + lz * s, y, z - lx * s + lz * c];
-    const sk = [1, 0.84, 0.72], hr = [0.22, 0.6, 1], tp = [1, 0.78, 0.9], jn = [0.3, 0.33, 0.58], sw = Math.sin(R.t * 2) * 0.01;
-    E.drawBox(P3(-0.09, 0.4, 0), [0.14, 0.8, 0.16], yaw, jn); E.drawBox(P3(0.09, 0.4, 0), [0.14, 0.8, 0.16], yaw, jn);
-    E.drawBox(P3(-0.09, 0.04, 0.04), [0.15, 0.08, 0.26], yaw, [0.97, 0.97, 1]); E.drawBox(P3(0.09, 0.04, 0.04), [0.15, 0.08, 0.26], yaw, [0.97, 0.97, 1]);
-    E.drawBox(P3(0, 1.1 + sw, 0), [0.38, 0.5, 0.22], yaw, tp);
-    E.drawBox(P3(-0.25, 1.08, 0), [0.1, 0.46, 0.12], yaw, tp);
+    const pal = o.pal, sk = pal.skin || [1, 0.84, 0.72], sw = Math.sin(R.t * 2) * 0.01, st = o.walk ? Math.sin(R.t * 7) * 0.12 : 0;
+    E.drawBox(P3(-0.09, 0.4, st), [0.14, 0.8, 0.16], yaw, pal.bot); E.drawBox(P3(0.09, 0.4, -st), [0.14, 0.8, 0.16], yaw, pal.bot);
+    E.drawBox(P3(-0.09, 0.04, 0.04 + st), [0.15, 0.08, 0.26], yaw, [0.15, 0.15, 0.18]); E.drawBox(P3(0.09, 0.04, 0.04 - st), [0.15, 0.08, 0.26], yaw, [0.15, 0.15, 0.18]);
+    E.drawBox(P3(0, 1.1 + sw, 0), [0.4, 0.52, 0.24], yaw, pal.top);
+    if (pal.collar) { E.drawBox(P3(0, 1.36 + sw, 0.12), [0.16, 0.08, 0.02], yaw, pal.collar); E.drawBox(P3(0, 1.0 + sw, 0.125), [0.04, 0.4, 0.01], yaw, pal.collar); }
+    E.drawBox(P3(-0.26, 1.08, o.walk ? st : 0), [0.1, 0.46, 0.12], yaw, pal.top);
     const wv = o.wave > 0 ? Math.sin(R.t * 10) * 0.2 : 0;
-    E.drawBox(P3(0.25, 1.12 + (o.give ? 0.1 : 0) + Math.abs(wv), 0.05 + (o.give ? 0.12 : 0)), [0.1, 0.46, 0.12], yaw, tp);
-    E.drawBox(P3(-0.25, 0.8, 0), [0.09, 0.09, 0.09], yaw, sk);
+    E.drawBox(P3(0.26, 1.12 + (o.give ? 0.1 : 0) + Math.abs(wv), (o.give ? 0.17 : 0) - (o.walk ? st : 0)), [0.1, 0.46, 0.12], yaw, pal.top);
+    E.drawBox(P3(-0.26, 0.82, o.walk ? st : 0), [0.09, 0.09, 0.09], yaw, sk);
     E.drawBox(P3(0, 1.52 + sw, 0), [0.3, 0.3, 0.3], yaw, sk);
-    E.drawBox(P3(0, 1.62 + sw, -0.02), [0.35, 0.2, 0.34], yaw, hr);
-    E.drawBox(P3(0, 1.38 + sw, -0.14), [0.36, 0.5, 0.1], yaw, hr);
-    E.drawBox(P3(-0.17, 1.46 + sw, -0.02), [0.06, 0.34, 0.3], yaw, hr); E.drawBox(P3(0.17, 1.46 + sw, -0.02), [0.06, 0.34, 0.3], yaw, hr);
-    E.drawBox(P3(0, 1.67 + sw, 0.15), [0.3, 0.07, 0.04], yaw, hr);
+    E.drawBox(P3(0, 1.63 + sw, -0.02), [0.35, 0.2, 0.34], yaw, pal.hair);
+    if (pal.long) {
+      E.drawBox(P3(0, 1.3 + sw, -0.15), [0.36, 0.62, 0.1], yaw, pal.hair);
+      if (pal.tip) E.drawBox(P3(0, 0.98 + sw, -0.16), [0.37, 0.14, 0.1], yaw, pal.tip);
+      E.drawBox(P3(-0.18, 1.4 + sw, -0.02), [0.06, 0.5, 0.3], yaw, pal.hair); E.drawBox(P3(0.18, 1.4 + sw, -0.02), [0.06, 0.5, 0.3], yaw, pal.hair);
+      if (pal.tip) { E.drawBox(P3(-0.18, 1.1 + sw, -0.02), [0.065, 0.12, 0.3], yaw, pal.tip); E.drawBox(P3(0.18, 1.1 + sw, -0.02), [0.065, 0.12, 0.3], yaw, pal.tip); }
+    }
+    E.drawBox(P3(0, 1.67 + sw, 0.15), [0.3, 0.07, 0.04], yaw, pal.hair);
     E.drawBox(P3(-0.07, 1.52 + sw, 0.155), [0.04, 0.05, 0.02], yaw, [0.15, 0.1, 0.25]); E.drawBox(P3(0.07, 1.52 + sw, 0.155), [0.04, 0.05, 0.02], yaw, [0.15, 0.1, 0.25]);
-    E.drawBox(P3(0, 1.44 + sw, 0.155), [0.06, 0.02, 0.02], yaw, [0.9, 0.4, 0.5]);
-    if (o.key) E.drawBox(P3(0.25, 1.15, 0.3), [0.06, 0.03, 0.14], yaw, [1, 0.85, 0.2], { unlit: true });
+    E.drawBox(P3(0, 1.44 + sw, 0.155), [0.06, 0.02, 0.02], yaw, [0.85, 0.45, 0.55]);
+    if (o.key) E.drawBox(P3(0.26, 1.15, 0.32), [0.06, 0.03, 0.14], yaw, [1, 0.85, 0.2], { unlit: true });
+  }
+  const TASYA_PAL = { hair: [0.08, 0.12, 0.3], tip: [0.12, 0.45, 0.55], top: [0.1, 0.1, 0.13], bot: [0.12, 0.12, 0.16], collar: [0.96, 0.96, 0.98], skin: [0.98, 0.86, 0.8], long: true };
+
+  function drawCar(c) {
+    const d = c.v > 0 ? 1 : -1;
+    E.drawBox([c.x, 0.55, c.z], [4.2, 0.7, 1.8], 0, c.col); E.drawBox([c.x - 0.2 * d, 1.1, c.z], [2.2, 0.6, 1.6], 0, [0.75, 0.88, 1]);
+    [[-1.3, -0.85], [1.3, -0.85], [-1.3, 0.85], [1.3, 0.85]].forEach(([a, b]) => E.drawBox([c.x + a, 0.3, c.z + b], [0.7, 0.6, 0.2], 0, [0.1, 0.1, 0.12]));
+    E.drawBox([c.x + 2.1 * d, 0.65, c.z - 0.5], [0.05, 0.15, 0.3], 0, [1, 1, 0.7], { unlit: true }); E.drawBox([c.x + 2.1 * d, 0.65, c.z + 0.5], [0.05, 0.15, 0.3], 0, [1, 1, 0.7], { unlit: true });
+  }
+
+  /* предмет: части + стикер; pos — центр, sc — масштаб, ry/rx — повороты */
+  function drawItem(id, pos, sc, ry, rx, stickerOn) {
+    const v = VIS[id], Rm = GLM.mul(GLM.rotY(ry), GLM.rotX(rx));
+    v.p.forEach((p) => {
+      const rz = p[7] || 0, Rp = rz ? GLM.mul(Rm, GLM.rotZ(rz)) : Rm;
+      const m = GLM.mul(GLM.trans(pos[0], pos[1], pos[2]), GLM.mul(Rm, GLM.mul(GLM.trans(p[0] * sc, p[1] * sc, p[2] * sc), GLM.mul(rz ? GLM.rotZ(rz) : GLM.ident(), GLM.scale(p[3] * sc, p[4] * sc, p[5] * sc)))));
+      E.drawBoxM(m, Rp, p[6]);
+    });
+    if (stickerOn !== false) { const s = v.s, m = GLM.mul(GLM.trans(pos[0], pos[1], pos[2]), GLM.mul(Rm, GLM.mul(GLM.trans(s[0] * sc, s[1] * sc, s[2] * sc), GLM.scale(s[3] * sc, s[4] * sc, 1)))); E.drawLabelM(m, Rm, STK[id]); }
+    if (TAPE[id] && (R.placed.some((x) => x.it && x.it.id === id) || false)) { /* скотч рисуется на месте */ }
+  }
+  const GLM_ID = null;
+
+  function drawBoxOpen(x, y, z, b, k) {
+    E.drawBox([x, y + 0.26, z], [0.9, 0.52, 0.6], 0, C.kr);
+    if (!b) E.drawBox([x, y + 0.53, z], [0.12, 0.01, 0.62], 0, [0.95, 0.9, 0.75]);
+    else {
+      E.drawBox([x, y + 0.5, z - 0.3], [0.9, 0.02, 0.3], 0, [0.92, 0.72, 0.46]); E.drawBox([x, y + 0.5, z + 0.3], [0.9, 0.02, 0.3], 0, [0.92, 0.72, 0.46]);
+      E.drawBox([x, y + 0.53, z], [0.8, 0.01, 0.5], 0, [0.35, 0.25, 0.15]);
+      b.ids.forEach((id, i) => drawItem(id, [x - 0.25 + i * 0.28, y + 0.6 + (id === "vase" ? 0.1 : 0), z], 0.9, 0.2 * i, -0.3, true));
+    }
   }
 
   function render() {
     const cam = E.cam, bob = Math.sin(PL.bob) * 0.03;
-    cam.pos = [PL.x, 1.6 + bob, PL.z]; cam.yaw = PL.yaw; cam.pitch = PL.pitch;
-    E.begin(R.stage === "title" ? [0.72, 0.86, 1] : [0.72, 0.86, 1]);
+    cam.pos = [PL.x, 1.6 + bob + R.lift, PL.z]; cam.yaw = PL.yaw; cam.pitch = PL.pitch;
+    E.begin([0.74, 0.87, 1]);
     E.drawStatic();
     const a = R.doorOpen * 1.75, dc = Math.cos(a), ds = Math.sin(a);
     E.drawBox([1.2 - 0.55 * dc, 1.15, -0.1 + 0.55 * ds], [1.1, 2.3, 0.06], a, C.gl, { alpha: 0.82 });
     E.drawBox([-1.2 + 0.55 * dc, 1.15, -0.1 + 0.55 * ds], [1.1, 2.3, 0.06], -a, C.gl, { alpha: 0.82 });
-    BOXES.forEach((b, i) => { if (R.carried[i]) return; E.drawBox([b[0], 0.28, b[1]], [0.9, 0.56, 0.6], 0, C.kr); E.drawBox([b[0], 0.565, b[1]], [0.14, 0.01, 0.62], 0, [0.95, 0.9, 0.75]); });
-    PAD.forEach(([x, z], i) => { for (let k = 0; k < R.pads[i]; k++) { E.drawBox([x, 0.26 + 0.5 * k, z], [0.9, 0.48, 0.6], 0, C.kr); E.drawBox([x, 0.505 + 0.5 * k, z], [0.14, 0.01, 0.62], 0, [0.95, 0.9, 0.75]); } });
-    if (S.unpacked) ITEMS.forEach((it, i) => {
-      if (!P.tray.includes(it)) return;
-      const sz = isize(it), x = TABLE.x - 0.6 + (i % 3) * 0.6, z = TABLE.z - 0.28 + Math.floor(i / 3) * 0.28;
-      E.drawBox([x, TABLE.y + sz[1] / 2, z], sz, 0, ICOL[it.id]); E.drawLabel([x, TABLE.y + sz[1] * 0.6, z + sz[2] / 2 + 0.004], [0.13, 0.09], 0, STK[it.id]);
+    /* поставка в зале */
+    HALLBOX.forEach((b, i) => { if (R.hall[i]) drawBoxOpen(b[0], 0, b[1], null); });
+    Object.keys(BIGPOS).forEach((id) => { const it = byId(id); if (it.taken || R.placed.some((x) => x.it === it)) return; const p = BIGPOS[id]; if (id === "micro") { E.drawBox([p[0], 0.2, p[1]], [0.66, 0.4, 0.5], 0, C.kr); E.drawBox([p[0], 0.41, p[1]], [0.12, 0.01, 0.52], 0, [0.95, 0.9, 0.75]); AT_STICK(id, [p[0], 0.2, p[1] + 0.255]); } else drawItem(id, [p[0], FLOORY[id] + (id === "bike" ? 0.12 : 0), p[1]], 1, p[2], 0, true); });
+    /* стопки коробок на площадках */
+    PAD.forEach(([x, z], i) => R.stacks[i].forEach((bi, k) => drawBoxOpen(x, 0.5 * k, z, R.boxes[bi].opened ? R.boxes[bi] : null)));
+    if (R.emptyBoxes) for (let i = 0; i < Math.min(3, R.emptyBoxes); i++) E.drawBox([TABLE.x + 1.0, 0.82 + 0.03 * i + 0.03, TABLE.z + 0.9], [0.8, 0.04, 0.55], 0.1 * i, [0.85, 0.66, 0.42]);
+    /* размещённые товары */
+    R.placed.forEach((p) => {
+      if (p.cbox) { E.drawBox(p.pos, [0.62, 0.2, 0.44], 0, C.kr); E.drawBox([p.pos[0], p.pos[1] + 0.11, p.pos[2]], [0.5, 0.02, 0.32], 0, [0.4, 0.3, 0.2]); return; }
+      if (R.placed.some((q) => q.cbox && q.cell === p.cell)) return;
+      const k = p.small ? 0.55 : 1, id = p.it.id; drawItem(id, p.pos, k, 0, 0, true);
+      if (TAPE[id]) E.drawLabelM(GLM.mul(GLM.trans(p.pos[0] + (p.kind === "gab" ? 0.05 : 0), p.pos[1] + 0.12, p.pos[2] + 0.2), GLM.scale(0.22, 0.11, 1)), GLM.ident(), TAPE[id]);
     });
-    R.placed.forEach(({ it, pos }) => { const sz = isize(it); E.drawBox(pos, sz, 0, ICOL[it.id]); if (TAPE[it.id]) E.drawLabel([pos[0], pos[1] + sz[1] * 0.1, pos[2] + sz[2] / 2 + 0.004], [0.2, 0.1], 0, TAPE[it.id]); });
-    const t = R.tasya; if (t) drawGirl(t.x, t.z, t.yaw, { key: R.keyShow, wave: t.wave, give: R.keyShow });
+    /* стремянка */
+    drawLadder();
+    /* прозрачные кармашки */
+    (R.pockets || []).forEach((p) => E.drawBox([p.x, p.y, p.z], [0.16, 0.34, 0.5], 0, [0.8, 0.9, 1], { alpha: 0.38 }));
+    /* камеры */
+    [[-6.7, -9.0], [6.7, -9.0], [-6.7, -19.6], [6.7, -19.6]].forEach(([x, z]) => { E.drawBox([x + (x > 0 ? -0.12 : 0.12), 3.0, z + (z < -15 ? 0.1 : -0.1)], [0.14, 0.14, 0.14], 0, C.dark); E.drawBox([x + (x > 0 ? -0.2 : 0.2), 3.0, z + (z < -15 ? 0.17 : -0.17)], [0.05, 0.05, 0.05], 0, [1, 0.1, 0.1], { unlit: true }); });
+    const t = R.tasya; if (t) drawPerson(t.x, t.z, t.yaw, { key: R.keyShow, wave: t.wave, give: R.keyShow, walk: t.walk, pal: TASYA_PAL });
+    R.people.forEach((p) => drawPerson(p.x, p.z, p.dz > 0 ? 0 : Math.PI, { walk: true, pal: p.pal }));
+    R.cars.forEach(drawCar);
     /* предмет в руках */
     E.beginHeld();
     const h = R.hold, sw = Math.sin(PL.bob) * 0.012;
-    if (h && h.box) { E.drawBox([0.25, -0.42 + sw, -1.2], [0.6, 0.36, 0.42], 0.3, C.kr); E.drawBox([0.25, -0.238 + sw, -1.2], [0.1, 0.01, 0.44], 0.3, [0.95, 0.9, 0.75]); }
-    else if (h && h.item) { const sz = isize(h.item), k = h.item.big ? 0.75 : 0.95; E.drawBox([0.2, -0.3 + sw, -0.95], [sz[0] * k, sz[1] * k, sz[2] * k], 0.35, ICOL[h.item.id]); E.drawLabel([0.2 - 0.04, -0.28 + sw, -0.95 + sz[2] * k * 0.5 + 0.002], [0.16, 0.11], 0.35, STK[h.item.id]); }
-    if (TG() && false) return;
+    if (h && h.box) E.drawBox([0.25, -0.42 + sw, -1.2], [0.6, 0.36, 0.42], 0.3, C.kr);
+    else if (h && h.cbox) { E.drawBox([0.25, -0.38 + sw, -1.0], [0.56, 0.18, 0.4], 0.3, C.kr); }
+    else if (h && h.item) {
+      const id = h.item.id, big = h.item.big && id !== "vase";
+      if (R.inspect) drawItem(id, [0, -0.02, -0.62], VIS[id].sc * (big ? 0.45 : 0.9) * 0.8, R.rot.y, R.rot.x, true);
+      else drawItem(id, [0.3, -0.28 + sw, big ? -0.95 : -0.62], VIS[id].sc * (big ? 0.34 : 0.6), 0.5, 0.15, true);
+    }
+  }
+  function AT_STICK(id, p) { E.drawLabelM(GLM.mul(GLM.trans(p[0], p[1], p[2]), GLM.scale(0.17, 0.12, 1)), GLM.ident(), STK[id]); }
+
+  function drawLadder() {
+    const l = R.ladder; let x, z, ry = 0, tilt;
+    if (l.up) { x = l.x; z = l.z; ry = Math.atan2(l.nx, l.nz); tilt = 0.28; } else { x = -6.2; z = -9.0; ry = 0; tilt = 0.06; }
+    const Rm = GLM.mul(GLM.trans(x, 0, z), GLM.rotY(ry)), H = 2.1;
+    const part = (ox, oy, oz, sx, sy, sz, rx, col) => { const rr = GLM.mul(GLM.rotY(ry), GLM.rotX(rx)); const m = GLM.mul(GLM.trans(x, 0, z), GLM.mul(GLM.rotY(ry), GLM.mul(GLM.trans(ox, oy, oz), GLM.mul(GLM.rotX(rx), GLM.scale(sx, sy, sz))))); E.drawBoxM(m, rr, col); };
+    [-0.3, 0.3].forEach((ox) => part(ox, H / 2, -Math.sin(tilt) * H / 2, 0.05, H, 0.07, -tilt, [0.9, 0.7, 0.2]));
+    for (let k = 0; k < 6; k++) { const y = 0.3 + k * 0.32; part(0, y, -Math.sin(tilt) * y, 0.6, 0.04, 0.12, 0, [0.85, 0.85, 0.9]); }
   }
 
   function frame(ts) {
@@ -801,14 +1036,12 @@
     const dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
     update(dt); render();
   }
-
   async function initEngine() {
     if (built) return true;
     try { await Promise.race([document.fonts.load('700 24px Onest'), sleep(1200)]); } catch (_) {}
     cv = $("#cv");
     try { buildWorld(); } catch (e) { console.error(e); return false; }
-    bindInput();
-    raf = requestAnimationFrame(frame);
+    bindInput(); raf = requestAnimationFrame(frame);
     return true;
   }
 
@@ -817,8 +1050,8 @@
     stage = $("#ov-stage"); setStep("Старт"); setGoal("");
     let sh = scene(null); showOv("intro");
     sh.innerHTML = `<span class="tag">Обучение · урок 1</span><h1>Смена на ПВЗ</h1>
-      <p>Ты ходишь по настоящему пункту выдачи: идёшь на работу, открываешь дверь, заносишь коробки на склад и принимаешь товары. Решай, как на настоящей смене. За ошибки снимаются очки, а правила, которые ты узнаёшь, попадают в заметки.</p>
-      <p class="hint">${touch ? "Левый палец по экрану: идти. Правый: смотреть. Кнопка внизу: действие." : "WASD: идти. Зажми мышь и двигай: смотреть. E: действие. P: телефон."}</p>
+      <p>Ты ходишь по настоящему пункту выдачи: идёшь на работу, открываешь дверь, заносишь коробки на склад, открываешь их и принимаешь товары. Решай, как на настоящей смене. За ошибки снимаются очки, а правила, которые ты узнаёшь, попадают в заметки.</p>
+      <p class="hint">${touch ? "Левый палец по экрану: идти. Правый: смотреть. Кнопки внизу: действие, телефон, осмотр товара." : "WASD: идти. Зажми мышь и двигай: смотреть. E: действие. P: телефон. F: осмотреть товар в руках."}</p>
       <div class="row-end"><button class="btn" id="go" type="button">Начать смену →</button></div>`;
     await new Promise((r) => { $("#go", sh).onclick = () => r(); });
     S.clock = 7 * 60; hud(); setStep("Утро");
@@ -836,15 +1069,13 @@
       { value: 8 * 60 + 15, label: "В 8:15", hint: "приеду в 8:55, как раз к началу" },
       { value: 8 * 60 + 40, label: "В 8:40", hint: "приеду в 9:20" },
     ]);
-    S.leave = leave; S.clock = leave; hud();
-    hideOv();
+    S.leave = leave; S.clock = leave; hud(); hideOv();
   }
 
-  function hideOv() { $("#ov").hidden = true; $("#ov-x").hidden = true; }
-
   window.startTraining = async function () {
-    resetState(); S.leave = 7 * 60; S.unpacked = false; S.doorSeen = false; S.dead = false; S.keyPlan = false;
-    Object.assign(R, { active: false, doorOpen: 0, doorTarget: 0, stage: "title", cut: false, hold: null, carried: [], pads: [0, 0, 0], moved: 0, placed: [], tasya: null, keyShow: false });
+    resetState(); Object.assign(S, { leave: 7 * 60, doorSeen: false, dead: false, keyPlan: false, heapSeen: false, heapDone: false, soundAsked: false });
+    ITEMS.forEach((i) => { i.taken = false; });
+    Object.assign(R, { active: false, doorOpen: 0, doorTarget: 0, stage: "title", cut: false, hold: null, tasya: null, keyShow: false, boxes: BOXDEF.map((ids) => ({ ids: ids.slice(), opened: false })), stacks: [[], [], []], hall: [true, true, true, true], placed: [], ladder: { up: false, x: 0, z: 0, nx: 0, nz: 1 }, lift: 0, inspect: false, emptyBoxes: 0 });
     Object.assign(PL, { x: -1.2, z: 46, yaw: 0, pitch: 0, bob: 0 });
     $("#notes-list").innerHTML = ""; $("#notes-empty").hidden = false;
     $("#veil").hidden = true; $("#veil").innerHTML = ""; $("#dlg").hidden = true;
@@ -853,9 +1084,8 @@
     tgl.onclick = () => nt.classList.toggle("open"); cls.onclick = () => nt.classList.remove("open");
     const ok = await initEngine();
     if (!ok) { toast("Не удалось запустить 3D. Открой обучение в другом браузере.", "bad"); return; }
-    P.tray = ITEMS.slice();
-    R.active = true; last = performance.now();
-    $("#phone-btn").hidden = false;
+    P.tray = ITEMS.slice(); P.cur = null; P.placed = true; P.done = [];
+    R.active = true; last = performance.now(); $("#phone-btn").hidden = false;
     try {
       await intro();
       S.arrival = 0; R.stage = "street";
@@ -865,5 +1095,5 @@
       $("#help").hidden = false; setTimeout(() => { $("#help").hidden = true; }, 9000);
     } catch (e) { console.error(e); toast("Что-то пошло не так. Открой обучение ещё раз.", "bad"); }
   };
-  window.__T = { R, PL, get S() { return S; }, get P() { return P; }, T, get focus() { return focus; }, act: () => doAct(), openPhone, closePhone, onPhoneAction: (a, d) => onPhoneAction(a, d || {}), onSheetAction };
+  window.__T = { R, PL, get S() { return S; }, get P() { return P; }, T, ITEMS, get focus() { return focus; }, act: () => doAct(), openPhone, closePhone, onPhoneAction: (a, d) => onPhoneAction(a, d || {}), onSheetAction, VIS };
 })();

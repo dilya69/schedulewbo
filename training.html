@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/training.css?v=20261125b">
+<link rel="stylesheet" href="css/training.css?v=20261126a">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
@@ -34,6 +34,8 @@
     <div id="goal" class="goal" hidden></div>
     <div class="cross"></div>
     <button id="phone-btn" class="phonebtn" type="button" hidden>📱 <span>Телефон</span></button>
+    <button id="insp-btn" class="sidebtn" type="button" hidden>🔍 <span>Осмотреть</span></button>
+    <button id="ladder-btn" class="sidebtn ladder" type="button" hidden>🪜 <span>Убрать стремянку</span></button>
     <button id="ctx" class="ctx" type="button" hidden></button>
     <div id="joy" class="joy" hidden><i></i></div>
     <div id="help" class="helpbar" hidden>WASD: идти · зажми мышь: смотреть · E: действие · P: телефон</div>
@@ -50,7 +52,7 @@
 <div id="veil" class="veil" hidden></div>
 <div id="toasts" class="toasts"></div>
 
-<script src="js/gl3d.js?v=20261125b"></script>
+<script src="js/gl3d.js?v=20261126a"></script>
 <script src="js/config.js?v=20261110d"></script>
 <script src="js/api.js?v=20261125a"></script>
 <script>
@@ -73,7 +75,7 @@
   }
   window.__TRAINING_USER__ = name;
   const s = document.createElement("script");
-  s.src = "js/training-3d.js?v=20261125b";
+  s.src = "js/training-3d.js?v=20261126a";
   s.onload = () => {
     document.getElementById("gate").hidden = true;
     document.getElementById("game").hidden = false;

@@ -50,6 +50,12 @@ void main(){
       o[15] = 1;
       return o;
     },
+    trans(x, y, z) { const o = M.ident(); o[12] = x; o[13] = y; o[14] = z; return o; },
+    scale(x, y, z) { const o = M.ident(); o[0] = x; o[5] = y; o[10] = z; return o; },
+    rotY(a) { const c = Math.cos(a), s = Math.sin(a), o = M.ident(); o[0] = c; o[2] = -s; o[8] = s; o[10] = c; return o; },
+    rotX(a) { const c = Math.cos(a), s = Math.sin(a), o = M.ident(); o[5] = c; o[6] = s; o[9] = -s; o[10] = c; return o; },
+    rotZ(a) { const c = Math.cos(a), s = Math.sin(a), o = M.ident(); o[0] = c; o[1] = s; o[4] = -s; o[5] = c; return o; },
+    n3(r) { return new Float32Array([r[0], r[1], r[2], r[4], r[5], r[6], r[8], r[9], r[10]]); },
     model(p, s, ry) {
       const c = Math.cos(ry), sn = Math.sin(ry), o = new Float32Array(16);
       o[0] = c * s[0]; o[2] = -sn * s[0];
@@ -111,10 +117,10 @@ void main(){
     gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.frontFace(gl.CCW);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     this.batches = {}; this.textures = {};
-    this.atlas = { c: document.createElement("canvas"), x: 2, y: 2, rowH: 0, size: 1024 };
+    this.atlas = { c: document.createElement("canvas"), x: 2, y: 2, rowH: 0, size: 2048 };
     this.atlas.c.width = this.atlas.c.height = this.atlas.size;
     this.actx = this.atlas.c.getContext("2d");
-    this.actx.fillStyle = "#fff"; this.actx.fillRect(0, 0, 1024, 1024); // белый фон: пустые места не чёрные
+    this.actx.fillStyle = "#fff"; this.actx.fillRect(0, 0, 2048, 2048); // белый фон: пустые места не чёрные
     this.light = { sun: [0.45, 0.8, 0.35], sunI: 0.5, amb: 0.7, fog: [0.8, 0.85, 0.95], fogN: 20, fogF: 90 };
     this.cam = { pos: [0, 1.6, 0], yaw: 0, pitch: 0, fov: 1.15 };
     // единичный куб и единичный квад для динамических объектов
@@ -215,7 +221,9 @@ void main(){
       const b = this.batches[k]; if (!b.count) return;
       this.bind(b);
       if (k === "flat") this.setTex(null); else this.setTex(k);
+      if (k === "atlas") { gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-2, -2); }
       gl.drawArrays(gl.TRIANGLES, 0, b.count);
+      if (k === "atlas") gl.disable(gl.POLYGON_OFFSET_FILL);
     });
   };
   /* Динамический куб: pos — центр, size — размеры, ry — поворот по Y */
@@ -231,6 +239,30 @@ void main(){
     gl.drawArrays(gl.TRIANGLES, 0, this.cube.count);
     if (o.alpha != null && o.alpha < 1) { gl.disable(gl.BLEND); gl.depthMask(true); }
     gl.uniform1f(u.uAlpha, 1); gl.uniform1f(u.uUnlit, 0);
+  };
+  /* Куб по готовым матрицам: m — модель, r — только поворот (для нормалей) */
+  Engine.prototype.drawBoxM = function (m, r, col, o) {
+    o = o || {};
+    const gl = this.gl, u = this.u;
+    this.bind(this.cube); this.setTex(null);
+    gl.uniformMatrix4fv(u.uModel, false, m); gl.uniformMatrix3fv(u.uNM, false, M.n3(r));
+    gl.uniform3f(u.uTint, col[0], col[1], col[2]); gl.uniform4f(u.uUVR, 0, 0, 1, 1);
+    const tr = o.alpha != null && o.alpha < 1;
+    gl.uniform1f(u.uAlpha, o.alpha == null ? 1 : o.alpha); gl.uniform1f(u.uUnlit, o.unlit ? 1 : 0);
+    if (tr) { gl.enable(gl.BLEND); gl.depthMask(false); }
+    gl.drawArrays(gl.TRIANGLES, 0, this.cube.count);
+    if (tr) { gl.disable(gl.BLEND); gl.depthMask(true); }
+    gl.uniform1f(u.uAlpha, 1); gl.uniform1f(u.uUnlit, 0);
+  };
+  Engine.prototype.drawLabelM = function (m, r, rect) {
+    const gl = this.gl, u = this.u;
+    this.bind(this.quad); this.setTex("atlas");
+    gl.uniformMatrix4fv(u.uModel, false, m); gl.uniformMatrix3fv(u.uNM, false, M.n3(r));
+    gl.uniform3f(u.uTint, 1, 1, 1); gl.uniform4f(u.uUVR, rect.u0, rect.v0, rect.u1 - rect.u0, rect.v1 - rect.v0);
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-2, -2);
+    gl.drawArrays(gl.TRIANGLES, 0, this.quad.count);
+    gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.uniform4f(u.uUVR, 0, 0, 1, 1);
   };
   /* Динамический квад с подписью из атласа (смотрит в +Z локально) */
   Engine.prototype.drawLabel = function (pos, size, ry, r) {

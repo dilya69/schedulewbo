@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lobster&family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=20261110b">
+    <link rel="stylesheet" href="css/styles.css?v=20261127a">
     <link rel="stylesheet" href="css/newyear.css?v=20261110b">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -200,7 +200,6 @@
                     <i data-lucide="settings"></i> Управление
                 </div>
                 <div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px;" id="adminMonthLabel"></div>
-                <div id="purgeWarning" class="purge-warning" style="display:none;"></div>
 
                 <div class="finance-summary">
                     <div class="total-label"><i data-lucide="wallet"></i> Фонд оплаты труда</div>
@@ -257,17 +256,11 @@
 
                 <button class="bulk-free-btn import-btn" onclick="App.openSyncModal()"><i data-lucide="refresh-cw"></i> Автоимпорт: ссылка на график</button>
 
-                <div style="font-size:10.5px; color:var(--text-secondary); text-align:center; margin:-4px 0 6px; display:flex; align-items:center; justify-content:center; gap:4px;">
-                    <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> 1 числа каждого месяца данные о прошлом месяце удаляются автоматически
-                </div>
-
                 <div style="margin-top:8px; border-top:2px solid var(--border); padding-top:10px;">
                     <div style="display:flex; justify-content:space-between; font-weight:700; font-size:15px; color:var(--text); padding:6px 0;">
                         <span>ИТОГО</span>
                         <span id="financeGrandTotal">0 ₽</span>
                     </div>
-                    <button class="finance-export" onclick="App.exportPayroll()"><i data-lucide="bar-chart-3"></i> Экспортировать ведомость (CSV)</button>
-                    <button class="finance-export" style="background:#5856d6; margin-top:6px;" onclick="App.exportShiftsDetailed()"><i data-lucide="file-text"></i> Детальный экспорт смен за этот месяц</button>
                 </div>
 
                 <div style="margin-top:20px; border-top:2px solid var(--border); padding-top:16px;">
@@ -291,6 +284,13 @@
                             <i data-lucide="plus"></i> Добавить ПВЗ
                         </button>
                     </div>
+
+                    <!-- Данные: все выгрузки и предупреждение об удалении (сворачиваемо) -->
+                    <div class="collapsible-header" style="margin-top:14px;" onclick="App.toggleCollapsible('dataBlock')">
+                        <span style="font-weight:600; font-size:14px; color:var(--text);"><i data-lucide="database"></i> Данные <b id="dataAlert" class="data-alert" title="Скоро удаление данных" style="display:none;">!</b></span>
+                        <span class="collapsible-arrow collapsed" id="dataBlockArrow"><i data-lucide="chevron-down"></i></span>
+                    </div>
+                    <div id="dataBlock" class="collapsible-body collapsed"></div>
                 </div>
             </div>
 
@@ -328,7 +328,7 @@
 <script src="js/api.js?v=20261122d"></script>
 <script src="js/sheet-import.js?v=20261110b"></script>
 <script src="js/acceptance.js?v=20261110d"></script>
-<script src="js/app.js?v=20261110d"></script>
+<script src="js/app.js?v=20261127a"></script>
 <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>

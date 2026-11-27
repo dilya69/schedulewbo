@@ -1662,3 +1662,16 @@ button { color: inherit; }
 .emp-filters .fchip { border:1px solid var(--border, #e1e4eb); background:transparent; color:inherit; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:600; }
 .emp-filters .fchip.on { border-color:var(--accent); color:var(--accent); }
 .emp-filters select { flex:1; min-width:0; border:1px solid var(--border, #e1e4eb); background:transparent; color:inherit; border-radius:10px; padding:6px 10px; font-size:13px; }
+
+/* ---------- блок «Данные» ---------- */
+.data-alert { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-left:6px; border-radius:50%; background:#ff9500; color:#fff; font-size:12px; font-weight:800; vertical-align:middle; }
+#dataBlock .purge-warning { margin-top:8px; }
+.data-month { border:1px solid var(--border); border-radius:14px; padding:10px; margin-top:10px; }
+.data-month-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:4px; font-size:13px; color:var(--text); }
+.data-month-head span { font-size:11px; color:var(--text-secondary); }
+.data-month-head span.warn { color:#ff9500; font-weight:600; }
+.data-btn { display:flex; align-items:center; gap:10px; width:100%; margin-top:6px; padding:9px 12px; border:1px solid var(--border); border-radius:12px; background:transparent; color:var(--text); text-align:left; cursor:pointer; }
+.data-btn svg { width:18px; height:18px; flex:none; }
+.data-btn b { display:block; font-size:12.5px; }
+.data-btn small { display:block; font-size:10.5px; color:var(--text-secondary); }
+.data-btn:active { transform:scale(0.98); }

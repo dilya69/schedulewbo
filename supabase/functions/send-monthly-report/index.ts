@@ -2,7 +2,7 @@
 //
 // Запускается по расписанию (см. sql/migration_monthly_report.sql) —
 // за несколько дней до автоочистки (1 числа) сама формирует CSV
-// с данными за месяц, который вот-вот удалится, и присылает его
+// с данными за прошлый месяц (он вот-вот удалится), и присылает его
 // каждому админу документом в Telegram. Заходить в приложение не нужно.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -106,8 +106,10 @@ Deno.serve(async (req) => {
   if (!sec?.value || req.headers.get("x-cron-secret") !== sec.value) return new Response("forbidden", { status: 403 });
   try {
     const now = new Date();
-    let month = now.getMonth();
-    let year = now.getFullYear();
+    // хранятся два месяца: 1-го числа удаляется ПРОШЛЫЙ относительно сегодняшнего — его и присылаем
+    const doomed = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const month = doomed.getMonth();
+    const year = doomed.getFullYear();
 
     const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
     const lastDay = new Date(year, month + 1, 0).getDate();

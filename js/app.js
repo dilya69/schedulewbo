@@ -2244,7 +2244,7 @@ const App = (() => {
     if (!listEl) return;
     if (!state.employee.is_admin || state.demo) return;
 
-    renderPurgeWarning();
+    renderDataBlock();
 
     let fund = 0, totalShiftsAll = 0;
     // начальники (Иван, Светлана) не участвуют в зарплатах
@@ -3177,7 +3177,7 @@ const App = (() => {
     return state.payPeriod === "first" ? "_1-15" : state.payPeriod === "second" ? "_16-конец" : "";
   }
 
-  function exportPayroll() {
+  function buildPayroll() {
     let csv = csvRow(["Сотрудник", "Смены", "Сумма по тарифам", "Бонусы", "Штрафы", "Итого"]);
     state.employees.filter((e) => e.is_active !== false && !isBoss(e)).forEach((e) => {
       const empShifts = state.shifts.filter((s) => s.employee_id === e.id && inPayPeriod(s.shift_date, state.payPeriod));
@@ -3190,10 +3190,10 @@ const App = (() => {
       const total = base + bonusSum + alSum + accSum - fineSum;
       csv += csvRow([fullName(e), empShifts.length, moneyVal(base), moneyVal(bonusSum + alSum + accSum), fineSum, moneyVal(total)]);
     });
-    deliverCsv(csv, `payroll_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
+    return { csv, name: `payroll_${state.year}_${state.month + 1}${periodSuffix()}.csv` };
   }
 
-  function exportShiftsDetailed() {
+  function buildShifts() {
     let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
     state.shifts.filter((s) => inPayPeriod(s.shift_date, state.payPeriod)).slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
       const pvz = state.pvz.find((p) => p.id === s.pvz_id);
@@ -3201,49 +3201,85 @@ const App = (() => {
       const amount = s.employee_id ? moneyVal(shiftAmount(s, pvz)) : "";
       csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
     });
-    deliverCsv(csv, `смены_${state.year}_${state.month + 1}${periodSuffix()}.csv`);
+    return { csv, name: `смены_${state.year}_${state.month + 1}${periodSuffix()}.csv` };
   }
 
-  async function exportMonth(year, month) {
-    try {
-      const [shifts, bf] = await Promise.all([
-        Api.getShiftsForMonth(year, month),
-        Api.getBonusesFines(year, month),
-      ]);
-      let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
-      shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
-        const pvz = state.pvz.find((p) => p.id === s.pvz_id);
-        const empName = fullName(s.employees);
-        const amount = s.employee_id ? moneyVal(shiftAmount(s, pvz)) : "";
-csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
-      });
-      csv += "\r\n" + csvRow(["Бонусы/Штрафы"]);
-      csv += csvRow(["Сотрудник", "Тип", "Сумма", "Причина"]);
-      bf.forEach((b) => {
-        const emp = state.employees.find((e) => e.id === b.employee_id);
-        csv += csvRow([fullName(emp) || "—", b.kind === "bonus" ? "Бонус" : "Штраф", b.amount, b.reason || ""]);
-      });
-      await deliverCsv(csv, `данные_${year}_${month + 1}.csv`);
-    } catch (e) {
-      toast("🚫 " + e.message);
-    }
+  function buildMonth() {
+    let csv = csvRow(["Дата", "ПВЗ", "Сотрудник", "Начало", "Конец", "Статус", "Сумма"]);
+    state.shifts.slice().sort((a, b) => a.shift_date.localeCompare(b.shift_date)).forEach((s) => {
+      const pvz = state.pvz.find((p) => p.id === s.pvz_id);
+      const empName = fullName(s.employees);
+      const amount = s.employee_id ? moneyVal(shiftAmount(s, pvz)) : "";
+      csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtDuration(s.duration_minutes) : s.start_time?.slice(0,5), s.duration_minutes ? "" : s.end_time?.slice(0,5), s.status, amount]);
+    });
+    csv += "\r\n" + csvRow(["Бонусы/Штрафы"]);
+    csv += csvRow(["Сотрудник", "Тип", "Сумма", "Причина"]);
+    state.bonusesFines.forEach((b) => {
+      const emp = state.employees.find((e) => e.id === b.employee_id);
+      csv += csvRow([fullName(emp) || "—", b.kind === "bonus" ? "Бонус" : "Штраф", b.amount, b.reason || ""]);
+    });
+    return { csv, name: `данные_${state.year}_${state.month + 1}.csv` };
   }
 
-  function renderPurgeWarning() {
-    const el = document.getElementById("purgeWarning");
+  // ---------------- ДАННЫЕ (выгрузки за прошлый и текущий месяц) ----------------
+  // База хранит два месяца: 1-го числа удаляется всё старше прошлого (purge_old_shift_data).
+  let dataPeriod = "full";
+
+  function setDataPeriod(period) {
+    dataPeriod = period;
+    renderDataBlock();
+    refreshIcons();
+  }
+
+  function renderDataBlock() {
+    const el = document.getElementById("dataBlock");
     if (!el) return;
     const now = new Date();
-    const day = now.getDate();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    if (day >= daysInMonth - 5) {
-      // хранится текущий и прошлый месяц: в начале нового месяца удалится ПРОШЛЫЙ
-      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const daysLeft = daysInMonth - day + 1;
-      el.style.display = "block";
-      el.innerHTML = `<i data-lucide="alert-triangle"></i> Через ${daysLeft} дн. (в начале нового месяца) будут удалены смены и финансы за ${MONTHS[prev.getMonth()].toLowerCase()}.
-  <button type="button" onclick="App.exportMonth(${prev.getFullYear()}, ${prev.getMonth()})"><i data-lucide="download"></i> Скачать за ${MONTHS[prev.getMonth()].toLowerCase()}</button>`;
-    } else {
-      el.style.display = "none";
+    const y = now.getFullYear(), m = now.getMonth();
+    const prev = new Date(y, m - 1, 1), cur = new Date(y, m, 1);
+    const next = new Date(y, m + 1, 1), after = new Date(y, m + 2, 1);
+    const daysLeft = new Date(y, m + 1, 0).getDate() - now.getDate() + 1;
+    const soon = daysLeft <= 6; // последние 6 дней месяца — значок на свёрнутом блоке
+    const name = (d) => MONTHS[d.getMonth()];
+    const first = (d) => `1 ${MONTHS_GEN[d.getMonth()]}`;
+    const opt = (val, label) => `<button type="button" class="${dataPeriod === val ? "active" : ""}" onclick="App.setDataPeriod('${val}')">${label}</button>`;
+    const btn = (d, kind, icon, title, hint) => `<button type="button" class="data-btn" onclick="App.exportData('${kind}', ${d.getFullYear()}, ${d.getMonth()})">
+        <i data-lucide="${icon}"></i><span><b>${title}</b><small>${hint}</small></span></button>`;
+    const card = (d, note, warn) => `<div class="data-month">
+        <div class="data-month-head"><b>${name(d)} ${d.getFullYear()}</b><span class="${warn ? "warn" : ""}">${note}</span></div>
+        ${btn(d, "payroll", "wallet", "Ведомость по зарплате", "по сотрудникам, за выбранный период")}
+        ${btn(d, "shifts", "calendar-days", "Список смен", "по датам и ПВЗ, за выбранный период")}
+        ${btn(d, "all", "archive", "Всё за месяц", "смены, бонусы и штрафы")}
+      </div>`;
+
+    document.getElementById("dataAlert").style.display = soon ? "inline-flex" : "none";
+    el.innerHTML = `
+      <div class="purge-warning"><b>⚠️ ${first(next)} удалится ${name(prev).toLowerCase()}</b>${soon ? ` (через ${daysLeft} дн.)` : ""}.
+        Смены, заявки, бонусы, штрафы, пожелания и приёмка. Скачайте файлы заранее. ${name(cur)} останется до ${first(after)}.</div>
+      <div class="period-toggle">${opt("full", "Весь месяц")}${opt("first", "1–15")}${opt("second", "16–конец")}</div>
+      ${card(prev, `удалится ${first(next)}`, true)}
+      ${card(cur, `хранится до ${first(after)}`, false)}
+      <div class="imp-hint">Файлы приходят в чат с ботом (.csv, открываются в Excel).</div>`;
+  }
+
+  // Выгрузка за любой месяц: грузим его данные, на время расчёта подставляем в state и сразу возвращаем.
+  async function exportData(kind, year, month) {
+    if (state.demo) { toast("В демо-режиме экспорт недоступен"); return; }
+    try {
+      const [shifts, bonusesFines, acceptance] = await Promise.all([
+        Api.getShiftsForMonth(year, month),
+        Api.getBonusesFines(year, month),
+        kind === "payroll" ? Api.getAcceptance(year, month) : [],
+      ]);
+      const keep = { year: state.year, month: state.month, shifts: state.shifts, bonusesFines: state.bonusesFines, acceptance: state.acceptance, payPeriod: state.payPeriod };
+      let file;
+      try {
+        Object.assign(state, { year, month, shifts, bonusesFines, acceptance, payPeriod: kind === "all" ? "full" : dataPeriod });
+        file = kind === "payroll" ? buildPayroll() : kind === "shifts" ? buildShifts() : buildMonth();
+      } finally { Object.assign(state, keep); }
+      await deliverCsv(file.csv, file.name);
+    } catch (e) {
+      toast("🚫 " + (e.message || e));
     }
   }
 
@@ -3299,7 +3335,7 @@ csv += csvRow([s.shift_date, pvz?.name || "", empName, s.duration_minutes ? fmtD
     openPvzRateModal,
     openBonusFineModal, deleteBonusFine, openAllowanceModal, deleteAllowanceConfirm, openAddPvzModal, deletePvzConfirm, bulkFreeMonthConfirm,
     openSyncModal, _syncRunNow, _syncAdd, _syncToggle, _syncDelete, openImportModal, _importPick, _importSetPvz, _importSetEmp, _importApply,
-    exportPayroll, exportShiftsDetailed, exportMonth, setPayPeriod,
+    exportData, setDataPeriod, setPayPeriod,
     _accPick, _accCalc, _accSet, _accBulk, _accAssign, _accDel, _accDelAll, _accClear, setRoundPay,
     openCheckModal, _checkSend, _checkResend,
     closeModal,

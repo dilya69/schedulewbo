@@ -188,7 +188,7 @@
   };
   const microSvg = '<svg viewBox="0 0 60 44" width="46" height="34"><rect x="2" y="4" width="56" height="36" rx="5" fill="#d9dbe3"/><rect x="8" y="10" width="32" height="24" rx="3" fill="#2b2d42"/><circle cx="49" cy="14" r="3" fill="#8f93a8"/><circle cx="49" cy="25" r="3" fill="#8f93a8"/></svg>';
   const emoji = (it) => (it.em === "micro" ? microSvg : it.em);
-  const sticker = (code) => `<div class="sticker"><div class="top">ШК</div><div class="bars"></div><div class="dig">${code}</div></div>`;
+  const sticker = (code) => `<div class="sticker"><div class="top">wb</div><div class="bars"></div><div class="dig">${code}</div></div>`;
   const pointTitle = () => POINTS.find((p) => p.id === P.point).title;
 
   function screenHtml() {
@@ -363,7 +363,7 @@
   /* ================= 3D-МИР ================= */
   const GLM = window.GL3D.M;
   const R = { active: false, doorOpen: 0, doorTarget: 0, stage: "title", cut: false, hold: null, t: 0, tasya: null, keyShow: false, boxes: [], stacks: [[], [], []], hall: [], placed: [], ladder: { up: false, x: 0, z: 0, nx: 0, nz: 1 }, lift: 0, inspect: false, rot: { y: 0.3, x: 0.15 }, emptyBoxes: 0, cars: [], people: [] };
-  let E, cv, T = [], COLL = [], LB = {}, STK = {}, TAPE = {}, built = false, raf = 0, last = 0;
+  let E, cv, T = [], COLL = [], LB = {}, STK = {}, TAPE = {}, BOXLAB = null, built = false, raf = 0, last = 0;
   const PAD = [[0.8, -9.6], [2.2, -9.6], [3.6, -9.6]];
   const HALLBOX = [[2.1, -1.3], [3.2, -1.3], [4.3, -1.3], [2.7, -2.4]];
   const BOXDEF = [["tee", "socks", "cap"], ["pillow", "pencil"], ["kettle", "org"], ["sweat", "vase"]];
@@ -389,8 +389,8 @@
     sweat: { p: [[0, 0, 0, 0.34, 0.28, 0.06, [0.4, 0.41, 0.48]]], s: [0, 0, 0.031, 0.15, 0.12], sc: 1.4 },
     vase: { p: [[0, -0.05, 0, 0.13, 0.36, 0.13, [0.6, 0.85, 0.95]], [0, 0.2, 0, 0.07, 0.2, 0.07, [0.55, 0.8, 0.9]]], s: [0, -0.08, 0.066, 0.09, 0.08], sc: 1.1 },
     micro: { p: [[0, 0, 0, 0.5, 0.32, 0.4, [0.82, 0.84, 0.88]], [-0.07, 0, 0.201, 0.3, 0.22, 0.01, dsk], [0.18, 0.05, 0.201, 0.07, 0.07, 0.01, lt]], s: [0.15, -0.09, 0.203, 0.1, 0.08], sc: 0.9 },
-    tire: { p: [[0, 0, 0, 0.58, 0.58, 0.2, [0.15, 0.15, 0.18]], [0, 0, 0, 0.58, 0.58, 0.2, [0.15, 0.15, 0.18], 0.785], [0, 0, 0.101, 0.3, 0.3, 0.02, lt], [0, 0, 0.11, 0.1, 0.1, 0.02, [0.4, 0.4, 0.45]]], s: [0.18, -0.18, 0.103, 0.12, 0.09], sc: 0.8 },
-    bike: { p: [[-0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14]], [-0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14], 0.785], [-0.42, -0.1, 0.01, 0.34, 0.34, 0.05, [0.9, 0.9, 0.95]], [-0.42, -0.1, 0.01, 0.34, 0.34, 0.05, [0.9, 0.9, 0.95], 0.785], [0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14]], [0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14], 0.785], [0.42, -0.1, 0.01, 0.34, 0.34, 0.05, [0.9, 0.9, 0.95]], [0.42, -0.1, 0.01, 0.34, 0.34, 0.05, [0.9, 0.9, 0.95], 0.785], [0, 0.06, 0, 0.7, 0.04, 0.05, [0.9, 0.3, 0.45], 0.0], [0.1, 0.0, 0, 0.5, 0.04, 0.05, [0.9, 0.3, 0.45], 0.9], [-0.18, 0.0, 0, 0.4, 0.04, 0.05, [0.9, 0.3, 0.45], -1.1], [0.36, 0.14, 0, 0.3, 0.04, 0.05, [0.2, 0.2, 0.25], 1.3], [-0.2, 0.2, 0, 0.16, 0.04, 0.07, [0.15, 0.15, 0.18]], [0.38, 0.3, 0, 0.04, 0.04, 0.3, [0.15, 0.15, 0.18]]], s: [0, 0.0, 0.03, 0.12, 0.09], sc: 0.55 },
+    tire: { p: [[0, 0, 0, 0.62, 0.62, 0.2, [0.13, 0.13, 0.16], 0, "c"], [0, 0, 0.105, 0.36, 0.36, 0.02, lt, 0, "c"], [0, 0, 0.115, 0.1, 0.1, 0.02, [0.4, 0.4, 0.45], 0, "c"]], s: [0.2, -0.2, 0.12, 0.12, 0.09], sc: 0.8 },
+    bike: { p: [[-0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14], 0, "c"], [-0.42, -0.1, 0.02, 0.38, 0.38, 0.03, [0.92, 0.92, 0.96], 0, "c"], [-0.42, -0.1, 0.04, 0.08, 0.08, 0.03, [0.5, 0.5, 0.55], 0, "c"], [0.42, -0.1, 0, 0.5, 0.5, 0.05, [0.12, 0.12, 0.14], 0, "c"], [0.42, -0.1, 0.02, 0.38, 0.38, 0.03, [0.92, 0.92, 0.96], 0, "c"], [0.42, -0.1, 0.04, 0.08, 0.08, 0.03, [0.5, 0.5, 0.55], 0, "c"], [0, 0.06, 0, 0.7, 0.04, 0.05, [0.9, 0.3, 0.45]], [0.1, 0.0, 0, 0.5, 0.04, 0.05, [0.9, 0.3, 0.45], 0.9], [-0.18, 0.0, 0, 0.4, 0.04, 0.05, [0.9, 0.3, 0.45], -1.1], [0.36, 0.14, 0, 0.3, 0.04, 0.05, [0.2, 0.2, 0.25], 1.3], [-0.2, 0.2, 0, 0.16, 0.04, 0.07, [0.15, 0.15, 0.18]], [0.38, 0.3, 0, 0.04, 0.04, 0.3, [0.15, 0.15, 0.18]]], s: [0, 0.0, 0.03, 0.12, 0.09], sc: 0.55 },
   };
   const FLOORY = { tee: 0.03, socks: 0.035, cap: 0.07, pillow: 0.08, pencil: 0.025, kettle: 0.1, org: 0.1, sweat: 0.03, vase: 0.2, micro: 0.16, tire: 0.29, bike: 0.35 };
 
@@ -398,12 +398,14 @@
   function skDraw(ctx, x, y, w, h, code) {
     ctx.fillStyle = "#fff"; ctx.fillRect(x, y, w, h);
     let sd = +code.slice(-6) || 7; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-    const qr = (qx, qy, n, c) => { const cs = n / 11; for (let i = 0; i < 11; i++) for (let j = 0; j < 11; j++) { const e = (i < 3 && j < 3) || (i > 7 && j < 3) || (i < 3 && j > 7); if (e ? (i % 2 === 0 || j % 2 === 0) && !(i === 1 && j === 1) : r() > 0.5) { ctx.fillStyle = "#222"; ctx.fillRect(qx + i * cs, qy + j * cs, cs + 0.5, cs + 0.5); } } };
-    qr(x + 6, y + 6, 22); qr(x + w - 28, y + 6, 22); qr(x + 6, y + h - 28, 22); qr(x + w - 28, y + h - 28, 22);
-    ctx.fillStyle = "#222"; for (let i = 0; i < 30; i++) { const bw = 1 + r() * 2.4; ctx.fillRect(x + 32 + i * 2.5, y + 7, bw, 20); ctx.fillRect(x + 32 + i * 2.5, y + h - 27, bw, 20); }
-    qr(x + 34, y + 33, 44);
-    ctx.fillStyle = "#e0309f"; ctx.font = "700 20px Onest, Arial, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillText("пвз", x + w - 50, y + 54);
-    ctx.fillStyle = "#222"; ctx.font = "700 11px Onest, Arial, sans-serif"; ctx.fillText(code.slice(2, 9), x + 80, y + 68); ctx.fillText(code.slice(9, 13), x + 80, y + 82);
+    const qr = (qx, qy, n, k) => { const cs = n / k; for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) { const e = (i < 3 && j < 3) || (i > k - 4 && j < 3) || (i < 3 && j > k - 4); if (e ? (i % 2 === 0 || j % 2 === 0) && !(i === 1 && j === 1) : r() > 0.5) { ctx.fillStyle = "#333"; ctx.fillRect(qx + i * cs, qy + j * cs, cs + 0.4, cs + 0.4); } } };
+    qr(x + 4, y + 4, 18, 9); qr(x + w - 22, y + 4, 18, 9); qr(x + 4, y + h - 22, 18, 9); qr(x + w - 22, y + h - 22, 18, 9);
+    ctx.fillStyle = "#333";
+    for (let i = 0; i < 34; i++) { const bw = 1 + r() * 2.2; ctx.fillRect(x + 27 + i * (w - 54) / 34, y + 5, bw, 17); ctx.fillRect(x + 27 + i * (w - 54) / 34, y + h - 22, bw, 17); }
+    qr(x + 38, y + 27, h - 54, 21);
+    ctx.save(); ctx.translate(x + 22, y + h / 2); ctx.rotate(-Math.PI / 2); ctx.fillStyle = "#333"; ctx.font = "700 11px Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(code.slice(2, 9), 0, -5); ctx.fillText(code.slice(9, 13), 0, 8); ctx.restore();
+    ctx.save(); ctx.translate(x + w - 20, y + h / 2); ctx.rotate(-Math.PI / 2); ctx.fillStyle = "#d4208f"; ctx.font = "italic 700 26px 'Comic Sans MS', Onest, Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("wb", 0, 0); ctx.restore();
   }
 
   function lab2(txt, w, h, o) { return lab(txt, w, h, o); }
@@ -411,10 +413,10 @@
   function buildWorld() {
     E = new window.GL3D.Engine(cv);
     const L = E.light; L.fog = [0.74, 0.87, 1]; L.fogN = 45; L.fogF = 135; L.amb = 0.82; L.sunI = 0.4; L.sun = [0.4, 0.9, 0.5];
-    E.repeatTex("floor", 128, (c, s) => { c.fillStyle = "#e8e5ee"; c.fillRect(0, 0, s, s); c.strokeStyle = "#c9c4d6"; c.lineWidth = 4; c.strokeRect(0, 0, s, s); c.fillStyle = "rgba(255,255,255,.4)"; c.fillRect(8, 8, 50, 50); });
+    E.repeatTex("floor", 128, (c, s) => { c.fillStyle = "#d4cfdd"; c.fillRect(0, 0, s, s); c.strokeStyle = "#a9a2bb"; c.lineWidth = 4; c.strokeRect(0, 0, s, s); c.fillStyle = "rgba(255,255,255,.22)"; c.fillRect(8, 8, 50, 50); c.fillStyle = "rgba(120,100,160,.08)"; c.fillRect(70, 70, 50, 50); });
     E.repeatTex("tile", 128, (c, s) => { c.fillStyle = "#d9cfba"; c.fillRect(0, 0, s, s); c.strokeStyle = "#b9ad95"; c.lineWidth = 3; for (let i = 0; i < 2; i++) { c.strokeRect(0, i * 64, 128, 64); c.beginPath(); c.moveTo(i ? 32 : 96, i * 64); c.lineTo(i ? 32 : 96, i * 64 + 64); c.stroke(); } });
     E.repeatTex("brick", 128, (c, s) => { c.fillStyle = "#f1ede7"; c.fillRect(0, 0, s, s); c.strokeStyle = "#d1c9bd"; c.lineWidth = 3; for (let r = 0; r < 4; r++) { c.strokeRect(0, r * 32, 128, 32); for (let k = 0; k < 2; k++) { const x = (r % 2 ? 32 : 0) + k * 64; c.beginPath(); c.moveTo(x, r * 32); c.lineTo(x, r * 32 + 32); c.stroke(); } } });
-    E.repeatTex("grass", 128, (c, s) => { c.fillStyle = "#6fbb62"; c.fillRect(0, 0, s, s); for (let i = 0; i < 260; i++) { c.fillStyle = Math.random() < 0.5 ? "#62ab56" : "#7fc96f"; c.fillRect(Math.random() * s, Math.random() * s, 4, 4); } });
+    E.repeatTex("grass", 128, (c, s) => { c.fillStyle = "#79b84a"; c.fillRect(0, 0, s, s); for (let i = 0; i < 260; i++) { c.fillStyle = Math.random() < 0.5 ? "#6aa83f" : "#8cc65a"; c.fillRect(Math.random() * s, Math.random() * s, 4, 4); } });
     E.repeatTex("road", 128, (c, s) => { c.fillStyle = "#4a4d57"; c.fillRect(0, 0, s, s); for (let i = 0; i < 160; i++) { c.fillStyle = Math.random() < 0.5 ? "#434650" : "#555964"; c.fillRect(Math.random() * s, Math.random() * s, 3, 3); } c.fillStyle = "#f2e8a0"; c.fillRect(0, 60, 64, 8); });
     const F = E.batch("flat"), FL = E.batch("floor"), TL = E.batch("tile"), BR = E.batch("brick"), GR = E.batch("grass"), RD = E.batch("road"), AT = E.batch("atlas");
     const add = (b, x0, y0, z0, x1, y1, z1, col, o, collide) => { b.box(x0, y0, z0, x1, y1, z1, col, o); if (collide) COLL.push({ x0, z0, x1, z1 }); };
@@ -453,30 +455,30 @@
     COLL.push({ x0: -7, z0: -6.05, x1: -5.65, z1: -1.15 });
     for (let i = 0; i < 3; i++) { const z0 = -1.2 - i * 1.6, z1 = z0 - 1.6; add(F, -5.72, 0, z1 + 0.03, -5.66, 2.4, z0 - 0.03, C.pur); add(F, -6.98, 0.7, z1 + 0.4, -6.95, 2.0, z0 - 0.4, [0.82, 0.92, 1]); add(F, -7, 0.01, z1 + 0.03, -5.72, 0.03, z0 - 0.03, [0.9, 0.7, 0.85], { ao: 1 }); add(F, -6.5, 0, z1 + 0.5, -6.1, 0.42, z1 + 0.9, C.wood); }
     sign(-6.0, 2.55, -3.6, 1.8, 0.3, "+x", "Примерочные", "pr", "#7a3fc6", "#fff", 192);
-    /* ячейки 700-е: маленькие картонные соты на стене */
+    /* ячейки 700-е: маленькие картонные ячейки (размером с телефон) на стене у стола */
     {
-      const x0 = -6.3, y0 = 0.95, cw = 0.46, ch = 0.3, nx = 5, ny = 2, dz = 0.28, zw = -8;
+      const x0 = -6.4, y0 = 0.9, cw = 0.24, ch = 0.2, nx = 7, ny = 4, dz = 0.2, zw = -8;
       add(F, x0 - 0.03, y0 - 0.03, zw, x0 + nx * cw + 0.03, y0 + ny * ch + 0.03, zw + 0.02, [0.5, 0.36, 0.22]);
-      for (let i = 0; i <= nx; i++) add(F, x0 + i * cw - 0.012, y0, zw + 0.02, x0 + i * cw + 0.012, y0 + ny * ch, zw + dz, C.kr);
-      for (let j = 0; j <= ny; j++) add(F, x0, y0 + j * ch - 0.012, zw + 0.02, x0 + nx * cw, y0 + j * ch + 0.012, zw + dz, C.kr);
+      for (let i = 0; i <= nx; i++) add(F, x0 + i * cw - 0.008, y0, zw + 0.02, x0 + i * cw + 0.008, y0 + ny * ch, zw + dz, C.kr);
+      for (let j = 0; j <= ny; j++) add(F, x0, y0 + j * ch - 0.008, zw + 0.02, x0 + nx * cw, y0 + j * ch + 0.008, zw + dz, C.kr);
       COLL.push({ x0: x0 - 0.05, z0: zw, x1: x0 + nx * cw + 0.05, z1: zw + dz });
       for (let r = 0; r < ny; r++) for (let c = 0; c < nx; c++) {
         const n = 701 + r * nx + c, cx = x0 + (c + 0.5) * cw, cy = y0 + (ny - 1 - r + 0.5) * ch;
-        AT.label(cx, cy - ch / 2 + 0.035, zw + dz + 0.004, 0.2, 0.05, "+z", lab(String(n), 80, 20, { k: "hc" }));
-        T.push({ kind: "cell", n, pos: [cx, cy, zw + 0.12], r: 3.4, tol: 0.7, nrm: [0, 1], low: true });
+        AT.label(cx, cy - ch / 2 + 0.03, zw + dz + 0.002, 0.17, 0.04, "+z", lab(String(n), 80, 20, { k: "hc" }));
+        T.push({ kind: "cell", n, pos: [cx, cy, zw + 0.1], r: 3.4, tol: 0.5, nrm: [0, 1], low: true });
       }
-      sign(x0 + nx * cw / 2, y0 + ny * ch + 0.22, zw + 0.03, 1.8, 0.26, "+z", "700-е · маленькие ячейки", "h7", "#7a3fc6", "#fff", 320);
+      sign(x0 + nx * cw / 2, y0 + ny * ch + 0.2, zw + 0.03, 1.7, 0.24, "+z", "700-е · маленькие ячейки", "h7", "#7a3fc6", "#fff", 320);
     }
     sign(0, 2.95, -7.99, 4.6, 0.55, "+z", "Добро пожаловать!", "wel", "#ff5cb8", "#fff", 512);
     /* декор зала: кресла, растения, плакаты, стенд */
     [[2.2, -6.9], [3.3, -6.9]].forEach(([x, z]) => { add(F, x - 0.3, 0, z - 0.3, x + 0.3, 0.45, z + 0.3, [1, 0.5, 0.78]); add(F, x - 0.3, 0.45, z - 0.3, x + 0.3, 0.95, z - 0.2, [1, 0.5, 0.78]); });
     const plant = (x, z) => { add(F, x - 0.25, 0, z - 0.25, x + 0.25, 0.45, z + 0.25, [0.9, 0.5, 0.35]); add(F, x - 0.4, 0.45, z - 0.4, x + 0.4, 1.3, z + 0.4, C.gr); add(F, x - 0.25, 1.3, z - 0.25, x + 0.25, 1.8, z + 0.25, [0.3, 0.62, 0.3]); COLL.push({ x0: x - 0.3, z0: z - 0.3, x1: x + 0.3, z1: z + 0.3 }); };
-    plant(-4.8, -0.9); plant(6.4, -0.9); plant(-6.5, -7.4);
+    plant(-4.8, -0.9); plant(6.4, -0.9); plant(1.2, -7.4);
     sign(-2.0, 1.9, -0.36, 1.0, 1.3, "-z", "Акция\n−30%", "ak", "#ffd23f", "#4b1d7a", 128); sign(2.0, 1.9, -0.36, 1.0, 1.3, "-z", "Заказы\nна WB-\nпункте", "zk", "#ff5cb8", "#fff", 128);
     /* габаритки у правой стены */
     {
       const x = GAB.x, z = GAB.z;
-      add(F, x - 0.8, 0, z - 1.5, 7, 0.02, z + 1.5, [1, 0.88, 0.3], { ao: 1 }); add(F, x - 0.8, 0.0, z - 1.5, x - 0.74, 0.03, z + 1.5, [0.2, 0.2, 0.2]); add(F, x - 0.8, 0.0, z - 1.5, 7, 0.03, z - 1.44, [0.2, 0.2, 0.2]); add(F, x - 0.8, 0.0, z + 1.44, 7, 0.03, z + 1.5, [0.2, 0.2, 0.2]);
+      add(F, x - 0.8, 0, z - 1.5, 7, 0.03, z + 1.5, [1, 0.88, 0.3], { ao: 1 }); add(F, x - 0.8, 0.0, z - 1.5, x - 0.74, 0.04, z + 1.5, [0.2, 0.2, 0.2]); add(F, x - 0.8, 0.0, z - 1.5, 7, 0.04, z - 1.44, [0.2, 0.2, 0.2]); add(F, x - 0.8, 0.0, z + 1.44, 7, 0.04, z + 1.5, [0.2, 0.2, 0.2]);
       add(F, 6.95, 1.2, z - 1.4, 7, 1.3, z + 1.4, C.dg); add(F, 6.95, 0.6, z - 1.4, 7, 0.7, z + 1.4, C.dg);
       sign(6.93, 2.0, z, 2.2, 0.4, "-x", "Габаритки", "gab", "#ffe45c", "#3a2a00", 256);
       T.push({ kind: "gab", pos: [x + 0.2, 0.4, z], r: 4, tol: 2.6 });
@@ -486,7 +488,7 @@
     [[-1, -0.4], [1, -0.4], [-1, 0.4], [1, 0.4]].forEach(([a, b]) => add(F, TABLE.x + a * 1.0 - 0.04 - 0.04 * Math.sign(a), 0, TABLE.z + b - 0.04, TABLE.x + a * 1.0 + 0.04 - 0.04 * Math.sign(a), 0.78, TABLE.z + b + 0.04, C.dg));
     COLL.push({ x0: TABLE.x - 1.1, z0: TABLE.z - 0.45, x1: TABLE.x + 1.1, z1: TABLE.z + 0.45 });
     sign(TABLE.x, 1.9, TABLE.z - 0.5, 1.6, 0.3, "+z", "Стол приёмки", "tbl", "#4b1d7a", "#fff", 224); add(F, TABLE.x - 0.02, 1.2, TABLE.z - 0.55, TABLE.x + 0.02, 1.75, TABLE.z - 0.5, C.dg);
-    PAD.forEach(([x, z], i) => { add(F, x - 0.6, 0, z - 0.45, x + 0.6, 0.02, z + 0.45, [0.98, 0.8, 0.3], { ao: 1 }); AT.label(x, 0.025, z + 0.62, 0.5, 0.3, "+y", lab("Стопка " + (i + 1), 128, 40, { k: "pad", bg: "#ffe45c", fg: "#3a2a00" })); });
+    PAD.forEach(([x, z], i) => { add(F, x - 0.6, 0, z - 0.45, x + 0.6, 0.035, z + 0.45, [0.98, 0.8, 0.3], { ao: 1 }); AT.label(x, 0.036, z + 0.62, 0.5, 0.3, "+y", lab("Стопка " + (i + 1), 128, 40, { k: "pad", bg: "#ffe45c", fg: "#3a2a00" })); });
     [[-6.7, -9.0], [6.7, -9.0], [-6.7, -19.6], [6.7, -19.6]].forEach(([x, z]) => { add(F, x - 0.15, 3.0, z - 0.15, x + 0.15, 3.3, z + 0.15, [0.15, 0.16, 0.2]); });
     add(F, 6.9, 0.3, -10.5, 7.0, 1.0, -10.3, [0.9, 0.15, 0.15]); sign(6.89, 1.3, -10.4, 0.3, 0.2, "-x", "ОГОНЬ", "fx", "#ffe45c", "#a00", 96);
     /* паллеты и коробки на полу */
@@ -518,13 +520,13 @@
     /* кармашки 800-е: прозрачная ткань, подписанные (рисуются отдельно с прозрачностью) */
     {
       const cx = 6.95, cz = -13;
-      F.box(cx - 0.04, 0.8, cz - 0.98, cx, 2.62, cz + 0.98, [0.55, 0.6, 0.74]); COLL.push({ x0: cx - 0.5, z0: cz - 1, x1: cx, z1: cz + 1 });
+      F.box(cx - 0.04, 0.8, cz - 0.98, cx, 2.62, cz + 0.98, [0.86, 0.88, 0.95]); COLL.push({ x0: cx - 0.5, z0: cz - 1, x1: cx, z1: cz + 1 });
       F.box(cx - 0.12, 2.62, cz - 1.0, cx, 2.68, cz + 1.0, C.dg);
       R.pockets = [];
       for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
         const n = 801 + r * 3 + c, z = cz - 0.62 + c * 0.62, y = 2.3 - r * 0.42;
-        R.pockets.push({ n, x: cx - 0.1, y, z });
-        AT.label(cx - 0.215, y + 0.14, z, 0.34, 0.1, "-x", lab(String(n), 96, 28, { k: "pk" }));
+        R.pockets.push({ n, x: cx - 0.12, y, z });
+        AT.label(cx - 0.2, y + 0.2, z, 0.34, 0.09, "-x", lab(String(n), 96, 28, { k: "pk" }));
         T.push({ kind: "cell", n, pos: [cx - 0.12, y - 0.02, z], r: 3.9, tol: 0.85, nrm: [-1, 0], low: true });
       }
       sign(cx - 0.06, 2.9, cz, 1.7, 0.3, "-x", "800-е · кармашки", "pk8", "#4b1d7a", "#fff", 256);
@@ -553,17 +555,48 @@
     cloud(-40, 38, -50); cloud(30, 42, -70); cloud(0, 40, 90); cloud(-60, 36, 20); cloud(60, 40, 40); cloud(-20, 44, -90);
     COLL.push({ x0: -30, z0: 53, x1: 30, z1: 56 }, { x0: -30, z0: -30, x1: -29, z1: 56 }, { x0: 29, z0: -30, x1: 30, z1: 56 });
 
+    /* ---- оживляем мир: зал, склад, улица ---- */
+    add(F, -3.2, 0, -3.3, 3.2, 0.03, -2.5, [1, 0.7, 0.88], { ao: 1, top: 1 }); // розовая дорожка у стойки
+    sign(6.99, 2.7, -4.3, 2.8, 0.5, "-x", "Wildberries", "wbx", "#a12be0", "#fff", 384);
+    // витрина с товарами
+    add(F, 3.9, 0, -7.7, 6.1, 1.9, -7.2, [0.97, 0.97, 1], {}, true); [0.35, 0.8, 1.25, 1.7].forEach((y, k) => { add(F, 3.9, y, -7.2, 6.1, y + 0.03, -6.9, [0.8, 0.78, 0.88]); for (let i = 0; i < 6; i++) add(F, 4.0 + i * 0.35, y + 0.03, -7.15, 4.3 + i * 0.35, y + 0.03 + 0.14 + ((i + k) % 3) * 0.06, -6.95, [[1, 0.5, 0.78], [0.55, 0.75, 1], [1, 0.85, 0.35], [0.7, 0.55, 1]][(i + k) % 4]); });
+    sign(5, 2.1, -7.69, 1.8, 0.3, "+z", "Хиты недели", "hit", "#ff5cb8", "#fff", 256);
+    // кулер, урна, зонтница
+    add(F, -3.9, 0, -7.65, -3.4, 1.0, -7.2, [0.92, 0.94, 0.98], {}, true); add(F, -3.85, 1.0, -7.6, -3.45, 1.35, -7.25, [0.5, 0.75, 1]);
+    add(F, -2.9, 0, -7.6, -2.45, 0.5, -7.2, C.dg, {}, true); add(F, -2.1, 0, -7.6, -1.75, 0.6, -7.3, [0.95, 0.4, 0.5], {}, true);
+    // зеркало и часы
+    add(F, 6.95, 1.0, -2.2, 7, 2.2, -1.2, [0.82, 0.92, 1]); sign(6.99, 2.9, -1.7, 0.6, 0.6, "-x", "09:00", "clk", "#fff", "#222", 96);
+    // склад: упаковка, мусорки, плёнка, ящики
+    [[6.3, -19.2], [-2.3, -9.9]].forEach(([x, z]) => add(F, x - 0.25, 0, z - 0.25, x + 0.25, 0.7, z + 0.25, C.dg, {}, true));
+    add(F, TABLE.x - 0.9, 0.83, TABLE.z - 0.3, TABLE.x - 0.6, 1.0, TABLE.z, [0.95, 0.95, 0.98]); add(F, TABLE.x - 0.4, 0.83, TABLE.z - 0.35, TABLE.x - 0.1, 0.89, TABLE.z - 0.05, [0.9, 0.85, 0.6]); add(F, TABLE.x + 0.1, 0.83, TABLE.z - 0.3, TABLE.x + 0.5, 0.86, TABLE.z - 0.1, [0.2, 0.2, 0.25]);
+    [[-3.2, -18.6, 1], [-2.7, -18.8, 0.8], [3.1, -18.6, 1], [-6.2, -15.2, 0.9], [6.2, -18.4, 0.8]].forEach(([x, z, k]) => { add(F, x - 0.35 * k, 0, z - 0.25 * k, x + 0.35 * k, 0.4 * k, z + 0.25 * k, C.kr, {}, true); add(F, x - 0.35 * k, 0.4 * k, z - 0.02, x + 0.35 * k, 0.4 * k + 0.01, z + 0.02, [0.95, 0.88, 0.6]); });
+    sign(0, 3.1, -19.99, 3, 0.4, "+z", "Склад", "sk", "#4b1d7a", "#fff", 256);
+    // улица: кусты, клумбы, кафе, ларёк, зебра, остановка
+    for (let i = 0; i < 9; i++) { const z = 6 + i * 5, sd = i % 2 ? 1 : -1; add(F, sd * 3.2 - 0.45, 0, z - 0.45, sd * 3.2 + 0.45, 0.6, z + 0.45, [0.3, 0.62, 0.32], {}, true); add(F, sd * 3.2 - 0.3, 0.6, z - 0.3, sd * 3.2 + 0.3, 0.8, z + 0.3, [i % 3 ? [1, 0.6, 0.8] : [1, 0.9, 0.4]][0]); }
+    [[-6, 18, [1, 0.4, 0.5]], [6, 20, [0.4, 0.7, 1]], [-6.5, 33, [1, 0.8, 0.3]], [6.5, 31, [0.7, 0.5, 1]]].forEach(([x, z, col]) => { add(F, x - 0.45, 0.7, z - 0.45, x + 0.45, 0.76, z + 0.45, C.wood, {}, true); add(F, x - 0.04, 0, z - 0.04, x + 0.04, 0.7, z + 0.04, C.dg); add(F, x - 0.04, 0.76, z - 0.04, x + 0.04, 2.0, z + 0.04, C.dg); add(F, x - 1.1, 2.0, z - 1.1, x + 1.1, 2.12, z + 1.1, col, { top: 1 }); add(F, x - 0.6, 2.12, z - 0.6, x + 0.6, 2.3, z + 0.6, col); [[-0.9, 0], [0.9, 0]].forEach(([a, b]) => add(F, x + a - 0.2, 0, z + b - 0.2, x + a + 0.2, 0.45, z + b + 0.2, [0.95, 0.95, 1])); });
+    add(F, -7.6, 0, 8, -5.4, 2.1, 10.2, [1, 0.75, 0.85], {}, true); add(F, -7.8, 2.1, 7.8, -5.2, 2.5, 10.4, [0.9, 0.2, 0.5], { top: 1 }); sign(-5.39, 1.75, 9.1, 1.8, 0.4, "+x", "Цветы", "fl", "#fff", "#c01a5a", 192); [[-7.2, 8.4], [-6.4, 8.4], [-5.8, 8.4]].forEach(([x, z], i) => add(F, x - 0.18, 0.9, z - 0.18, x + 0.18, 1.25, z + 0.18, [[1, 0.4, 0.6], [1, 0.85, 0.3], [0.8, 0.5, 1]][i]));
+    for (let i = 0; i < 6; i++) add(F, -2.4 + i * 0.85, 0.045, 57.3, -1.8 + i * 0.85, 0.075, 61.2, [0.96, 0.96, 0.96], { ao: 1 });
+    add(F, 6, 0, 50, 10.2, 0.2, 52.5, [0.8, 0.8, 0.85], {}, false); add(F, 6, 2.4, 50, 10.2, 2.55, 52.5, [0.9, 0.3, 0.5], { top: 1 }); add(F, 6, 0, 52.4, 6.1, 2.4, 52.5, C.dg); add(F, 10.1, 0, 52.4, 10.2, 2.4, 52.5, C.dg); add(F, 6.2, 0.45, 51.8, 10, 0.5, 52.3, C.wood); sign(8.1, 2.1, 52.39, 2.4, 0.3, "-z", "Автобус", "bus", "#fff", "#4b1d7a", 192);
     /* стикеры ШК и подписи скотча для предметов */
+    BOXLAB = E.label('', 96, 64, { draw: (ctx, x, y, w, h) => { ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w, h); ctx.fillStyle = '#d4208f'; ctx.font = 'italic 700 20px Arial'; ctx.textAlign = 'left'; ctx.fillText('wb', x + 6, y + 24); ctx.fillStyle = '#333'; for (let i = 0; i < 26; i++) ctx.fillRect(x + 6 + i * 3, y + 34, 1 + (i * 7 % 3), 22); ctx.font = '700 11px Arial'; ctx.fillText('Поставка 5481', x + 40, y + 20); } });
     ITEMS.forEach((it) => { STK[it.id] = E.label("", 128, 100, { draw: (ctx, x, y, w, h) => skDraw(ctx, x, y, w, h, it.code) }); if (it.tape) TAPE[it.id] = E.label(String(it.cell), 96, 48, { bg: "#f2ead2", fg: "#222", border: "#c9bf9a" }); });
     E.finalize(); built = true;
 
     /* динамика мира: машины и прохожие */
-    R.cars = [{ x: -40, z: 60, v: 6, col: [0.9, 0.2, 0.3] }, { x: 30, z: 65, v: -5, col: [0.2, 0.5, 0.9] }, { x: 0, z: 60, v: 7, col: [1, 0.8, 0.2] }];
+    R.cars = [{ x: -40, z: 60.5, v: 6, col: [0.9, 0.2, 0.3] }, { x: -5, z: 60.5, v: 6, col: [1, 0.8, 0.2] }, { x: 50, z: 60.5, v: 6, col: [0.3, 0.8, 0.5] }, { x: 30, z: 65, v: -5, col: [0.2, 0.5, 0.9] }, { x: -30, z: 65, v: -5, col: [0.95, 0.95, 1] }, { x: 5, z: 65, v: -5, col: [0.7, 0.3, 0.9], len: 7.5, bus: true }];
+    const pp = (hair, top, bot, o) => Object.assign({ pal: { hair, top, bot } }, o);
     R.people = [
-      { x: 3.4, z: 14, dz: -0.7, pal: { hair: [0.55, 0.3, 0.15], top: [0.95, 0.5, 0.3], bot: [0.25, 0.3, 0.55] } },
-      { x: -3.4, z: 30, dz: 0.8, pal: { hair: [0.1, 0.1, 0.12], top: [0.4, 0.75, 0.5], bot: [0.2, 0.2, 0.25] } },
-      { x: 3.2, z: 44, dz: -0.6, pal: { hair: [0.9, 0.8, 0.4], top: [0.7, 0.45, 0.9], bot: [0.3, 0.3, 0.4], long: true } },
+      pp([0.55, 0.3, 0.15], [0.95, 0.5, 0.3], [0.25, 0.3, 0.55], { x: 3.4, z: 14, dz: -0.7 }),
+      pp([0.1, 0.1, 0.12], [0.4, 0.75, 0.5], [0.2, 0.2, 0.25], { x: -3.4, z: 30, dz: 0.8 }),
+      pp([0.9, 0.8, 0.4], [0.7, 0.45, 0.9], [0.3, 0.3, 0.4], { x: 3.2, z: 44, dz: -0.6, pal: { hair: [0.9, 0.8, 0.4], top: [0.7, 0.45, 0.9], bot: [0.3, 0.3, 0.4], long: true } }),
+      pp([0.3, 0.2, 0.15], [0.95, 0.85, 0.3], [0.2, 0.25, 0.4], { x: -1.4, z: 20, dz: 0.9 }),
+      pp([0.15, 0.1, 0.1], [0.9, 0.3, 0.4], [0.15, 0.15, 0.2], { x: 1.2, z: 36, dz: -1.0 }),
+      pp([0.6, 0.4, 0.2], [0.3, 0.5, 0.9], [0.3, 0.3, 0.3], { x: -6.0, z: 19.2, dz: 0, yaw: 1.6 }),
+      pp([0.1, 0.1, 0.1], [1, 0.6, 0.8], [0.4, 0.3, 0.6], { x: -4.9, z: 19.4, dz: 0, yaw: -1.5, small: true }),
+      pp([0.5, 0.3, 0.2], [0.5, 0.8, 0.95], [0.2, 0.2, 0.3], { x: 6.7, z: 21.2, dz: 0, yaw: 3.0 }),
+      pp([0.2, 0.2, 0.25], [0.9, 0.9, 0.35], [0.35, 0.25, 0.2], { x: 7.6, z: 51.4, dz: 0, yaw: 0.6 }),
     ];
+    R.dog = { x: 3.6, z: 17, t: 0 };
 
     /* интерактивные цели */
     T.push({ kind: "door", pos: [0, 1.2, 0.15], r: 2.8, tol: 3, prompt: () => (!R.doorOpen && !R.doorTarget && R.stage !== "title" ? "Открыть дверь" : null), act: doorAct });
@@ -901,7 +934,8 @@
     if (R.doorTarget && !S.doorSeen) S.doorSeen = true;
     const t = R.tasya; if (t) { const dx = PL.x - t.x, dz = PL.z - t.z; t.yaw = Math.atan2(dx, dz); if (t.wave > 0) t.wave -= dt; }
     R.cars.forEach((c) => { c.x += c.v * dt; if (c.x > 80) c.x = -80; if (c.x < -80) c.x = 80; });
-    R.people.forEach((p) => { p.z += p.dz * dt; if (p.z > 50) p.dz = -Math.abs(p.dz); if (p.z < 6) p.dz = Math.abs(p.dz); });
+    R.people.forEach((p) => { if (!p.dz) return; p.z += p.dz * dt; if (p.z > 50) p.dz = -Math.abs(p.dz); if (p.z < 6) p.dz = Math.abs(p.dz); });
+    if (R.dog) { const d = R.dog, tz = Math.max(8, Math.min(46, PL.z + 3 * Math.sin(R.t * 0.4))); d.t += dt; d.z += Math.sign(tz - d.z) * Math.min(Math.abs(tz - d.z), 1.4 * dt); d.x = 3.6 + Math.sin(R.t * 0.7) * 0.6; }
     focus = pickFocus();
     const cx = $("#ctx");
     if (focus && !fr) { if (cx.hidden || cx.dataset.t !== focus.pr) { cx.hidden = false; cx.dataset.t = focus.pr; cx.innerHTML = `<span class="k">${touch ? "👆" : "E"}</span>${focus.pr}`; } } else if (!cx.hidden) { cx.hidden = true; cx.dataset.t = ""; }
@@ -928,7 +962,7 @@
     E.drawBox(P3(-0.09, 0.4, st), [0.14, 0.8, 0.16], yaw, pal.bot); E.drawBox(P3(0.09, 0.4, -st), [0.14, 0.8, 0.16], yaw, pal.bot);
     E.drawBox(P3(-0.09, 0.04, 0.04 + st), [0.15, 0.08, 0.26], yaw, [0.15, 0.15, 0.18]); E.drawBox(P3(0.09, 0.04, 0.04 - st), [0.15, 0.08, 0.26], yaw, [0.15, 0.15, 0.18]);
     E.drawBox(P3(0, 1.1 + sw, 0), [0.4, 0.52, 0.24], yaw, pal.top);
-    if (pal.collar) { E.drawBox(P3(0, 1.36 + sw, 0.12), [0.16, 0.08, 0.02], yaw, pal.collar); E.drawBox(P3(0, 1.0 + sw, 0.125), [0.04, 0.4, 0.01], yaw, pal.collar); }
+    if (pal.collar) { E.drawBox(P3(-0.07, 1.34 + sw, 0.125), [0.1, 0.12, 0.02], yaw, pal.collar); E.drawBox(P3(0.07, 1.34 + sw, 0.125), [0.1, 0.12, 0.02], yaw, pal.collar); E.drawBox(P3(0, 1.2 + sw, 0.125), [0.08, 0.2, 0.012], yaw, [0.9, 0.9, 0.95]); E.drawBox(P3(0.14, 1.0 + sw, 0.126), [0.025, 0.025, 0.012], yaw, [0.9, 0.7, 0.2]); }
     E.drawBox(P3(-0.26, 1.08, o.walk ? st : 0), [0.1, 0.46, 0.12], yaw, pal.top);
     const wv = o.wave > 0 ? Math.sin(R.t * 10) * 0.2 : 0;
     E.drawBox(P3(0.26, 1.12 + (o.give ? 0.1 : 0) + Math.abs(wv), (o.give ? 0.17 : 0) - (o.walk ? st : 0)), [0.1, 0.46, 0.12], yaw, pal.top);
@@ -941,18 +975,22 @@
       E.drawBox(P3(-0.18, 1.4 + sw, -0.02), [0.06, 0.5, 0.3], yaw, pal.hair); E.drawBox(P3(0.18, 1.4 + sw, -0.02), [0.06, 0.5, 0.3], yaw, pal.hair);
       if (pal.tip) { E.drawBox(P3(-0.18, 1.1 + sw, -0.02), [0.065, 0.12, 0.3], yaw, pal.tip); E.drawBox(P3(0.18, 1.1 + sw, -0.02), [0.065, 0.12, 0.3], yaw, pal.tip); }
     }
-    E.drawBox(P3(0, 1.67 + sw, 0.15), [0.3, 0.07, 0.04], yaw, pal.hair);
+    if (pal.tasya) {
+      E.drawBox(P3(-0.07, 1.65 + sw, 0.155), [0.19, 0.13, 0.04], yaw, pal.hair); E.drawBox(P3(0.11, 1.68 + sw, 0.155), [0.09, 0.07, 0.04], yaw, pal.hair);
+      E.drawBox(P3(0.1, 1.6 + sw, 0.17), [0.05, 0.14, 0.03], yaw, pal.hair);
+      E.drawBox(P3(-0.07, 1.545 + sw, 0.158), [0.06, 0.012, 0.01], yaw, [0.12, 0.1, 0.14]); E.drawBox(P3(0.07, 1.545 + sw, 0.158), [0.06, 0.012, 0.01], yaw, [0.12, 0.1, 0.14]);
+    } else E.drawBox(P3(0, 1.67 + sw, 0.15), [0.3, 0.07, 0.04], yaw, pal.hair);
     E.drawBox(P3(-0.07, 1.52 + sw, 0.155), [0.04, 0.05, 0.02], yaw, [0.15, 0.1, 0.25]); E.drawBox(P3(0.07, 1.52 + sw, 0.155), [0.04, 0.05, 0.02], yaw, [0.15, 0.1, 0.25]);
     E.drawBox(P3(0, 1.44 + sw, 0.155), [0.06, 0.02, 0.02], yaw, [0.85, 0.45, 0.55]);
     if (o.key) E.drawBox(P3(0.26, 1.15, 0.32), [0.06, 0.03, 0.14], yaw, [1, 0.85, 0.2], { unlit: true });
   }
-  const TASYA_PAL = { hair: [0.08, 0.12, 0.3], tip: [0.12, 0.45, 0.55], top: [0.1, 0.1, 0.13], bot: [0.12, 0.12, 0.16], collar: [0.96, 0.96, 0.98], skin: [0.98, 0.86, 0.8], long: true };
+  const TASYA_PAL = { hair: [0.04, 0.07, 0.2], tip: [0.07, 0.13, 0.34], top: [0.07, 0.07, 0.09], bot: [0.1, 0.1, 0.13], collar: [0.97, 0.97, 1], skin: [1, 0.88, 0.84], long: true, tasya: true };
 
   function drawCar(c) {
-    const d = c.v > 0 ? 1 : -1;
-    E.drawBox([c.x, 0.55, c.z], [4.2, 0.7, 1.8], 0, c.col); E.drawBox([c.x - 0.2 * d, 1.1, c.z], [2.2, 0.6, 1.6], 0, [0.75, 0.88, 1]);
-    [[-1.3, -0.85], [1.3, -0.85], [-1.3, 0.85], [1.3, 0.85]].forEach(([a, b]) => E.drawBox([c.x + a, 0.3, c.z + b], [0.7, 0.6, 0.2], 0, [0.1, 0.1, 0.12]));
-    E.drawBox([c.x + 2.1 * d, 0.65, c.z - 0.5], [0.05, 0.15, 0.3], 0, [1, 1, 0.7], { unlit: true }); E.drawBox([c.x + 2.1 * d, 0.65, c.z + 0.5], [0.05, 0.15, 0.3], 0, [1, 1, 0.7], { unlit: true });
+    const d = c.v > 0 ? 1 : -1, L = c.len || 4.2, hh = c.bus ? 1.5 : 0.7;
+    E.drawBox([c.x, hh / 2 + 0.2, c.z], [L, hh, 1.8], 0, c.col); E.drawBox([c.x - 0.2 * d, c.bus ? 1.55 : 1.1, c.z], [c.bus ? L - 0.6 : 2.2, c.bus ? 0.6 : 0.6, 1.62], 0, [0.75, 0.88, 1]);
+    [[-L * 0.31, -0.85], [L * 0.31, -0.85], [-L * 0.31, 0.85], [L * 0.31, 0.85]].forEach(([a, b]) => E.drawBox([c.x + a, 0.3, c.z + b], [0.7, 0.6, 0.2], 0, [0.1, 0.1, 0.12]));
+    E.drawBox([c.x + L / 2 * d, 0.65, c.z - 0.5], [0.05, 0.15, 0.3], 0, [1, 1, 0.7], { unlit: true }); E.drawBox([c.x + L / 2 * d, 0.65, c.z + 0.5], [0.05, 0.15, 0.3], 0, [1, 1, 0.7], { unlit: true });
   }
 
   /* предмет: части + стикер; pos — центр, sc — масштаб, ry/rx — повороты */
@@ -961,7 +999,7 @@
     v.p.forEach((p) => {
       const rz = p[7] || 0, Rp = rz ? GLM.mul(Rm, GLM.rotZ(rz)) : Rm;
       const m = GLM.mul(GLM.trans(pos[0], pos[1], pos[2]), GLM.mul(Rm, GLM.mul(GLM.trans(p[0] * sc, p[1] * sc, p[2] * sc), GLM.mul(rz ? GLM.rotZ(rz) : GLM.ident(), GLM.scale(p[3] * sc, p[4] * sc, p[5] * sc)))));
-      E.drawBoxM(m, Rp, p[6]);
+      if (p[8] === "c") E.drawCylM(m, Rp, p[6]); else E.drawBoxM(m, Rp, p[6]);
     });
     if (stickerOn !== false) { const s = v.s, m = GLM.mul(GLM.trans(pos[0], pos[1], pos[2]), GLM.mul(Rm, GLM.mul(GLM.trans(s[0] * sc, s[1] * sc, s[2] * sc), GLM.scale(s[3] * sc, s[4] * sc, 1)))); E.drawLabelM(m, Rm, STK[id]); }
     if (TAPE[id] && (R.placed.some((x) => x.it && x.it.id === id) || false)) { /* скотч рисуется на месте */ }
@@ -970,6 +1008,7 @@
 
   function drawBoxOpen(x, y, z, b, k) {
     E.drawBox([x, y + 0.26, z], [0.9, 0.52, 0.6], 0, C.kr);
+    if (BOXLAB) { E.drawLabelM(GLM.mul(GLM.trans(x - 0.2, y + 0.3, z + 0.307), GLM.scale(0.26, 0.17, 1)), GLM.ident(), BOXLAB); E.drawBox([x, y + 0.2, z + 0.304], [0.9, 0.05, 0.004], 0, [0.9, 0.78, 0.5]); }
     if (!b) E.drawBox([x, y + 0.53, z], [0.12, 0.01, 0.62], 0, [0.95, 0.9, 0.75]);
     else {
       E.drawBox([x, y + 0.5, z - 0.3], [0.9, 0.02, 0.3], 0, [0.92, 0.72, 0.46]); E.drawBox([x, y + 0.5, z + 0.3], [0.9, 0.02, 0.3], 0, [0.92, 0.72, 0.46]);
@@ -996,17 +1035,30 @@
     R.placed.forEach((p) => {
       if (p.cbox) { E.drawBox(p.pos, [0.62, 0.2, 0.44], 0, C.kr); E.drawBox([p.pos[0], p.pos[1] + 0.11, p.pos[2]], [0.5, 0.02, 0.32], 0, [0.4, 0.3, 0.2]); return; }
       if (R.placed.some((q) => q.cbox && q.cell === p.cell)) return;
-      const k = p.small ? 0.55 : 1, id = p.it.id; drawItem(id, p.pos, k, 0, 0, true);
+      const k = p.small ? 0.4 : 1, id = p.it.id; drawItem(id, p.pos, k, 0, 0, true);
       if (TAPE[id]) E.drawLabelM(GLM.mul(GLM.trans(p.pos[0] + (p.kind === "gab" ? 0.05 : 0), p.pos[1] + 0.12, p.pos[2] + 0.2), GLM.scale(0.22, 0.11, 1)), GLM.ident(), TAPE[id]);
     });
     /* стремянка */
     drawLadder();
     /* прозрачные кармашки */
-    (R.pockets || []).forEach((p) => E.drawBox([p.x, p.y, p.z], [0.16, 0.34, 0.5], 0, [0.8, 0.9, 1], { alpha: 0.38 }));
+    (R.pockets || []).forEach((p) => {
+      const fab = [0.78, 0.9, 1], ln = [0.45, 0.5, 0.7];
+      E.drawBox([p.x - 0.06, p.y, p.z], [0.012, 0.36, 0.52], 0, fab, { alpha: 0.32 });
+      E.drawBox([p.x, p.y, p.z - 0.26], [0.13, 0.36, 0.012], 0, fab, { alpha: 0.3 }); E.drawBox([p.x, p.y, p.z + 0.26], [0.13, 0.36, 0.012], 0, fab, { alpha: 0.3 });
+      E.drawBox([p.x, p.y - 0.18, p.z], [0.13, 0.012, 0.52], 0, fab, { alpha: 0.3 });
+      E.drawBox([p.x - 0.062, p.y + 0.18, p.z], [0.016, 0.02, 0.54], 0, ln); E.drawBox([p.x - 0.062, p.y - 0.18, p.z], [0.016, 0.014, 0.54], 0, ln);
+      E.drawBox([p.x - 0.062, p.y, p.z - 0.265], [0.016, 0.36, 0.014], 0, ln); E.drawBox([p.x - 0.062, p.y, p.z + 0.265], [0.016, 0.36, 0.014], 0, ln);
+    });
     /* камеры */
     [[-6.7, -9.0], [6.7, -9.0], [-6.7, -19.6], [6.7, -19.6]].forEach(([x, z]) => { E.drawBox([x + (x > 0 ? -0.12 : 0.12), 3.0, z + (z < -15 ? 0.1 : -0.1)], [0.14, 0.14, 0.14], 0, C.dark); E.drawBox([x + (x > 0 ? -0.2 : 0.2), 3.0, z + (z < -15 ? 0.17 : -0.17)], [0.05, 0.05, 0.05], 0, [1, 0.1, 0.1], { unlit: true }); });
+    if (S.notes.includes("cams") || R.ladder.up) [[-6.7, -9.0, 0.6], [6.7, -9.0, -0.6], [-6.7, -19.6, 2.5], [6.7, -19.6, -2.5]].forEach(([x, z, a]) => {
+      const m = GLM.mul(GLM.trans(x + Math.sin(a) * 3.2, 1.7, z - Math.cos(a) * 3.2), GLM.mul(GLM.rotY(a), GLM.scale(3.6, 2.6, 6.4)));
+      E.drawBoxM(m, GLM.rotY(a), [1, 0.95, 0.4], { alpha: 0.07, unlit: true });
+    });
     const t = R.tasya; if (t) drawPerson(t.x, t.z, t.yaw, { key: R.keyShow, wave: t.wave, give: R.keyShow, walk: t.walk, pal: TASYA_PAL });
-    R.people.forEach((p) => drawPerson(p.x, p.z, p.dz > 0 ? 0 : Math.PI, { walk: true, pal: p.pal }));
+    R.people.forEach((p) => drawPerson(p.x, p.z, p.dz ? (p.dz > 0 ? 0 : Math.PI) : p.yaw, { walk: !!p.dz, pal: p.pal, small: p.small }));
+    if (R.dog) { const d = R.dog, w = Math.sin(R.t * 12) * 0.05; E.drawBox([d.x, 0.32, d.z], [0.22, 0.24, 0.55], 0, [0.8, 0.55, 0.3]); E.drawBox([d.x, 0.45, d.z + 0.3], [0.2, 0.2, 0.2], 0, [0.8, 0.55, 0.3]); E.drawBox([d.x + 0.07, 0.45, d.z + 0.41], [0.05, 0.05, 0.02], 0, [0.1, 0.1, 0.1]); E.drawBox([d.x, 0.45, d.z - 0.34 + w], [0.05, 0.05, 0.22], 0, [0.65, 0.4, 0.2]); [[-0.07, 0.2], [0.07, 0.2], [-0.07, -0.2], [0.07, -0.2]].forEach(([a, b], k) => E.drawBox([d.x + a, 0.1, d.z + b + (k % 2 ? w : -w)], [0.06, 0.2, 0.06], 0, [0.65, 0.4, 0.2])); }
+    E.drawBox([6.7, 1.9 + Math.sin(R.t) * 0.08, 21.5], [0.28, 0.34, 0.28], 0, [1, 0.3, 0.45]); E.drawBox([6.7, 1.0, 21.5], [0.01, 1.7, 0.01], 0, [0.9, 0.9, 0.9]);
     R.cars.forEach(drawCar);
     /* предмет в руках */
     E.beginHeld();

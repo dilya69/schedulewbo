@@ -6,11 +6,11 @@
 
   const VS = `attribute vec3 aPos;attribute vec3 aNor;attribute vec2 aUV;attribute vec3 aCol;
 uniform mat4 uVP;uniform mat4 uModel;uniform mat3 uNM;uniform vec3 uCam;uniform vec4 uUVR;
-varying vec3 vNor;varying vec2 vUV;varying vec3 vCol;varying float vD;
-void main(){vec4 w=uModel*vec4(aPos,1.0);vNor=uNM*aNor;vUV=aUV*uUVR.zw+uUVR.xy;vCol=aCol;vD=length(w.xyz-uCam);gl_Position=uVP*w;}`;
+varying vec3 vNor;varying vec2 vUV;varying vec3 vCol;varying vec3 vW;
+void main(){vec4 w=uModel*vec4(aPos,1.0);vNor=uNM*aNor;vUV=aUV*uUVR.zw+uUVR.xy;vCol=aCol;vW=w.xyz;gl_Position=uVP*w;}`;
   const FS = `precision mediump float;
-varying vec3 vNor;varying vec2 vUV;varying vec3 vCol;varying float vD;
-uniform sampler2D uTex;uniform float uUseTex;uniform vec3 uTint;uniform vec3 uSun;uniform float uSunI;uniform float uAmb;
+varying vec3 vNor;varying vec2 vUV;varying vec3 vCol;varying vec3 vW;
+uniform vec3 uCam;uniform sampler2D uTex;uniform float uUseTex;uniform vec3 uTint;uniform vec3 uSun;uniform float uSunI;uniform float uAmb;
 uniform vec3 uFog;uniform float uFogN;uniform float uFogF;uniform float uAlpha;uniform float uUnlit;
 void main(){
   vec3 base=vCol*uTint;
@@ -20,7 +20,7 @@ void main(){
   float diff=max(dot(n,uSun),0.0);
   vec3 lit=base*(uAmb*hemi+diff*uSunI);
   lit=mix(lit,base,uUnlit);
-  float f=clamp((vD-uFogN)/(uFogF-uFogN),0.0,1.0);
+  float vD=length(vW-uCam);float f=clamp((vD-uFogN)/(uFogF-uFogN),0.0,1.0);
   gl_FragColor=vec4(mix(lit,uFog,f),uAlpha);
 }`;
 
@@ -96,6 +96,7 @@ void main(){
     else if (facing === "+x") { p = [[cx, cy - hh, cz + hw], [cx, cy - hh, cz - hw], [cx, cy + hh, cz - hw], [cx, cy + hh, cz + hw]]; n = [1, 0, 0]; }
     else if (facing === "-x") { p = [[cx, cy - hh, cz - hw], [cx, cy - hh, cz + hw], [cx, cy + hh, cz + hw], [cx, cy + hh, cz - hw]]; n = [-1, 0, 0]; }
     else { p = [[cx - hw, cy, cz + hh], [cx + hw, cy, cz + hh], [cx + hw, cy, cz - hh], [cx - hw, cy, cz - hh]]; n = [0, 1, 0]; }
+    p = p.map((q) => [q[0] + n[0] * 0.012, q[1] + n[1] * 0.012, q[2] + n[2] * 0.012]); // чуть над поверхностью: нет мерцания
     const uv = [[r.u0, r.v1], [r.u1, r.v1], [r.u1, r.v0], [r.u0, r.v0]];
     this.quad4(p, n, uv, [t, t, t, t]);
   };
@@ -128,6 +129,16 @@ void main(){
     this.cube = this.upload(cb.v);
     const qb = new Batch(null); qb.quad4([[-0.5, -0.5, 0], [0.5, -0.5, 0], [0.5, 0.5, 0], [-0.5, 0.5, 0]], [0, 0, 1], [[0, 1], [1, 1], [1, 0], [0, 0]], [[1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1]]);
     this.quad = this.upload(qb.v);
+    const cy = []; const N = 18, W = [1, 1, 1];
+    for (let i = 0; i < N; i++) {
+      const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2, c0 = Math.cos(a0) * 0.5, s0 = Math.sin(a0) * 0.5, c1 = Math.cos(a1) * 0.5, s1 = Math.sin(a1) * 0.5;
+      const n0 = [Math.cos(a0), Math.sin(a0), 0], n1 = [Math.cos(a1), Math.sin(a1), 0];
+      const P = (p, n) => pushV(cy, p, n, [0, 0], W);
+      P([c0, s0, -0.5], n0); P([c1, s1, -0.5], n1); P([c1, s1, 0.5], n1); P([c0, s0, -0.5], n0); P([c1, s1, 0.5], n1); P([c0, s0, 0.5], n0);
+      P([0, 0, 0.5], [0, 0, 1]); P([c0, s0, 0.5], [0, 0, 1]); P([c1, s1, 0.5], [0, 0, 1]);
+      P([0, 0, -0.5], [0, 0, -1]); P([c1, s1, -0.5], [0, 0, -1]); P([c0, s0, -0.5], [0, 0, -1]);
+    }
+    this.cyl = this.upload(cy);
     this.ident = M.ident(); this.identN = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
   }
   Engine.prototype.upload = function (verts) {
@@ -201,7 +212,7 @@ void main(){
     gl.clearColor(clear[0], clear[1], clear[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     const aspect = this.canvas.width / Math.max(1, this.canvas.height);
-    this.P = M.persp(c.fov, aspect, 0.05, 160);
+    this.P = M.persp(c.fov, aspect, 0.12, 160);
     this.VP = M.mul(this.P, M.view(c.pos, c.yaw, c.pitch));
     gl.uniformMatrix4fv(u.uVP, false, this.VP);
     gl.uniform3fv(u.uCam, c.pos);
@@ -221,7 +232,7 @@ void main(){
       const b = this.batches[k]; if (!b.count) return;
       this.bind(b);
       if (k === "flat") this.setTex(null); else this.setTex(k);
-      if (k === "atlas") { gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-2, -2); }
+      if (k === "atlas") { gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-3, -3); }
       gl.drawArrays(gl.TRIANGLES, 0, b.count);
       if (k === "atlas") gl.disable(gl.POLYGON_OFFSET_FILL);
     });
@@ -254,12 +265,19 @@ void main(){
     if (tr) { gl.disable(gl.BLEND); gl.depthMask(true); }
     gl.uniform1f(u.uAlpha, 1); gl.uniform1f(u.uUnlit, 0);
   };
+  Engine.prototype.drawCylM = function (m, r, col) {
+    const gl = this.gl, u = this.u;
+    this.bind(this.cyl); this.setTex(null);
+    gl.uniformMatrix4fv(u.uModel, false, m); gl.uniformMatrix3fv(u.uNM, false, M.n3(r));
+    gl.uniform3f(u.uTint, col[0], col[1], col[2]); gl.uniform4f(u.uUVR, 0, 0, 1, 1);
+    gl.drawArrays(gl.TRIANGLES, 0, this.cyl.count);
+  };
   Engine.prototype.drawLabelM = function (m, r, rect) {
     const gl = this.gl, u = this.u;
     this.bind(this.quad); this.setTex("atlas");
     gl.uniformMatrix4fv(u.uModel, false, m); gl.uniformMatrix3fv(u.uNM, false, M.n3(r));
     gl.uniform3f(u.uTint, 1, 1, 1); gl.uniform4f(u.uUVR, rect.u0, rect.v0, rect.u1 - rect.u0, rect.v1 - rect.v0);
-    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-2, -2);
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-3, -3);
     gl.drawArrays(gl.TRIANGLES, 0, this.quad.count);
     gl.disable(gl.POLYGON_OFFSET_FILL);
     gl.uniform4f(u.uUVR, 0, 0, 1, 1);

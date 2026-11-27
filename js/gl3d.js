@@ -5,10 +5,14 @@
   "use strict";
 
   const VS = `attribute vec3 aPos;attribute vec3 aNor;attribute vec2 aUV;attribute vec3 aCol;
-uniform mat4 uVP;uniform mat4 uModel;uniform mat3 uNM;uniform vec3 uCam;uniform vec4 uUVR;
+uniform mat4 uVP;uniform mat4 uModel;uniform mat3 uNM;uniform vec4 uUVR;
 varying vec3 vNor;varying vec2 vUV;varying vec3 vCol;varying vec3 vW;
 void main(){vec4 w=uModel*vec4(aPos,1.0);vNor=uNM*aNor;vUV=aUV*uUVR.zw+uUVR.xy;vCol=aCol;vW=w.xyz;gl_Position=uVP*w;}`;
-  const FS = `precision mediump float;
+  const FS = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
 varying vec3 vNor;varying vec2 vUV;varying vec3 vCol;varying vec3 vW;
 uniform vec3 uCam;uniform sampler2D uTex;uniform float uUseTex;uniform vec3 uTint;uniform vec3 uSun;uniform float uSunI;uniform float uAmb;
 uniform vec3 uFog;uniform float uFogN;uniform float uFogF;uniform float uAlpha;uniform float uUnlit;
